@@ -1,0 +1,68 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0001</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0001</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  [SD] 여객 예약 관리 페이지</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report ZC103SDR0001</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+include <a href ="zc103sdr0001top.html">zc103sdr0001top</a>.  " Global Data
+include <a href ="zc103sdr0001s01.html">zc103sdr0001s01</a>.  " Selection screen
+include <a href ="zc103sdr0001c01.html">zc103sdr0001c01</a>.  " Class
+include <a href ="zc103sdr0001o01.html">zc103sdr0001o01</a>.  " PBO-Modules
+include <a href ="zc103sdr0001i01.html">zc103sdr0001i01</a>.  " PAI-Modules
+include <a href ="zc103sdr0001f01.html">zc103sdr0001f01</a>.  " FORM-Routines
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* INITIALIZATION</font>
+<font color ="#0000FF">**********************************************************************</font>
+INITIALIZATION.
+  PERFORM set_init_value.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* START-OF-SELECTION</font>
+<font color ="#0000FF">**********************************************************************</font>
+START-OF-SELECTION.
+  PERFORM get_schedule_data.
+
+  CALL SCREEN 100.
+
+<font color ="#0000FF">*GUI Texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* TITLE100 --&gt; [SD] 여객 예약 관리 페이지</font>
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* T01 조회조건</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* PA_SCHID D       .</font>
+<font color ="#0000FF">* SO_DATE         출발 일자</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: Hard coded</font>
+<font color ="#0000FF">*   허용된 날짜 형식이 아닙니다: YYYYMMDD, YYYY/MM/DD, YYYY-MM-DD, YYYY.MM.DD, 00000000</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZMSGC103</font>
+<font color ="#0000FF">*003   조회되는 데이터가 없습니다.</font>
+<font color ="#0000FF">*008   &건을 조회했습니다.</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

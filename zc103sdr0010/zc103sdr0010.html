@@ -1,0 +1,78 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0010</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0010</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  [SD] 화물 예약 실적 조회 프로그램</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report ZC103SDR0010</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+include <a href ="zc103sdr0010top.html">ZC103SDR0010TOP</a>.
+include <a href ="zc103sdr0010c01.html">ZC103SDR0010c01</a>.
+include <a href ="zc103sdr0010s01.html">ZC103SDR0010S01</a>.
+include <a href ="zc103sdr0010o01.html">ZC103SDR0010O01</a>.
+include <a href ="zc103sdr0010i01.html">ZC103SDR0010I01</a>.
+include <a href ="zc103sdr0010f01.html">ZC103SDR0010F01</a>.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* INITIALIZATION</font>
+<font color ="#0000FF">**********************************************************************</font>
+INITIALIZATION.
+  PERFORM set_init_value.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* AT SELECTION-SCREEN OUTPUT.</font>
+<font color ="#0000FF">**********************************************************************</font>
+AT SELECTION-SCREEN OUTPUT.
+  PERFORM set_quarter_value.
+  PERFORM set_route_value.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* START-OF-SELECTION</font>
+<font color ="#0000FF">**********************************************************************</font>
+START-OF-SELECTION.
+  PERFORM set_tree_data.
+  PERFORM get_body_data.
+
+  CALL SCREEN 100.
+
+<font color ="#0000FF">*GUI Texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* TITLE100 --&gt; [SD] 화물 예약 실적 조회 프로그램</font>
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* T01 조회조건</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* PA_QUAR         분기</font>
+<font color ="#0000FF">* PA_ROUT         노선</font>
+<font color ="#0000FF">* PA_YEAR         연도</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: Hard coded</font>
+<font color ="#0000FF">*   웹 브라우저 실행 실패</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZMSGC103</font>
+<font color ="#0000FF">*000   &</font>
+<font color ="#0000FF">*003   조회되는 데이터가 없습니다.</font>
+<font color ="#0000FF">*008   &건을 조회했습니다.</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

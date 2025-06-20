@@ -1,0 +1,1202 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0010F01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0010F01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZC103SDR0009F01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include          ZC103SDR0010F01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_init_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_init_value .
+
+  pa_year = sy-datum(4).
+  pa_quar = '1'.
+  IF sy-datum+4(2) &gt; 10.
+    pa_quar = '4'.
+  ELSEIF sy-datum+4(2) &gt; 7.
+    pa_quar = '3'.
+  ELSEIF sy-datum+4(2) &gt; 4.
+    pa_quar = '2'.
+  ELSE.
+    pa_quar = '1'.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_quarter_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_quarter_value .
+
+  " 분기 listbox 만들어줌
+  DATA: lt_list TYPE vrm_values,
+        ls_list TYPE vrm_value.
+
+  CLEAR lt_list.
+
+  ls_list-key  = '1'.
+  ls_list-text = '1분기'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '2'.
+  ls_list-text = '2분기'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '3'.
+  ls_list-text = '3분기'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '4'.
+  ls_list-text = '4분기'.
+  APPEND ls_list TO lt_list.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'PA_QUAR'
+      values = lt_list.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GV_QUAR'
+      values = lt_list.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_body_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_body_data .
+
+<font color ="#0000FF">*-- Set parameter</font>
+  gv_year = pa_year.
+  gv_quar = pa_quar.
+  gv_route = pa_rout.
+
+<font color ="#0000FF">*-- Get Domain Value</font>
+  SELECT
+  FROM dd07v
+  FIELDS domvalue_l, ddtext
+  WHERE domname = 'ZC103D_FI_LAND'
+  INTO CORRESPONDING FIELDS OF TABLE @gt_dd07v.
+
+<font color ="#0000FF">*-- Get Body data</font>
+  PERFORM get_perform_data. " 실적 데이터
+  PERFORM set_body_data.    " 실적 데이터 파싱 & 전역변수 세팅
+  PERFORM get_analyze_data. " 분석 데이터
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_perform_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_perform_data .
+
+  DATA : lt_schedules TYPE STANDARD TABLE OF gs_range WITH EMPTY KEY,
+         ls_schedule  TYPE gs_range.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Parse parameter</font>
+<font color ="#0000FF">**********************************************************************</font>
+  CASE gv_quar.
+    WHEN '1'.
+      gv_date_from = |{ gv_year }0101|.
+      gv_date_to   = |{ gv_year }0331|.
+    WHEN '2'.
+      gv_date_from = |{ gv_year }0401|.
+      gv_date_to   = |{ gv_year }0630|.
+    WHEN '3'.
+      gv_date_from = |{ gv_year }0701|.
+      gv_date_to   = |{ gv_year }0930|.
+    WHEN '4'.
+      gv_date_from = |{ gv_year }1001|.
+      gv_date_to   = |{ gv_year }1231|.
+    WHEN OTHERS.
+      " 기본값: 전체 연도
+      gv_date_from = |{ gv_year }0101|.
+      gv_date_to   = |{ gv_year }1231|.
+  ENDCASE.
+
+  IF gv_date_from &gt; sy-datum . "OR gv_date_to &gt; sy-datum.
+    MESSAGE s000 WITH '해당 기간(분기) 실적은 아직 조회할 수 없습니다.'  DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  gv_countryfrom = gv_route(2).
+  gv_countryto = gv_route+2(2).
+
+<font color ="#0000FF">**********************************************************************</font>
+  " 예약 데이터 TODO inner join -&gt; left join
+<font color ="#0000FF">**********************************************************************</font>
+  SELECT a~scheduleid, a~flightid, a~flighttime, a~countryfrom, a~countryto,
+         tdate, departdate, weight_unit,
+         SUM( weight ) AS booked_weight
+    FROM zc103sdt0008 AS a JOIN zc103sdt0017 AS b
+                           ON a~scheduleid = b~scheduleid
+   WHERE departdate BETWEEN @gv_date_from AND @gv_date_to
+    AND ( a~countryfrom = @gv_countryfrom OR @gv_countryfrom IS INITIAL )
+     AND ( a~countryto   = @gv_countryto OR @gv_countryto IS INITIAL )
+   GROUP BY a~scheduleid, a~flightid, a~flighttime, a~countryfrom, a~countryto,
+            tdate, departdate, weight_unit
+    ORDER BY departdate ASCENDING
+    INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+
+  IF  gt_body IS INITIAL.
+    MESSAGE s003 DISPLAY LIKE 'E'.
+    RETURN.
+  ELSE.
+    MESSAGE s008 WITH sy-dbcnt.
+  ENDIF.
+
+<font color ="#0000FF">**********************************************************************</font>
+  " scheduleid 단일필드 테이블
+<font color ="#0000FF">**********************************************************************</font>
+  CLEAR : lt_schedules.
+  LOOP AT gt_body INTO DATA(ls_body).
+    CLEAR : ls_schedule.
+    ls_schedule-sign   = 'I'.
+    ls_schedule-option = 'EQ'.
+    ls_schedule-low    = ls_body-scheduleid.
+    APPEND ls_schedule TO lt_schedules.
+  ENDLOOP.
+  DELETE ADJACENT DUPLICATES FROM lt_schedules.
+
+<font color ="#0000FF">**********************************************************************</font>
+  " 실적 데이터
+<font color ="#0000FF">**********************************************************************</font>
+  SELECT scheduleid, load_date,
+         SUM( pallet_load_weight ) AS actual_weight,
+         COUNT(*) AS pallet_cnt
+    FROM zc103sdt0024
+   WHERE scheduleid IN @lt_schedules
+   GROUP BY scheduleid, load_date
+       INTO CORRESPONDING FIELDS OF TABLE @gt_sum.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_body_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_body_data .
+
+  CLEAR : gt_display, gv_total_cnt, gv_total_trip, gv_avg_trip,
+          gv_total_weight, gv_avg_weight.
+
+  LOOP AT gt_body ASSIGNING FIELD-SYMBOL(&lt;fs&gt;).
+
+    CLEAR : gs_display.
+
+    " 집계내용 반영
+    READ TABLE gt_sum INTO gs_sum WITH KEY scheduleid = &lt;fs&gt;-scheduleid.
+    IF sy-subrc = 0.
+      &lt;fs&gt;-actual_weight = gs_sum-actual_weight.
+      &lt;fs&gt;-pallet_cnt    = gs_sum-pallet_cnt.
+      &lt;fs&gt;-achieve_rate  = &lt;fs&gt;-actual_weight * 100 / &lt;fs&gt;-booked_weight.
+    ENDIF.
+
+    " 총 운항 시간
+    gv_total_trip += &lt;fs&gt;-flighttime.
+
+    " 총 운송 무게
+    gv_total_weight += &lt;fs&gt;-actual_weight.
+
+    " Domain value
+    gs_display = VALUE #(
+                          tdate = &lt;fs&gt;-tdate
+                          departdate = &lt;fs&gt;-departdate
+                          scheduleid = &lt;fs&gt;-scheduleid
+                          flightid  = &lt;fs&gt;-flightid
+                          countryfrom = &lt;fs&gt;-countryfrom
+                          countryto = &lt;fs&gt;-countryto
+                          countryfr_text =   gt_dd07v[ KEY key domvalue_l = &lt;fs&gt;-countryfrom ]-ddtext
+                          countryto_text =   gt_dd07v[ KEY key domvalue_l = &lt;fs&gt;-countryto ]-ddtext
+                          weight_unit = &lt;fs&gt;-weight_unit
+                          booked_weight = &lt;fs&gt;-booked_weight
+                          actual_weight = &lt;fs&gt;-actual_weight
+                          pallet_cnt = &lt;fs&gt;-pallet_cnt
+                          achieve_rate = &lt;fs&gt;-achieve_rate
+
+                        ).
+
+    gt_display = VALUE #( BASE gt_display ( gs_display ) ).
+
+  ENDLOOP.
+
+  " 전역변수 세팅
+  gv_total_cnt = lines( gt_display ).
+  gv_avg_trip = gv_total_trip / gv_total_cnt.
+  gv_avg_weight = gv_total_weight / gv_total_cnt.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_analyze_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_analyze_data .
+
+  DATA : lv_from TYPE string,
+         lv_to   TYPE string.
+
+  CLEAR : gt_display2, gt_display3, gt_display4.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* 거래처별 적재 현황</font>
+<font color ="#0000FF">**********************************************************************</font>
+  SELECT b~bpid,
+         d~bptype,
+         a~countryfrom,
+         a~countryto,
+         COUNT(*)                    AS trip_cnt,
+         SUM( b~weight )             AS booked_weight,
+         weight_unit,
+         SUM( c~pallet_load_weight ) AS total_weight,
+         COUNT( c~pallet_no )        AS total_pallet_cnt
+    FROM zc103sdt0017 AS b
+    INNER JOIN zc103sdt0008 AS a
+            ON a~scheduleid = b~scheduleid
+    LEFT JOIN zc103sdt0024 AS c
+           ON c~scheduleid = b~scheduleid
+          AND c~bpid       = b~bpid
+    LEFT JOIN zc103sdt0001 AS d
+           ON d~bpid = b~bpid
+   WHERE a~departdate BETWEEN @gv_date_from AND @gv_date_to
+   GROUP BY b~bpid, d~bptype, a~countryfrom, a~countryto, weight_unit
+        INTO CORRESPONDING FIELDS OF TABLE @gt_display2.
+
+  LOOP AT gt_display2 ASSIGNING FIELD-SYMBOL(&lt;fs&gt;).
+
+    lv_from =   gt_dd07v[ KEY key domvalue_l = &lt;fs&gt;-countryfrom ]-ddtext.
+    lv_to =   gt_dd07v[ KEY key domvalue_l = &lt;fs&gt;-countryto ]-ddtext.
+
+    &lt;fs&gt;-route = lv_from && '▶' && lv_to.
+    IF &lt;fs&gt;-trip_cnt &gt; 0.
+
+      &lt;fs&gt;-avg_weight_b = &lt;fs&gt;-booked_weight / &lt;fs&gt;-trip_cnt.
+      &lt;fs&gt;-avg_weight = &lt;fs&gt;-total_weight / &lt;fs&gt;-trip_cnt.
+      &lt;fs&gt;-avg_rate = &lt;fs&gt;-total_weight * 100 / &lt;fs&gt;-booked_weight.
+
+    ENDIF.
+
+  ENDLOOP.
+
+  gt_display1 = CORRESPONDING #( gt_display2 ).
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* 노선별 적재 현황</font>
+<font color ="#0000FF">**********************************************************************</font>
+  LOOP AT gt_display INTO gs_display.
+
+    CLEAR gs_display4.
+    READ TABLE gt_display4 INTO gs_display4 WITH KEY countryfrom = gs_display-countryfrom
+                                                     countryto   = gs_display-countryto.
+
+    IF sy-subrc = 0.
+      gs_display4-route = gs_display-countryfr_text && '▶' && gs_display-countryto_text.
+      gs_display4-trip_cnt         += 1.
+
+      gs_display4-total_weight     += gs_display-actual_weight.
+      gs_display4-total_pallet_cnt += gs_display-pallet_cnt.
+      gs_display4-avg_rate         += gs_display-achieve_rate.
+      gs_display4-weight_unit       = gs_display-weight_unit.
+      MODIFY gt_display4 FROM gs_display4 INDEX sy-tabix.
+    ELSE.
+      gs_display4-countryfrom = gs_display-countryfrom.
+      gs_display4-countryto   = gs_display-countryto.
+      gs_display4-route = gs_display-countryfr_text && '▶' && gs_display-countryto_text.
+      gs_display4-trip_cnt    = 1.
+
+      gs_display4-total_weight     += gs_display-actual_weight.
+      gs_display4-total_pallet_cnt = gs_display-pallet_cnt.
+      gs_display4-avg_rate         = gs_display-achieve_rate.
+      gs_display4-weight_unit      = gs_display-weight_unit.
+      APPEND gs_display4 TO gt_display4.
+    ENDIF.
+  ENDLOOP.
+
+  " 평균 계산
+  LOOP AT gt_display4 INTO gs_display4.
+    gs_display4-avg_weight = gs_display4-total_weight / gs_display4-trip_cnt.
+    gs_display4-avg_rate   = gs_display4-avg_rate / gs_display4-trip_cnt.
+    MODIFY gt_display4 FROM gs_display4 INDEX sy-tabix.
+  ENDLOOP.
+
+  SORT gt_display4 BY trip_cnt DESCENDING.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* 항공기별 적재 현황</font>
+<font color ="#0000FF">**********************************************************************</font>
+  LOOP AT gt_display INTO gs_display.
+
+    CLEAR gs_display3.
+    READ TABLE gt_display3 INTO gs_display3 WITH KEY flightid = gs_display-flightid.
+
+    IF sy-subrc = 0.
+      gs_display3-trip_cnt         += 1.
+      gs_display3-total_weight     += gs_display-actual_weight.
+      gs_display3-total_pallet_cnt += gs_display-pallet_cnt.
+      gs_display3-avg_rate         += gs_display-achieve_rate.
+      gs_display3-weight_unit       = gs_display-weight_unit.
+      MODIFY gt_display3 FROM gs_display3 INDEX sy-tabix.
+    ELSE.
+      gs_display3-flightid = gs_display-flightid.
+      gs_display3-trip_cnt    = 1.
+      gs_display3-total_weight     += gs_display-actual_weight.
+      gs_display3-total_pallet_cnt = gs_display-pallet_cnt.
+      gs_display3-avg_rate         = gs_display-achieve_rate.
+      gs_display3-weight_unit      = gs_display-weight_unit.
+      APPEND gs_display3 TO gt_display3.
+    ENDIF.
+  ENDLOOP.
+
+  " 평균 계산
+  LOOP AT gt_display3 INTO gs_display3.
+    gs_display3-avg_weight = gs_display3-total_weight / gs_display3-trip_cnt.
+    gs_display3-avg_rate   = gs_display3-avg_rate / gs_display3-trip_cnt.
+    MODIFY gt_display3 FROM gs_display3 INDEX sy-tabix.
+  ENDLOOP.
+
+  SORT gt_display4 BY trip_cnt DESCENDING.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form before_100_screen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM before_100_screen .
+
+  IF go_tab_cont1 IS NOT BOUND.
+
+    PERFORM set_field_catalog.
+    PERFORM set_layout.
+    PERFORM create_object.
+    PERFORM add_tree.
+
+    PERFORM display_alv.
+    PERFORM refresh_alv.
+
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_field_catalog.
+
+  CLEAR : gt_fcat1, gs_fcat1, gt_fcat2, gs_fcat2,
+          gt_fcat3, gs_fcat3, gt_fcat4, gs_fcat4.
+
+  " 실적 field catalog
+  PERFORM set_field_catalog1 USING : 'X' 'SCHEDULEID' 'ZC103SDT0017' 'C' ' ',
+                                     ' ' 'FLIGHTID' 'ZC103SDT0017' 'C' ' ',
+                                      ' ' 'DEPARTDATE' 'ZC103SDT0008' 'C' ' ',
+                                      ' ' 'COUNTRYFR_TEXT' ' ' ' ' 'X',
+                                      ' ' 'COUNTRYTO_TEXT' ' ' ' ' 'X',
+                                      ' ' 'BOOKED_WEIGHT' ' ' ' ' ' ',
+                                      ' ' 'ACTUAL_WEIGHT' ' ' ' ' ' ',
+                                      ' ' 'WEIGHT_UNIT' ' ' 'C' ' ',
+                                      ' ' 'PALLET_CNT' ' ' ' ' ' ',
+                                      ' ' 'ACHIEVE_RATE' ' ' ' ' 'X'.
+
+  " 분석 - 노선별 field catalog
+  PERFORM set_field_catalog4 USING : 'X' 'ROUTE' ' ' ' ' 'X',
+                                      ' ' 'TRIP_CNT' ' ' ' ' ' ',
+                                      ' ' 'TOTAL_WEIGHT' ' ' ' ' ' ',
+                                      ' ' 'AVG_WEIGHT' ' ' ' ' 'X',
+                                      ' ' 'WEIGHT_UNIT' ' ' 'C' ' ',
+                                      ' ' 'TOTAL_PALLET_CNT' ' ' ' ' 'X',
+                                      ' ' 'AVG_RATE' ' ' ' ' ' '.
+
+  " 분석 - 항공기별  field catalog
+  PERFORM set_field_catalog3 USING : 'X' 'FLIGHTID' 'ZC103SDT0008' 'C' 'X',
+                                      ' ' 'TRIP_CNT' ' ' ' ' ' ',
+                                      ' ' 'TOTAL_WEIGHT' ' ' ' ' ' ',
+                                      ' ' 'AVG_WEIGHT' ' ' ' ' 'X',
+                                      ' ' 'WEIGHT_UNIT' ' ' 'C' ' ',
+                                      ' ' 'TOTAL_PALLET_CNT' ' ' ' ' 'X',
+                                      ' ' 'AVG_RATE' ' ' ' ' ' '.
+
+  " 분석 - 거래처별 field catalog
+  PERFORM set_field_catalog2 USING : 'X' 'BPID' 'ZC103SDT0017' 'C' ' ',
+                                      ' ' 'ROUTE' ' ' ' ' 'X',
+                                      ' ' 'TRIP_CNT' ' ' ' ' ' ',
+                                      ' ' 'BOOKED_WEIGHT' ' ' ' ' ' ',
+                                      ' ' 'TOTAL_WEIGHT' ' ' ' ' 'X',
+                                      ' ' 'AVG_WEIGHT_B' ' ' ' ' ' ',
+                                      ' ' 'AVG_WEIGHT' ' ' ' ' ' ',
+                                      ' ' 'WEIGHT_UNIT' ' ' 'C' ' ',
+                                      ' ' 'TOTAL_PALLET_CNT' ' ' ' ' 'X',
+                                      ' ' 'AVG_RATE' ' ' ' ' ' '.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_layout .
+
+<font color ="#0000FF">*-- Set layout</font>
+  gs_layout-zebra      = abap_true.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+
+  gs_layout3 = CORRESPONDING #( gs_layout ).
+  gs_layout3-grid_title = '항공기별 화물 적재 실적'.
+
+  gs_layout2 = CORRESPONDING #( gs_layout ).
+  gs_layout2-grid_title = '거래처별 화물 적재 실적'.
+
+  gs_layout4 = CORRESPONDING #( gs_layout ).
+  gs_layout4-grid_title = '노선별 화물 적재 실적'.
+
+<font color ="#0000FF">*-- Set Variant</font>
+  gs_variant-report = sy-repid.
+  gs_variant-handle = 'ALV1'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form create_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM create_object .
+
+<font color ="#0000FF">*-- 1. Main Container</font>
+  CREATE OBJECT go_tab_cont1
+    EXPORTING
+      container_name = 'MAIN_CONT1'.
+
+  CREATE OBJECT go_alv_grid1
+    EXPORTING
+      i_parent = go_tab_cont1.
+
+  CREATE OBJECT go_tab_cont2
+    EXPORTING
+      container_name = 'MAIN_CONT2'.
+
+<font color ="#0000FF">*-- 2. 상하 Split</font>
+  CREATE OBJECT go_split_main
+    EXPORTING
+      parent  = go_tab_cont2
+      rows    = 2
+      columns = 1.
+
+  CALL METHOD go_split_main-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_split_cont_top.
+
+  CALL METHOD go_split_main-&gt;get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = go_split_cont_bottom.
+
+<font color ="#0000FF">*-- 3. 상단 내부 좌우 split</font>
+  CREATE OBJECT go_split_top
+    EXPORTING
+      parent  = go_split_cont_top
+      rows    = 1
+      columns = 2.
+
+  CALL METHOD go_split_top-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_split_cont3.
+
+  CALL METHOD go_split_top-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = go_split_cont4.
+
+<font color ="#0000FF">*-- 4. 하단 내부 좌우 split</font>
+  CREATE OBJECT go_split_bottom
+    EXPORTING
+      parent  = go_split_cont_bottom
+      rows    = 1
+      columns = 2.
+
+  CALL METHOD go_split_bottom-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_split_cont1.
+
+  CALL METHOD go_split_bottom-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = go_split_cont2.
+
+  " tree width 세팅
+  CALL METHOD go_split_bottom-&gt;set_column_width
+    EXPORTING
+      id    = 1   " Column ID
+      width = 20. " Width
+
+<font color ="#0000FF">*-- 5. Patch ALV</font>
+  CREATE OBJECT go_split_grid3
+    EXPORTING
+      i_parent = go_split_cont3.
+
+  CREATE OBJECT go_split_grid4
+    EXPORTING
+      i_parent = go_split_cont4.
+
+  CREATE OBJECT go_tree
+    EXPORTING
+      parent              = go_split_cont1
+      node_selection_mode = cl_gui_simple_tree=&gt;node_sel_mode_single.
+
+  CREATE OBJECT go_split_grid2
+    EXPORTING
+      i_parent = go_split_cont2.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_subscreen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_subscreen .
+
+  " 서브스크린 설정
+  CASE gc_tab-activetab.
+    WHEN 'TAB1'.
+      gv_subscreen = '0101'.
+    WHEN 'TAB2'.
+      gv_subscreen = '0102'.
+    WHEN OTHERS.
+      gc_tab-activetab = 'TAB1'.
+      gv_subscreen = '0101'.
+  ENDCASE.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_field_catalog1</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_field_catalog1  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat1-key       = pv_key.
+  gs_fcat1-fieldname = pv_field.
+  gs_fcat1-ref_table = pv_table.
+  gs_fcat1-just      = pv_just.
+  gs_fcat1-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'COUNTRYFR_TEXT'.
+      gs_fcat1-coltext = '출발국가'.
+    WHEN 'COUNTRYTO_TEXT'.
+      gs_fcat1-coltext = '도착국가'.
+    WHEN 'DEPARTDATE'.
+      gs_fcat1-coltext = '운송일자'.
+    WHEN 'BOOKED_WEIGHT'.
+      gs_fcat1-coltext = '총 예약 중량'.
+      gs_fcat1-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'ACTUAL_WEIGHT'.
+      gs_fcat1-coltext = '총 실적 중량'.
+      gs_fcat1-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_UNIT'.
+      gs_fcat1-coltext = '단위'.
+    WHEN 'PALLET_CNT'.
+      gs_fcat1-coltext = '탑재 팔레트 수'.
+    WHEN 'ACHIEVE_RATE'.
+      gs_fcat1-coltext = '탑재율(%)'.
+  ENDCASE.
+
+  APPEND gs_fcat1 TO gt_fcat1.
+  CLEAR gs_fcat1.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_field_catalog2</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_field_catalog2  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat2-key       = pv_key.
+  gs_fcat2-fieldname = pv_field.
+  gs_fcat2-ref_table = pv_table.
+  gs_fcat2-just      = pv_just.
+  gs_fcat2-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ROUTE'.
+      gs_fcat2-coltext = '노선'.
+    WHEN 'TRIP_CNT'.
+      gs_fcat2-coltext = '총 운항(회)'.
+    WHEN 'BOOKED_WEIGHT'.
+      gs_fcat2-coltext = '총 예약 중량'.
+      gs_fcat2-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'TOTAL_WEIGHT'.
+      gs_fcat2-coltext = '총 실적 중량'.
+      gs_fcat2-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'AVG_WEIGHT_B'.
+      gs_fcat2-coltext = '평균 예약 중량'.
+      gs_fcat2-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'AVG_WEIGHT'.
+      gs_fcat2-coltext = '평균 실적 중량'.
+      gs_fcat2-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_UNIT'.
+      gs_fcat2-coltext = '단위'.
+    WHEN 'TOTAL_PALLET_CNT'.
+      gs_fcat2-coltext = '총 탑재 팔레트 수'.
+    WHEN 'AVG_RATE'.
+      gs_fcat2-coltext = '평균 탑재율(%)'.
+  ENDCASE.
+
+  APPEND gs_fcat2 TO gt_fcat2.
+  CLEAR gs_fcat2.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form display_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM display_alv .
+
+  CALL METHOD go_alv_grid1-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_display
+      it_fieldcatalog = gt_fcat1.
+
+  gs_variant-handle = 'SPLIT2'.
+  CALL METHOD go_split_grid2-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout2
+    CHANGING
+      it_outtab       = gt_display2
+      it_fieldcatalog = gt_fcat2.
+
+  gs_variant-handle = 'SPLIT3'.
+  CALL METHOD go_split_grid3-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout3
+    CHANGING
+      it_outtab       = gt_display3
+      it_fieldcatalog = gt_fcat3.
+
+  gs_variant-handle = 'SPLIT4'.
+  CALL METHOD go_split_grid4-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout4
+    CHANGING
+      it_outtab       = gt_display4
+      it_fieldcatalog = gt_fcat4.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_alv .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  IF go_alv_grid1 IS BOUND.
+    CALL METHOD go_alv_grid1-&gt;refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+  IF go_split_grid2 IS BOUND.
+    CALL METHOD go_split_grid2-&gt;refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+  IF go_split_grid3 IS BOUND.
+    CALL METHOD go_split_grid3-&gt;refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+  IF go_split_grid4 IS BOUND.
+    CALL METHOD go_split_grid4-&gt;refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_data .
+
+  pa_quar = ''.
+  pa_rout = ''.
+  gv_year = ''.
+  gv_quar = ''.
+  gv_route = ''.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_route_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_route_value .
+
+  " 분기 listbox 만들어줌
+  DATA: lt_list TYPE vrm_values,
+        ls_list TYPE vrm_value.
+
+  CLEAR lt_list.
+
+  ls_list-key  = '0001'.
+  ls_list-text = '대한민국(인천) ▶ 대한민국(부산/김해)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0002'.
+  ls_list-text = '대한민국(인천) ▶ 오스트레일리아(시드니)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0003'.
+  ls_list-text = '대한민국(인천) ▶ 베트남(하노이)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0004'.
+  ls_list-text = '대한민국(인천) ▶ 아랍에미리트(두바이)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0005'.
+  ls_list-text = '대한민국(인천) ▶ 독일(프랑크푸르트)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0006'.
+  ls_list-text = '대한민국(인천) ▶ 미국(LA)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0100'.
+  ls_list-text = '대한민국(부산/김해) ▶ 대한민국(인천)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0200'.
+  ls_list-text = '오스트레일리아(시드니) ▶ 대한민국(인천)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0300'.
+  ls_list-text = '베트남(하노이) ▶ 대한민국(인천)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0400'.
+  ls_list-text = '아랍에미리트(두바이) ▶ 대한민국(인천)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0500'.
+  ls_list-text = '독일(프랑크푸르트) ▶ 대한민국(인천)'.
+  APPEND ls_list TO lt_list.
+
+  ls_list-key  = '0600'.
+  ls_list-text = '미국(LA) ▶ 대한민국(인천)'.
+  APPEND ls_list TO lt_list.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'PA_ROUT'
+      values = lt_list.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GV_ROUTE'
+      values = lt_list.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_field_catalog3</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_field_catalog3  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat3-key       = pv_key.
+  gs_fcat3-fieldname = pv_field.
+  gs_fcat3-ref_table = pv_table.
+  gs_fcat3-just      = pv_just.
+  gs_fcat3-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'TRIP_CNT'.
+      gs_fcat3-coltext = '총 운항(회)'.
+    WHEN 'TOTAL_WEIGHT'.
+      gs_fcat3-coltext = '총 실적 중량'.
+      gs_fcat3-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'AVG_WEIGHT'.
+      gs_fcat3-coltext = '평균 실적 중량'.
+      gs_fcat3-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_UNIT'.
+      gs_fcat3-coltext = '단위'.
+    WHEN 'TOTAL_PALLET_CNT'.
+      gs_fcat3-coltext = '총 탑재 팔레트(개)'.
+    WHEN 'AVG_RATE'.
+      gs_fcat3-coltext = '평균 탑재율(%)'.
+  ENDCASE.
+
+  APPEND gs_fcat3 TO gt_fcat3.
+  CLEAR gs_fcat3.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_field_catalog4</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_field_catalog4  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat4-key       = pv_key.
+  gs_fcat4-fieldname = pv_field.
+  gs_fcat4-ref_table = pv_table.
+  gs_fcat4-just      = pv_just.
+  gs_fcat4-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ROUTE'.
+      gs_fcat4-coltext = '노선'.
+    WHEN 'TRIP_CNT'.
+      gs_fcat4-coltext = '총 운항(회)'.
+    WHEN 'TOTAL_WEIGHT'.
+      gs_fcat4-coltext = '총 실적 중량'.
+      gs_fcat4-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'AVG_WEIGHT'.
+      gs_fcat4-coltext = '평균 실적 중량'.
+      gs_fcat4-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_UNIT'.
+      gs_fcat4-coltext = '단위'.
+    WHEN 'TOTAL_PALLET_CNT'.
+      gs_fcat4-coltext = '총 탑재 팔레트(개)'.
+    WHEN 'AVG_RATE'.
+      gs_fcat4-coltext = '평균 탑재율(%)'.
+  ENDCASE.
+
+  APPEND gs_fcat4 TO gt_fcat4.
+  CLEAR gs_fcat4.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form add_tree</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM add_tree .
+
+  PERFORM register_tree_event.
+  PERFORM build_node .
+
+  CALL METHOD go_tree-&gt;add_nodes
+    EXPORTING
+      table_structure_name = 'MTREESNODE'
+      node_table           = node_table.
+
+  CALL METHOD go_tree-&gt;expand_node
+    EXPORTING
+      node_key = 'ROOT'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form register_tree_event</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM register_tree_event .
+
+  event-eventid = cl_gui_simple_tree=&gt;eventid_node_double_click.
+  event-appl_event = 'X'.
+  APPEND event TO events.
+
+  CALL METHOD go_tree-&gt;set_registered_events
+    EXPORTING
+      events                    = events
+    EXCEPTIONS
+      cntl_error                = 1
+      cntl_system_error         = 2
+      illegal_event_combination = 3
+      OTHERS                    = 4.
+
+  IF sy-subrc &lt;&gt; 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+               WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  SET HANDLER lcl_tree_event_handler=&gt;node_double_click FOR go_tree.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form handle_node_double_click</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; NODE_KEY</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM handle_node_double_click  USING    pv_node_key.
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+  CLEAR : gt_display2.
+
+  LOOP AT gt_display1 INTO gs_display1.
+    IF strlen( pv_node_key ) &gt; 3 AND gs_display1-bpid = pv_node_key.
+      APPEND gs_display1 TO gt_display2.
+    ELSEIF strlen( pv_node_key ) &lt; 3 AND gs_display1-bptype = pv_node_key.
+      APPEND gs_display1 TO gt_display2.
+    ENDIF.
+  ENDLOOP.
+
+  gc_tab-activetab = 'TAB2'. " 'TAB1'로 변하는거 방지
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  IF go_split_grid2 IS BOUND.
+    CALL METHOD go_split_grid2-&gt;refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form build_node</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM build_node .
+
+  DATA: ls_node      TYPE mtreesnode.
+
+  ls_node-node_key   = 'ROOT'.
+  ls_node-text       = 'Business Partner'.
+  ls_node-isfolder   = 'X'.
+  ls_node-n_image    = '@06@'.   " 접은 이미지
+  ls_node-exp_image  = '@07@'.   " 펼친 이미지
+  APPEND ls_node TO node_table.
+  CLEAR ls_node.
+
+  " BP Type 노드 -&gt; 중복없이 한 번씩만
+  LOOP AT gt_bptype INTO gs_bptype.
+
+    ls_node-node_key   = gs_bptype-bptype.
+    ls_node-relatkey   = 'ROOT'.
+    ls_node-text       = gs_bptype-bptypename.
+    ls_node-isfolder   = 'X'.
+    ls_node-n_image    = '@54@'.   " 접은 이미지
+    ls_node-exp_image  = '@55@'.   " 펼친 이미지
+    APPEND ls_node TO node_table.
+    CLEAR: ls_node, gs_bptype.
+
+  ENDLOOP.
+
+  LOOP AT gt_tree INTO gs_tree.
+
+    ls_node-node_key  = gs_tree-bpid.
+    ls_node-relatkey  = gs_tree-bptype.
+    ls_node-isfolder  = ' '.
+    ls_node-text      = gs_tree-bpname.
+    APPEND ls_node TO node_table.
+    CLEAR: ls_node, gs_tree.
+
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_tree_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_tree_data .
+
+  IF gt_tree IS INITIAL.
+
+    " BP 목록 조회
+    SELECT bpid, bpname, bptype
+      FROM zc103sdt0001
+      WHERE bptype &lt;&gt; 'T'
+      ORDER BY bpname ASCENDING
+      INTO CORRESPONDING FIELDS OF TABLE @gt_tree.
+
+    IF gt_tree IS INITIAL.
+      MESSAGE s003 DISPLAY LIKE 'E'.
+      EXIT.
+    ELSE.
+      MESSAGE s008 WITH sy-dbcnt.
+    ENDIF.
+
+  ENDIF.
+
+  " BP 유형 그룹화
+  gt_bptype = CORRESPONDING #( gt_tree ).
+  SORT gt_bptype BY bptype DESCENDING.
+  DELETE ADJACENT DUPLICATES FROM gt_bptype COMPARING bptype.
+
+  LOOP AT gt_bptype ASSIGNING FIELD-SYMBOL(&lt;fs&gt;).
+
+    IF &lt;fs&gt;-bptype EQ 'B'.
+      &lt;fs&gt;-bptypename = '계약 BP'.
+    ELSE.
+      &lt;fs&gt;-bptypename = '미계약 BP'.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form call_chart</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM call_chart .
+
+  DATA: lv_url TYPE string.
+
+  lv_url = 'http://bgissap1.bgissap.co.kr:8000/sap/bc/ui5_ui5/sap/zc103sdgw01/index.html?sap-client=100'.
+
+  CALL METHOD cl_gui_frontend_services=&gt;execute
+    EXPORTING
+      application = lv_url
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc &lt;&gt; 0.
+    MESSAGE '웹 브라우저 실행 실패' TYPE 'E'.
+  ENDIF.
+
+ENDFORM.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>
