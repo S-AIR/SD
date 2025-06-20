@@ -1,4 +1,5 @@
-# Screen
+# 좌석 현황 프로그램
+## Screen
 ![image](https://github.com/user-attachments/assets/3155b6cc-6887-490c-82b2-d85d904f554b)
 
 
