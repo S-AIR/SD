@@ -1,0 +1,149 @@
+_&---------------------------------------------------------------------_
+_& Include SAPMZC103SD0004TOP - Module Pool SAPMZC103SD0004
+_&---------------------------------------------------------------------\*
+PROGRAM sapmzc103sd0004 MESSAGE-ID zmsgc103.
+
+---
+
+- Macro
+
+---
+
+DEFINE \_init.
+REFRESH &1.
+CLEAR &1.
+END-OF-DEFINITION.
+
+---
+
+- Internal table and work area
+
+---
+
+\*-- For Main ALV
+DATA : BEGIN OF gs_body.
+INCLUDE STRUCTURE zc103sdt0014.
+DATA : modi_yn(1), " 수정 여부
+departdate TYPE zc103sdt0008-departdate, " 출발일자
+departtime TYPE zc103sdt0008-departtime, " 출발시간
+arrivedate TYPE zc103sdt0008-arrivedate, " 도착일자
+arrivetime TYPE zc103sdt0008-arrivetime, " 도착시간
+countryfr_text TYPE string, " 출발지 텍스트
+countryto_text TYPE string, " 도착지 텍스트
+status_text TYPE string, " 상태 텍스트
+depart_datetime TYPE string, " 출발일자+시간
+arrive_datetime TYPE string, " 도착일자+시간
+mealtype_text TYPE string, " 기내식 텍스트
+style TYPE lvc_t_styl, " 스타일
+END OF gs_body,
+gt_body LIKE TABLE OF gs_body.
+
+\*-- For Domain value table (Sencondary Key table)
+DATA : BEGIN OF gs_dd07v,
+domvalue_l TYPE domvalue_l,
+ddtext TYPE val_text,
+END OF gs_dd07v,
+gt_dd07v LIKE TABLE OF gs_dd07v WITH NON-UNIQUE SORTED KEY key COMPONENTS domvalue_l.
+
+\*-- For Exclude
+DATA : gt_ui_functions TYPE ui_functions.
+
+\*-- For Detail Popup & Inner Popup
+DATA : gs_detail_pop LIKE gs_body, " 항공권 상세 팝업용
+BEGIN OF gs_souvenir, " 기내 유료상품 팝업용
+ticketid TYPE zc103e_sd_ticketid, " 항공권 ID
+souvenirid TYPE zc103e_sd_souvenirid, " 기내 유료상품 ID
+souvenir_type TYPE zc103e_sd_souvenirtp, " 기내 유료상품 Type
+souvenir_text TYPE string, " 기내 유료상품 텍스트
+qty TYPE menge_d, " 수량
+unit TYPE meins, " 단위
+END OF gs_souvenir,
+gt_souvenir LIKE TABLE OF gs_souvenir.
+
+\*-- For Delete
+DATA : gs_delete TYPE zc103sdt0014,
+gt_delete LIKE TABLE OF gs_delete.
+
+\*-- For Save
+DATA : gs_save TYPE zc103sdt0014,
+gt_save LIKE TABLE OF gs_delete.
+
+---
+
+- Class Instance
+
+---
+
+DATA : go_container TYPE REF TO cl_gui_custom_container, " 메인 컨테이너
+go_split_main TYPE REF TO cl_gui_splitter_container, " 메인 스플릿
+go_left_cont TYPE REF TO cl_gui_container, " 좌측 스플릿
+go_left_grid TYPE REF TO cl_gui_alv_grid, " 항공권 리스트 ALV
+go_html_cont TYPE REF TO cl_gui_container, " 우측 스플릿
+go_html_view TYPE REF TO cl_gui_html_viewer. " 항공권 티켓 뷰
+
+\*-- For ALV
+DATA : gt_fcat TYPE lvc_t_fcat, " 필드 카탈로그 인터널테이블
+gs_fcat TYPE lvc_s_fcat, " 필드 카탈로그 스트럭처
+gs_layout TYPE lvc_s_layo, " 레이아웃 설정
+gs_variant TYPE disvariant. " Variant 설정
+
+\*-- For popup's popup
+DATA : go_pop_cont TYPE REF TO cl_gui_custom_container, " 기내 유료상품 팝업 컨테이너
+go_pop_grid TYPE REF TO cl_gui_alv_grid, " 기내 유료상품 팝업 ALV
+gt_pfcat TYPE lvc_t_fcat, " 팝업 필드 카탈로그 인터널테이블
+gs_pfcat TYPE lvc_s_fcat. " 팝업 필드 카탈로그 스트럭처
+
+\*-- For Calendar
+DATA : go_fr_cal TYPE REF TO cl_gui_calendar, " From 캘린더
+go_to_cal TYPE REF TO cl_gui_calendar, " To 캘린더
+go_fr_con TYPE REF TO cl_gui_custom_container, " From 캘린더 컨테이너
+go_to_con TYPE REF TO cl_gui_custom_container. " To 캘린더 컨테이너
+
+\*-- For Calendar event
+DATA : myevent TYPE cntl_simple_event, " 캘린더 이벤트
+myevent_tab TYPE cntl_simple_events. " 캘린더 이벤트
+
+---
+
+- Common Variable
+
+---
+
+\*-- For screen
+DATA : gv_schid TYPE zc103sdt0014-scheduleid, " 스케줄ID
+gv_boid TYPE zc103sdt0014-bookingid, " 예약ID
+gv_ch1 VALUE 'X', " 체크박스 1. 개인
+gv_ch2 VALUE 'X', " 체크박스 2. 여행사
+gv_fr_date TYPE sy-datum, " From 날짜
+gv_to_date TYPE sy-datum, " To 날짜
+gv_calendar_style TYPE i, " 캘린더 스타일
+gv_selection_style TYPE i. " 캘린더 선택 스타일
+
+\*-- For popup screen
+DATA : gv_pop_ticketid TYPE string, " 항공권 ID 변수
+gv_pop_passengerid TYPE string. " 탑승객 ID 변수
+
+\*-- User command variable
+DATA : gv_okcode TYPE sy-ucomm, " 시스템 변수
+gv_mode TYPE i VALUE 0, " 탑승권 row 수정 모드 (1: edit)
+gv_editmode VALUE abap_false, " 탑승권 상세 팝업 수정 모드
+gv_init VALUE abap_true, " 프로그램 처음 시작할 때 한 번 세팅
+gv_ext_search VALUE abap_false, " 외부 프로그램에서 접근하는지 여부
+gv_souvenir_yn VALUE abap_false, " 기내 유료상품 주문 존재 여부
+gv_email VALUE abap_false. " 항공권 미리보기 여부
+
+" email
+DATA: bcs_exception TYPE REF TO cx_bcs, " BCS 처리 중 발생할 수 있는 예외 클래스 참조
+errortext TYPE string, " 예외 발생 시 에러 텍스트 저장용
+cl_send_request TYPE REF TO cl_bcs, " 메일 전송 요청 객체
+cl_document TYPE REF TO cl_document_bcs, " 메일 본문 및 첨부문서 생성 객체
+cl_recipient TYPE REF TO if_recipient_bcs, " 메일 수신자 객체
+t_attachment_header TYPE soli_tab, " 첨부파일 헤더 텍스트 (SOFM 형식)
+wa_attachment_header LIKE LINE OF t_attachment_header," 첨부파일 헤더 텍스트의 work area
+attachment_subject TYPE sood-objdes, " 첨부파일 제목
+sood_bytecount TYPE sood-objlen, " 첨부파일 크기
+mail_title TYPE so_obj_des, " 메일 제목
+t_mailtext TYPE soli_tab, " 메일 본문 텍스트
+wa_mailtext LIKE LINE OF t_mailtext, " 메일 본문 텍스트의 work area
+send_to TYPE adr6-smtp_addr, " 수신자 이메일 주소
+sent TYPE abap_bool. " 메일 발송 성공 여부
