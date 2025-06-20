@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:sap="http://www.sap.com/Protocols/SAPData">
+    <edmx:DataServices m:DataServiceVersion="2.0">
+        <Schema Namespace="ZC103SDGW01_SRV" xml:lang="en" sap:schema-version="1" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+            <EntityType Name="Schedule" sap:content-version="1">
+                <Key>
+                    <PropertyRef Name="Scheduleid"/>
+                </Key>
+                <Property Name="Scheduleid" Type="Edm.String" Nullable="false" MaxLength="8" sap:unicode="false" sap:label="항공편 스케줄 ID" sap:updatable="false"/>
+                <Property Name="Flightid" Type="Edm.String" MaxLength="8" sap:unicode="false" sap:label="항공기 ID"/>
+                <Property Name="Countryfrom" Type="Edm.String" MaxLength="2" sap:unicode="false" sap:label="국가(도시)키"/>
+                <Property Name="Countryto" Type="Edm.String" MaxLength="2" sap:unicode="false" sap:label="국가(도시)키"/>
+                <Property Name="PerformDate" Type="Edm.DateTime" Precision="7" sap:unicode="false" sap:label="출발일자"/>
+                <Property Name="PSeatsMax" Type="Edm.Int32" sap:unicode="false" sap:label="프레스티지 최대 좌석 수"/>
+                <Property Name="PSeatsOcc" Type="Edm.Int32" sap:unicode="false" sap:label="프레스티지 현재 점유 좌석 수"/>
+                <Property Name="ESeatsMax" Type="Edm.Int32" sap:unicode="false" sap:label="이코노미 최대 좌석 수"/>
+                <Property Name="ESeatsOcc" Type="Edm.Int32" sap:unicode="false" sap:label="이코노미 현재 점유 좌석 수"/>
+                <Property Name="SeatsMax" Type="Edm.Int32" sap:unicode="false" sap:label="총 좌석 수"/>
+                <Property Name="SeatsOcc" Type="Edm.Int32" sap:unicode="false" sap:label="점유 좌석 수"/>
+                <Property Name="Occurate" Type="Edm.Decimal" Precision="5" Scale="2" sap:unicode="false" sap:label="좌석 점유율(%)"/>
+                <Property Name="RankType" Type="Edm.String" MaxLength="10" sap:unicode="false" sap:label="상위, 하위 정렬 구분"/>
+            </EntityType>
+            <EntityType Name="OccByFlight" sap:content-version="1">
+                <Key>
+                    <PropertyRef Name="Flightid"/>
+                    <PropertyRef Name="PerformYear"/>
+                </Key>
+                <Property Name="Flightid" Type="Edm.String" Nullable="false" MaxLength="8" sap:unicode="false" sap:label="항공기 ID" sap:updatable="false"/>
+                <Property Name="PerformYear" Type="Edm.String" Nullable="false" MaxLength="4" sap:unicode="false" sap:label="연도(YYYY)" sap:updatable="false" sap:filterable="false"/>
+                <Property Name="TotalSchedules" Type="Edm.Int32" sap:unicode="false" sap:label="총 운항 횟수"/>
+                <Property Name="ScheduleRatio" Type="Edm.Decimal" Precision="5" Scale="2" sap:unicode="false" sap:label="운항 비율(%)"/>
+                <Property Name="TotalPassengers" Type="Edm.Int32" sap:unicode="false" sap:label="총 탑승객 수"/>
+                <Property Name="AvgPassengers" Type="Edm.Int32" sap:unicode="false" sap:label="평균 탑승객 수"/>
+                <Property Name="AvgOccurate" Type="Edm.Decimal" Precision="5" Scale="2" sap:unicode="false" sap:label="평균 점유율"/>
+            </EntityType>
+            <EntityType Name="OccByRoute" sap:content-version="1">
+                <Key>
+                    <PropertyRef Name="PerformYear"/>
+                    <PropertyRef Name="Route"/>
+                </Key>
+                <Property Name="Countryfrom" Type="Edm.String" MaxLength="2" sap:unicode="false" sap:label="국가(도시)키"/>
+                <Property Name="PerformYear" Type="Edm.String" Nullable="false" MaxLength="4" sap:unicode="false" sap:label="연도(YYYY)" sap:updatable="false"/>
+                <Property Name="Countryto" Type="Edm.String" MaxLength="2" sap:unicode="false" sap:label="국가(도시)키"/>
+                <Property Name="Route" Type="Edm.String" Nullable="false" MaxLength="20" sap:unicode="false" sap:label="노선" sap:updatable="false"/>
+                <Property Name="TotalSchedules" Type="Edm.Int32" sap:unicode="false" sap:label="총 운항 횟수"/>
+                <Property Name="AvgSchedules" Type="Edm.Int32" sap:unicode="false" sap:label="평균 운항 횟수"/>
+                <Property Name="ScheduleRatio" Type="Edm.Decimal" Precision="5" Scale="2" sap:unicode="false" sap:label="운항 비율(%)"/>
+                <Property Name="TotalPassengers" Type="Edm.Int32" sap:unicode="false" sap:label="총 탑승객 수"/>
+                <Property Name="AvgPassengers" Type="Edm.Int32" sap:unicode="false" sap:label="평균 탑승객 수"/>
+                <Property Name="AvgOccurate" Type="Edm.Decimal" Precision="5" Scale="2" sap:unicode="false" sap:label="평균 점유율"/>
+            </EntityType>
+            <EntityType Name="OccByPeriod" sap:content-version="1">
+                <Key>
+                    <PropertyRef Name="PerformYear"/>
+                    <PropertyRef Name="PerformQuarter"/>
+                </Key>
+                <Property Name="PerformYear" Type="Edm.String" Nullable="false" MaxLength="4" sap:unicode="false" sap:label="연도(YYYY)" sap:updatable="false"/>
+                <Property Name="PerformQuarter" Type="Edm.String" Nullable="false" MaxLength="2" sap:unicode="false" sap:label="분기(Q1~Q4)" sap:updatable="false"/>
+                <Property Name="TotalSchedules" Type="Edm.Int32" sap:unicode="false" sap:label="총 운항 횟수"/>
+                <Property Name="AvgSchedules" Type="Edm.Int32" sap:unicode="false" sap:label="평균 운항 횟수"/>
+                <Property Name="ScheduleRatio" Type="Edm.Decimal" Precision="5" Scale="2" sap:unicode="false" sap:label="운항 비율(%)"/>
+                <Property Name="TotalPassengers" Type="Edm.Int32" sap:unicode="false" sap:label="총 탑승객 수"/>
+                <Property Name="AvgPassengers" Type="Edm.Int32" sap:unicode="false" sap:label="평균 탑승객 수"/>
+                <Property Name="AvgOccurate" Type="Edm.Decimal" Precision="5" Scale="2" sap:unicode="false" sap:label="평균 점유율"/>
+            </EntityType>
+            <EntityContainer Name="ZC103SDGW01_SRV_Entities" m:IsDefaultEntityContainer="true" sap:supported-formats="atom json xlsx">
+                <EntitySet Name="ScheduleSet" EntityType="ZC103SDGW01_SRV.Schedule" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:content-version="1"/>
+                <EntitySet Name="OccByFlightSet" EntityType="ZC103SDGW01_SRV.OccByFlight" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:content-version="1"/>
+                <EntitySet Name="OccByRouteSet" EntityType="ZC103SDGW01_SRV.OccByRoute" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:content-version="1"/>
+                <EntitySet Name="OccByPeriodSet" EntityType="ZC103SDGW01_SRV.OccByPeriod" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:content-version="1"/>
+            </EntityContainer>
+            <Annotation Term="Core.SchemaVersion" String="1.0.0" xmlns="http://docs.oasis-open.org/odata/ns/edm"/>
+            <atom:link rel="self" href="http://bgissap1.bgissap.co.kr:8000/sap/opu/odata/sap/ZC103SDGW01_SRV/$metadata" xmlns:atom="http://www.w3.org/2005/Atom"/>
+            <atom:link rel="latest-version" href="http://bgissap1.bgissap.co.kr:8000/sap/opu/odata/sap/ZC103SDGW01_SRV/$metadata" xmlns:atom="http://www.w3.org/2005/Atom"/>
+        </Schema>
+    </edmx:DataServices>
+</edmx:Edmx>

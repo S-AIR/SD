@@ -1,0 +1,221 @@
+<mvc:View controllerName="sync6.cl1.seatoccupancy.controller.StatusSet"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:core="sap.ui.core"
+    xmlns="sap.m">
+    <Page id="page1" title="좌석현황">
+        <!-- 🔍 검색 조건 영역 -->
+        <VBox class="sapUiSmallMargin">
+            <HBox>
+            <Label text="비행일자:" />
+            <DateRangeSelection id="FlightDateRange" displayFormat="yyyy-MM-dd" width="20rem" />
+
+            <Label text="출발지" class="sapUiSmallMarginBegin"/>
+            <Select id="countryFrom"
+                    items="{countryModel>/CountryList}"
+                    selectedKey="{countryModel>/SelectedFrom}">
+                <items>
+                    <core:Item key="{countryModel>code}" text="{countryModel>name}" />
+                </items>
+            </Select>
+
+            <Label text="도착지" class="sapUiSmallMarginBegin" />
+            <Select id="countryTo"
+                    items="{countryModel>/CountryList}"
+                    selectedKey="{countryModel>/SelectedTo}">
+                <items> 
+                    <core:Item key="{countryModel>code}" text="{countryModel>name}" />
+                </items>
+            </Select>
+            <Button text="검색" icon="sap-icon://search" press="onSearch" class="sapUiSmallMarginBegin" />
+            </HBox>
+        </VBox>
+
+        <!-- 항공편 요약 테이블 (조회용) -->
+        <Table id="statusTable"
+                headerText="항공편 현황"
+                items="{/StatusSet}"
+                mode="SingleSelectMaster"
+                selectionChange="onFlightSelect">
+            <columns>
+            <Column><Text text="항공편 ID" /></Column>
+            <Column><Text text="출발일" /></Column>
+            <Column><Text text="출발지" /></Column>
+            <Column><Text text="도착지" /></Column>
+            <Column><Text text="총 좌석" /></Column>
+            <Column><Text text="예약 수" /></Column>
+            <Column><Text text="잔여" /></Column>
+            <Column><Text text="상태" /></Column>
+            </columns>
+            <items>
+            <ColumnListItem>
+                <cells>
+                    <Text text="{ScheduleId}" />
+                    <Text text="{   
+                                path: 'DepartDate',
+                                formatter: '.formatDateOnly'
+                                }" />
+                    <Text text="{
+                                path: 'Countryfrom',
+                                formatter: '.formatCountryName'
+                                    }" />
+                    <Text text="{
+                                path: 'Countryto',
+                                formatter: '.formatCountryName'
+                                    }" />
+                    <Text text="{TotalSeats}석" />
+                    <Text text="{BookedSeats}석" />
+                    <Text text="{AvailableSeats}석" />
+                    <HBox alignItems="Center">
+                        <items>
+                            <core:HTML
+                                content='&lt;div class="{path: &quot;Status&quot;, 
+                                formatter: &quot;.formatStatusCircleClass&quot;}"&gt;&lt;/div&gt;'
+                            />
+                            <Text
+                                text="{
+                                    path: 'Status',
+                                    formatter: '.formatStatusText'
+                                }"
+                                class="sapUiSmallMarginBegin"
+                            />
+                        </items>
+                    </HBox>
+                </cells>
+            </ColumnListItem>
+            </items>
+        </Table>
+
+        <!-- 좌석 영역: TabContainer -->
+        <IconTabBar>
+            <items>
+
+                <!-- Tab : 좌석 배치도 SeatMap -->
+                <IconTabFilter text="좌석 배치도" key="seatmap">
+                    <content>
+                    <VBox class="sapUiSmallMargin" justifyContent="Center" alignItems="Center">
+                        <Title text="{seatModel>/title} - 좌석 배치도" level="H4" />
+                        <VBox items="{seatModel>/groupedSeats}">
+                            <items>
+                                <HBox justifyContent="Center" items="{seatModel>}">
+                                    <items>
+                                        <Button press="onSeatPress"
+                                            width="3rem"
+                                            text="{seatModel>Seatcode}"
+                                            type="{= ${seatModel>Assigned} === 'Y' ? 'Emphasized' : 'Default' }"
+                                            tooltip="{= ${seatModel>Assigned} === 'Y' ? '예약됨' : '비어있음' }"
+                                            class="squareButton"
+                                        />
+                                    </items>
+                                </HBox>
+                            </items>
+                        </VBox>
+                    </VBox>
+                    </content>
+                </IconTabFilter>
+                
+                <!-- Tab : 좌석 목록 Table -->
+                <IconTabFilter  text="좌석 목록" key="list" >
+                    <content>
+                        <VBox >
+                            <Table id="seatTable" items="{seatModel>/pagedSeats}">
+                                <headerToolbar>
+                                    <Toolbar>
+                                        <Title id="seatTitle" text="{seatModel>/title}" level="H4" />
+                                        <ToolbarSpacer />
+                                        <Button id="addSeatButton" text="좌석 추가" icon="sap-icon://add" 
+                                                press="onOpenSeatCreateDialog" enabled="false" />
+                                    </Toolbar>
+                                </headerToolbar>
+                                <columns>
+                                <Column><Text text="좌석 코드" /></Column>
+                                <Column><Text text="예약 여부" /></Column>
+                                <Column><Text text="항공권 ID" /></Column>
+                                </columns>
+                                <items>
+                                <ColumnListItem  type="Active" press="onSeatPress">
+                                    <cells>
+                                    <Text text="{seatModel>Seatcode}" />
+                                    <Text text="{seatModel>Assigned}" />
+                                    <Text text="{seatModel>TicketID}" />
+                                    </cells>
+                                </ColumnListItem>
+                                </items>
+                            </Table>
+                            <HBox class="sapUiSmallMarginTop" justifyContent="Center">
+                                <Button text="이전" press="onPrevPage" />
+                                <Text id="pageInfo" text="{seatModel>/pageText}" 
+                                      class="sapUiSmallMarginBegin sapUiSmallMarginEnd" />
+                                <Button text="다음" press="onNextPage" />
+                            </HBox>
+                        </VBox>
+                    </content>
+                </IconTabFilter>
+
+
+            </items>
+        </IconTabBar>
+
+        <!-- 좌석 생성 Dialog -->
+        <Dialog id="seatCreateDialog" title="좌석 신규 등록" draggable="true" resizable="true">
+            <VBox class="sapUiSmallMargin">
+
+                <Label text="스케줄 ID" />
+                <Input id="createSchidInput" editable="false"/>
+
+                <Label text="좌석 코드" />
+                <Input id="createSeatCodeInput" />
+
+                <Label text="예약 여부 (Y/N)" />
+                <Select id="createAssignedSelect">
+                    <items>
+                        <core:Item key="Y" text="예 (Y)" />
+                        <core:Item key="N" text="아니오 (N)" />
+                    </items>
+                </Select>
+
+            </VBox>
+            <beginButton>
+                <Button text="생성" press="onCreateSeat" />
+            </beginButton>
+            <endButton>
+                <Button text="취소" press="onCancel('seatCreateDialog')" />
+            </endButton>
+        </Dialog>
+
+        <!-- 좌석 수정 Dialog -->
+        <Dialog id="seatEditDialog" title="좌석 조회/수정" draggable="true" resizable="true">
+            <VBox class="sapUiSmallMargin">
+                <Label text="좌석 코드" />
+                <Input id="seatCodeInput" editable="false" />
+
+                <Label text="예약 여부 (Y/N)" />
+                <Select id="assignedSelect">
+                    <items>
+                        <core:Item key="Y" text="예 (Y)" />
+                        <core:Item key="N" text="아니오 (N)" />
+                    </items>
+                </Select>
+
+                <Label text="항공권 ID" />
+                <Input id="ticketIdInput" />
+
+                <Label text="탑승객 이름" />
+                <Input id="passengerNameInput" editable="false"/>
+
+                <Label text="기내식" />
+                <Input id="mealtypeInput" editable="false"/>
+            </VBox>
+
+            <footer>
+                <Toolbar>
+                    <ToolbarSpacer />
+                    <Button id="editButton" text="수정" type="Emphasized" press="onEditSeat" />
+                    <Button id="saveButton" text="삭제" type="Reject" press="onDeleteSeat" />
+                    <Button id="deleteButton" text="저장" type="Emphasized" press="onSaveSeat" />
+                    <Button text="취소" press="onCancel('seatEditDialog')" />
+                </Toolbar>
+            </footer>
+        </Dialog>
+
+    </Page>
+</mvc:View>

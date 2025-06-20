@@ -1,0 +1,204 @@
+<mvc:View controllerName="sync6.cl1.occubyflightid.controller.OccurateByFlightId"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:viz="sap.viz.ui5.controls" 
+    xmlns:layout="sap.ui.layout"
+    xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds"
+    xmlns:viz.data="sap.viz.ui5.data"
+    xmlns:mr="sap.suite.ui.microchart">
+    <Page id="page" title="항공운항실적분석">
+
+        <!-- 연도 선택 -->
+        <HBox alignItems="Center" justifyContent="Start" class="sapUiSmallMargin">
+            <Label text="연도 선택 " labelFor="yearSelector"/>
+            <Select id="yearSelector" change="onYearChange">
+                <items>
+                    <core:Item key="2025" text="2025"/>
+                    <core:Item key="2024" text="2024"/>
+                    <core:Item key="2023" text="2023"/>
+                </items>
+            </Select>
+        </HBox>
+        
+        <!-- 리포트 제목  -->
+        <HBox justifyContent="Center" class="sapUiSmallMargin">
+            <Title id="reportTitle"
+                text="2025년 항공 운항 실적 분석 리포트" 
+                level="H1"
+                class="customReportTitle"
+            />
+        </HBox>
+
+         <!-- 차트 -->
+        <VBox class="sapUiMediumMargin">
+
+            <!-- 첫 번째 차트 : route-->
+            <viz:VizFrame id="ByRoute" height="500px" width="100%" vizType='dual_combination'
+                vizProperties="{
+                    title:{text:'노선별 운항 횟수 및 비중 분석'},
+                    legend:{drawingEffect:'glossy'},
+                    plotArea:{
+                        drawingEffect:'glossy',
+                        dataShape: {
+                            primaryAxis: ['line'],
+                            secondaryAxis: ['bar']
+                        },
+                        colorPalette: ['#5CBAE5', '#B6D957', '#FAC364', '#FF9E4A']
+                    },
+                    valueAxis: {
+                        title: { visible: true, text: '총 탑승객 수' }
+                    },
+                    valueAxis2: {
+                        title: { visible: true, text: '총 운항 횟수' }
+                    }
+                }"
+                uiConfig="{applicationSet:'fiori'}">
+                <viz:dataset>
+                <viz.data:FlattenedDataset data="{chartModelRoute>/}">
+                    <viz.data:dimensions>
+                    <viz.data:DimensionDefinition name="Route" value="{chartModelRoute>Route}" />
+                    </viz.data:dimensions>
+                    <viz.data:measures>
+                    <!-- <viz.data:MeasureDefinition name="AvgOccurate" value="{chartModelRoute>AvgOccurate}" /> -->
+                    <viz.data:MeasureDefinition name="TotalSchedules" value="{chartModel>TotalSchedules}" />
+                    <viz.data:MeasureDefinition name="TotalPassengers" value="{chartModel>TotalPassengers}" />
+                    </viz.data:measures>
+                </viz.data:FlattenedDataset>
+                </viz:dataset>
+                <viz:feeds>
+                    <!-- <viz.feeds:FeedItem id='valueAxis' uid="valueAxis" type="Measure" values="AvgOccurate" /> -->
+                    <viz.feeds:FeedItem id='valueAxis2' uid="valueAxis2" type="Measure" values="TotalSchedules" />
+                    <viz.feeds:FeedItem id='valueAxis3' uid="valueAxis" type="Measure" values="TotalPassengers" />
+                    <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="Route" />
+                </viz:feeds>
+            </viz:VizFrame>
+
+            <Label text="점유율 상위 10개 항공편" class="sapUiMediumMarginTop sapUiSmallMarginBottom"/>
+            <Table id="topTable"
+                items="{topModel>/}"
+                inset="false"
+                growing="true"
+                growingScrollToLoad="true">
+                <columns>
+                    <Column><Text text="항공편 ID"/></Column>
+                    <Column><Text text="프레스티지 탑승객 수"/></Column>
+                    <Column><Text text="이코노미 탑승객 수"/></Column>
+                    <Column><Text text="총 탑승객 수"/></Column>
+                    <Column><Text text="점유율 (%)"/></Column>
+                </columns>
+                <items>
+                    <ColumnListItem>
+                        <cells>
+                            <Text text="{topModel>Scheduleid}"/>
+                            <Text text="{topModel>PSeatsOcc}"/>
+                            <Text text="{topModel>ESeatsOcc}"/>
+                            <Text text="{topModel>SeatsOcc}"/>
+                            <Text text="{topModel>Occurate}"/>
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+
+            <Label text="점유율 하위 10개 항공편" class="sapUiMediumMarginTop sapUiSmallMarginBottom"/>
+            <Table id="bottomTable"
+                items="{bottomModel>/}"
+                inset="false"
+                growing="true"
+                growingScrollToLoad="true">
+                <columns>
+                    <Column><Text text="항공편 ID"/></Column>
+                    <Column><Text text="프레스티지 탑승객 수"/></Column>
+                    <Column><Text text="이코노미 탑승객 수"/></Column>
+                    <Column><Text text="총 탑승객 수"/></Column>
+                    <Column><Text text="점유율 (%)"/></Column>
+                </columns>
+                <items>
+                    <ColumnListItem>
+                        <cells>
+                            <Text text="{bottomModel>Scheduleid}"/>
+                            <Text text="{bottomModel>PSeatsOcc}"/>
+                            <Text text="{bottomModel>ESeatsOcc}"/>
+                            <Text text="{bottomModel>SeatsOcc}"/>
+                            <Text text="{bottomModel>Occurate}"/>
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+
+            <!-- 두 번째 차트 -->
+            <viz:VizFrame id="ByFlightid" 
+                uiConfig="{applicationSet:'fiori'}"
+                height='400px' width="100%" vizType='dual_combination'
+                vizProperties="{
+                title:{text:'항공기별 운항 횟수 및 비중 분석'},
+                legend:{drawingEffect:'glossy'},
+                plotArea:{
+                    colorPalette: ['#FAC364', '#FF9E4A'],
+                    drawingEffect:'glossy',
+                    dataShape: {
+                        primaryAxis: ['line'],
+                        secondaryAxis: ['bar']
+                    }
+                },
+                valueAxis: {
+                    title: { visible: true, text: '점유율 (%)' }
+                },
+                valueAxis2: {
+                    title: { visible: true, text: '총 운항 횟수' }
+                }
+            }">
+                <viz:dataset>
+                    <viz.data:FlattenedDataset data="{chartModel>/}">
+                        <viz.data:dimensions>
+                            <viz.data:DimensionDefinition name="Flightid" value="{chartModel>Flightid}" />
+                        </viz.data:dimensions>
+                        <viz.data:measures>
+                            <viz.data:MeasureDefinition name="TotalSchedules" value="{chartModel>TotalSchedules}" />
+                            <viz.data:MeasureDefinition name="ScheduleRatio" value="{chartModel>ScheduleRatio}" />
+                        </viz.data:measures>
+                    </viz.data:FlattenedDataset>
+                </viz:dataset>
+
+                <viz:feeds>
+                    <viz.feeds:FeedItem id='valueAxisFeed' uid="valueAxis" type="Measure" values="ScheduleRatio" />
+                    <viz.feeds:FeedItem id='valueAxisFeed2' uid="valueAxis2" type="Measure" values="TotalSchedules" />
+                    <viz.feeds:FeedItem id='categoryAxisFeed1' uid="categoryAxis" type="Dimension" values="Flightid" />
+                </viz:feeds>
+                <viz:dependents>
+                    <viz:Popover id="idPopOver"></viz:Popover>
+                </viz:dependents>
+            </viz:VizFrame>
+
+            <!-- 세 번째 차트 -->
+            <viz:VizFrame id="ByPeriod"
+                uiConfig="{applicationSet:'fiori'}"
+                vizType="donut"
+                width="100%" height="400px"
+                vizProperties="{
+                    title: {text: '분기별 운항 비율'},
+                    legend: {visible: true},
+                    plotArea: {
+                        drawingEffect:'glossy',
+                        colorPalette: ['#5CBAE5', '#B6D957', '#FAC364', '#FF9E4A']
+                    },
+                    dataLabel: { visible: true, type: 'valueAndCategory' }
+                }">
+                <viz:dataset>
+                    <viz.data:FlattenedDataset data="{chartModelPeriod>/}">
+                    <viz.data:dimensions>
+                        <viz.data:DimensionDefinition name="분기" value="{chartModelPeriod>PerformQuarter}" />
+                    </viz.data:dimensions>
+                    <viz.data:measures>
+                        <viz.data:MeasureDefinition name="비율" value="{chartModelPeriod>ScheduleRatio}" />
+                    </viz.data:measures>
+                    </viz.data:FlattenedDataset>
+                </viz:dataset>
+                <viz:feeds>
+                    <viz.feeds:FeedItem uid="size" type="Measure" values="비율"/>
+                    <viz.feeds:FeedItem uid="color" type="Dimension" values="분기"/>
+                </viz:feeds>
+            </viz:VizFrame>
+        </VBox>
+    </Page>
+</mvc:View>
