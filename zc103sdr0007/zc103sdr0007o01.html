@@ -1,0 +1,122 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0007O01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0007O01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZC103SDR0007O01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include          ZC103SDR0007O01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Module STATUS_0100 OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+MODULE status_0100 OUTPUT.
+ SET PF-STATUS 'MENU100'.
+ SET TITLEBAR 'TITLE100'.
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Module FILL_SUBSCREEN OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+MODULE fill_subscreen OUTPUT.
+
+  PERFORM set_subscreen.
+
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Module BEFORE_101_SCREEN OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+MODULE before_101_screen OUTPUT.
+
+  PERFORM display_101_screen.
+
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Module BEFORE_102_SCREEN OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+MODULE before_102_screen OUTPUT.
+
+  IF go_102_container IS INITIAL.
+
+    PERFORM set_102_field_catalog USING : 'X' 'ORDER_POSSIBLE' ' ' 'C' 'X',
+                                          'X' 'ORDER_STATUS' ' ' 'C' 'X',
+                                          'X' 'INPUT_HEAD' 'ZC103_CDS_IDATA' ' ' 'X',
+                                          ' ' 'INPUT_TYPE' 'ZC103_CDS_IDATA' ' ' 'X',
+                                          ' ' 'BPID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'COUNTRYFROM' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'COUNTRYTO' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'FLIGHTID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SCHEDULEID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'TOTAL_PRICE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'INPUT_DATE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'ORDERID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SO_STATUS' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'TICKET_QUANTITY' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'TICKET_UNIT' 'ZC103_CDS_IDATA' ' ' ' '.
+
+    PERFORM create_102_object.
+    PERFORM set_102_layout_variant.
+    PERFORM exclude_102_toolbar.
+
+    SET HANDLER : lcl_event_handler=&gt;ta_edit_toolbar FOR go_102_alv_grid,
+                  lcl_event_handler=&gt;user_command FOR go_102_alv_grid,
+                  lcl_event_handler=&gt;ta_double_click FOR go_102_alv_grid.
+
+
+<font color ="#0000FF">*-- Display Travel Agency ALV</font>
+    CALL METHOD go_102_alv_grid-&gt;set_table_for_first_display
+      EXPORTING
+        is_variant                    = gs_102_variant
+        i_save                        = 'A'
+        i_default                     = 'X'
+        is_layout                     = gs_102_layout
+        it_toolbar_excluding          = gt_ui_functions
+      CHANGING
+        it_outtab                     = gt_tadisplay
+        it_fieldcatalog               = gt_102_fcat.
+
+  ENDIF.
+
+  PERFORM refresh_ta_table.
+
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Module BEFORE_103_SCREEN OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+MODULE before_103_screen OUTPUT.
+
+  PERFORM display_103_screen.
+
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Module BEFORE_104_SCREEN OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+MODULE before_104_screen OUTPUT.
+
+  PERFORM display_104_screen.
+
+ENDMODULE.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

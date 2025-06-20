@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC1FM03FI0003</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for function: ZC1FM03FI0003</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  [FI] AR 전표 생성 Function Module</b></font>
+<hr>
+<pre width="100">
+FUNCTION zc1fm03fi0003.
+<font color ="#0000FF">*"----------------------------------------------------------------------</font>
+<font color ="#0000FF">*"*"Local Interface:</font>
+<font color ="#0000FF">*"  IMPORTING</font>
+<font color ="#0000FF">*"     REFERENCE(IV_BILLNUM) TYPE  ZC103E_SD_BILLNUM</font>
+<font color ="#0000FF">*"     REFERENCE(IV_GJAHR) TYPE  GJAHR</font>
+<font color ="#0000FF">*"     REFERENCE(IV_CUSTID) TYPE  ZC103E_SD_CUSTID OPTIONAL</font>
+<font color ="#0000FF">*"     REFERENCE(IV_BPID) TYPE  ZC103E_SD_BPID OPTIONAL</font>
+<font color ="#0000FF">*"     REFERENCE(IV_TOTAL) TYPE  PRICE</font>
+<font color ="#0000FF">*"     REFERENCE(IV_TYPE) TYPE  CHAR20</font>
+<font color ="#0000FF">*"     REFERENCE(IV_B2BTYPE) TYPE  CHAR20 OPTIONAL</font>
+<font color ="#0000FF">*"     REFERENCE(IV_B2CTYPE) TYPE  CHAR20 OPTIONAL</font>
+<font color ="#0000FF">*"     REFERENCE(IV_TAX) TYPE  ZC103E_SD_TXAMOUNT</font>
+<font color ="#0000FF">*"     REFERENCE(IV_WAERS) TYPE  WAERS</font>
+<font color ="#0000FF">*"     REFERENCE(IV_USCODE) TYPE  ZC103E_FI_EMPNO OPTIONAL</font>
+<font color ="#0000FF">*"     REFERENCE(IV_MILEAGE) TYPE  ZC103E_SD_USDEDMILEAGE OPTIONAL</font>
+<font color ="#0000FF">*"  EXPORTING</font>
+<font color ="#0000FF">*"     REFERENCE(EV_BELNR) TYPE  BELNR_D</font>
+<font color ="#0000FF">*"     REFERENCE(EV_MESSAGE) TYPE  CHAR100</font>
+<font color ="#0000FF">*"----------------------------------------------------------------------</font>
+
+<font color ="#0000FF">*       <a href ="global-zc1fm03fi0003.html">Global data declarations</a></font>
+
+  DATA: lv_dmbtr     TYPE dmbtr,
+        lv_dmbtr_tax TYPE dmbtr.
+
+  PERFORM set_dmbtr USING iv_total iv_waers
+                    CHANGING lv_dmbtr lv_dmbtr_tax ev_message.
+
+  CASE iv_type.
+    WHEN 'B'.
+      CASE iv_b2btype.
+        WHEN 'B'. "B2B 여객고객
+          PERFORM b2b_bcustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+        WHEN 'T'. "B2B 화물고객
+          PERFORM b2b_tcustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+      ENDCASE.
+    WHEN 'C'.
+      CASE iv_b2ctype.
+        WHEN 'A'. "마일리지 + 카드 혼합결제
+          PERFORM b2c_acustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             iv_mileage
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+        WHEN 'B'. "마일리지 전액사용 결제
+          PERFORM b2C_bcustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             iv_mileage
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+        WHEN 'C'. "마일리지 사용하지 않는 결제 (마일리지 적립되는 경우)
+          PERFORM b2C_ccustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             iv_mileage
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+      ENDCASE.
+    WHEN OTHERS. "실패
+  ENDCASE.
+
+ENDFUNCTION.
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZMSGC103</font>
+<font color ="#0000FF">*035   당월 감가상각이 완료된 자산입니다.</font>
+<font color ="#0000FF">*047   해당 자산이 존재하지 않습니다.</font>
+<font color ="#0000FF">*048   전표 아이템 생성 실패(차변)</font>
+<font color ="#0000FF">*049   전표 아이템 생성 실패(대변)</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

@@ -1,0 +1,1872 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0003F01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0003F01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZC103SDR0003F01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include          ZC103SDR0003F01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form node_double_click</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; NODE_KEY</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM node_double_click  USING    pv_node_key.
+
+  DATA : lv_all TYPE string,
+         lv_id  TYPE string.
+
+  CLEAR : lv_all, lv_id.
+
+<font color ="#0000FF">*-- Set Node type</font>
+  IF pv_node_key EQ 'ROOT'.
+    lv_all = 'Y'.
+  ELSEIF ( pv_node_key EQ 'T' ) OR
+         ( pv_node_key EQ 'B' ) OR
+         ( pv_node_key EQ 'NB' ).
+    lv_id = pv_node_key.
+  ELSEIF pv_node_key(2) EQ 'BP'.
+    lv_id = pv_node_key.
+  ELSE.
+    CALL METHOD go_tree-&gt;expand_node
+      EXPORTING
+        node_key = pv_node_key.
+  ENDIF.
+
+  PERFORM set_display_data USING lv_all lv_id.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_display_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; LV_ALL</font>
+<font color ="#0000FF">*&      --&gt; LV_ID</font>
+<font color ="#0000FF">*&      --&gt; LV_TYPE</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_display_data  USING pv_all pv_id.
+
+  DATA : lv_cnt TYPE i.
+
+  CLEAR : gt_hdisplay, gs_hdisplay.
+
+<font color ="#0000FF">*-- Set display data</font>
+  LOOP AT gt_head ASSIGNING FIELD-SYMBOL(&lt;fs_display&gt;).
+
+    IF ( pv_all EQ 'Y' ) OR
+       ( &lt;fs_display&gt;-bpid EQ pv_id ) OR
+       ( &lt;fs_display&gt;-bptype EQ pv_id ).
+
+<font color ="#0000FF">*-- Set Purchase Status</font>
+      IF &lt;fs_display&gt;-billing_status EQ 'N'.
+        &lt;fs_display&gt;-status = icon_led_red.
+      ELSEIF &lt;fs_display&gt;-billing_status EQ 'Y'.
+        &lt;fs_display&gt;-status = icon_led_green.
+      ENDIF.
+
+<font color ="#0000FF">*-- Set Mail Status</font>
+      IF &lt;fs_display&gt;-mail_status EQ 'N'.
+        &lt;fs_display&gt;-icon_mail_status = icon_led_red.
+      ELSEIF &lt;fs_display&gt;-mail_status EQ 'Y'.
+        &lt;fs_display&gt;-icon_mail_status = icon_led_green.
+      ENDIF.
+
+      gs_hdisplay = CORRESPONDING #( &lt;fs_display&gt; ).
+      gt_hdisplay = VALUE #( BASE gt_hdisplay ( gs_hdisplay ) ).
+
+    ENDIF.
+
+  ENDLOOP.
+
+  IF sy-subrc EQ 0.
+    lv_cnt = lines( gt_hdisplay ).
+    MESSAGE s008 WITH lv_cnt.
+  ENDIF.
+
+  PERFORM set_head_field_to_text.
+  PERFORM refresh_stop_table.
+  CLEAR : gt_line.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_head_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_stop_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_stop_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form double_click</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_COLUMN</font>
+<font color ="#0000FF">*&      --&gt; E_ROW</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM double_click  USING    pv_column
+                            pv_row.
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  CLEAR : gt_line, gs_line, gt_ldisplay, gs_ldisplay.
+  READ TABLE gt_hdisplay INTO gs_hdisplay INDEX pv_row.
+
+<font color ="#0000FF">*-- Get Line Data</font>
+  SELECT billnum, billitemno, bookingid, transportid, charged_item,
+         description, ticket_quantity, cargo_weight, cargo_unit,
+         ticket_unit, unit_price, unit_discount_amount, unit_tax_amount,
+         currency
+    FROM zc103sdt0005
+    WHERE billnum EQ @gs_hdisplay-billnum
+    INTO CORRESPONDING FIELDS OF TABLE @gt_line.
+
+<font color ="#0000FF">*-- Move Data(gt_line -&gt; gt_ldisplay)</font>
+  LOOP AT gt_line INTO gs_line.
+    gs_ldisplay = CORRESPONDING #( gs_line ).
+    APPEND gs_ldisplay TO gt_ldisplay.
+  ENDLOOP.
+
+  PERFORM set_line_field_to_text.
+
+<font color ="#0000FF">*-- Message</font>
+  IF gt_line IS INITIAL.
+    MESSAGE i001 WITH TEXT-e01 DISPLAY LIKE 'E'.
+  ENDIF.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+  PERFORM refresh_sbottom_table.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_line_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_sbottom_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_sbottom_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_head_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_head_data .
+
+<font color ="#0000FF">*-- GET Data(Header)</font>
+  IF pa_year IS INITIAL.
+    SELECT orderid, billnum, belnr, gjahr, b~bpid, total_amount, tax_amount, currency,
+           billing_status, mail_status, credit_status, doc_flag, b~billing_date,
+           b~payment_date, bptype, b~erdat, b~erzet,
+           b~ernam, b~aedat, b~aezet, b~aenam
+      FROM zc103sdt0004 AS b INNER JOIN zc103sdt0001 AS t
+      ON b~bpid EQ t~bpid
+      INTO CORRESPONDING FIELDS OF TABLE @gt_head.
+
+  ELSE.
+    SELECT orderid, billnum, belnr, gjahr, b~bpid, total_amount, tax_amount, currency,
+           billing_status, mail_status, credit_status, doc_flag, b~billing_date, bptype, b~erdat, b~erzet,
+           b~payment_date, b~ernam, b~aedat, b~aezet, b~aenam
+      FROM zc103sdt0004 AS b INNER JOIN zc103sdt0001 AS t
+      ON b~bpid EQ t~bpid
+      WHERE b~gjahr EQ @pa_year
+      INTO CORRESPONDING FIELDS OF TABLE @gt_head.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_tree_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_tree_data .
+
+<font color ="#0000FF">*-- Get BP List</font>
+  SELECT bpid, bpname, bptype
+    FROM zc103sdt0001
+    ORDER BY bpname ASCENDING
+    INTO CORRESPONDING FIELDS OF TABLE @gt_tree.
+
+<font color ="#0000FF">*-- Grouping by Bptype</font>
+  gt_bptype = CORRESPONDING #( gt_tree ).
+
+  SORT gt_bptype BY bptype DESCENDING.
+  DELETE ADJACENT DUPLICATES FROM gt_bptype COMPARING bptype.
+
+  LOOP AT gt_bptype ASSIGNING FIELD-SYMBOL(&lt;fs_bptype&gt;).
+
+    IF &lt;fs_bptype&gt;-bptype EQ 'T'.
+      &lt;fs_bptype&gt;-bptypename = '여객 BP'.
+    ELSE.
+      &lt;fs_bptype&gt;-bptypename = '화물 BP'.
+    ENDIF.
+
+  ENDLOOP.
+
+  UNASSIGN &lt;fs_bptype&gt;.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form display_100_screen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM display_100_screen .
+
+  CLEAR : gt_tfcat, gs_tfcat, gt_bfcat, gs_bfcat.
+  PERFORM set_top_field_catalog USING : 'X' 'STATUS' 'ICON' 'C' ' ',
+                                        'X' 'ICON_MAIL_STATUS' 'ICON' 'C' ' ',
+                                        'X' 'BILLNUM' 'ZC103SDT0004' ' ' ' ',
+                                        ' ' 'BELNR' 'ZC103SDT0004' ' ' ' ',
+                                        ' ' 'GJAHR' 'ZC103SDT0004' ' ' ' ',
+                                        ' ' 'BPID' 'ZC103SDT0004' ' ' ' ',
+                                        ' ' 'BPNAME' 'ZC103SDT0001' 'C' 'X',
+                                        ' ' 'BPTYPE' 'ZC103SDT0001' 'C' 'X',
+                                        ' ' 'TOTAL_AMOUNT' 'ZC103SDT0004' ' ' ' ',
+                                        ' ' 'TAX_AMOUNT' 'ZC103SDT0004' ' ' ' ',
+                                        ' ' 'CURRENCY' 'ZC103SDT0004' ' ' ' ',
+                                        ' ' 'BILLING_STATUS' 'ZC103SDT0004' 'C' 'X',
+                                        ' ' 'MAIL_STATUS' 'ZC103SDT0004' 'C' 'X',
+                                        ' ' 'DOC_FLAG' 'ZC103SDT0004' 'C' 'X'.
+
+<font color ="#0000FF">*-- Separate Case : Travel or Cargo</font>
+  READ TABLE gt_line INTO gs_line INDEX 1.
+  IF ( gs_line-bookingid IS INITIAL ) AND
+     ( gs_line-transportid IS INITIAL ).
+    PERFORM set_bottom_field_catalog USING : 'X' 'BILLNUM' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'BILLITEMNO' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'BOOKINGID' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'TRANSPORTID' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'CHARGED_ITEM' 'ZC103SDT0005' 'C' 'X',
+                                           ' ' 'DESCRIPTION' 'ZC103SDT0005' 'C' 'X',
+                                           ' ' 'TICKET_QUANTITY' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'TICKET_UNIT' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'CARGO_WEIGHT' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'CARGO_UNIT' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'UNIT_PRICE' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'UNIT_DISCOUNT_AMOUNT' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'CURRENCY' 'ZC103SDT0005' ' ' ' '.
+<font color ="#0000FF">*-- Travel Part</font>
+  ELSEIF ( gs_line-bookingid IS NOT INITIAL ) AND
+         ( gs_line-transportid IS INITIAL ).
+    PERFORM set_bottom_field_catalog USING : 'X' 'BILLNUM' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'BILLITEMNO' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'BOOKINGID' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'CHARGED_ITEM' 'ZC103SDT0005' 'C' 'X',
+                                           ' ' 'DESCRIPTION' 'ZC103SDT0005' 'C' 'X',
+                                           ' ' 'TICKET_QUANTITY' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'TICKET_UNIT' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'UNIT_PRICE' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'UNIT_DISCOUNT_AMOUNT' 'ZC103SDT0005' ' ' ' ',
+                                           ' ' 'CURRENCY' 'ZC103SDT0005' ' ' ' '.
+<font color ="#0000FF">*-- Cargo Part</font>
+  ELSEIF ( gs_line-bookingid IS INITIAL ) AND
+         ( gs_line-transportid IS NOT INITIAL ).
+    PERFORM set_bottom_field_catalog USING : 'X' 'BILLNUM' 'ZC103SDT0005' ' ' ' ',
+                                             ' ' 'BILLITEMNO' 'ZC103SDT0005' ' ' ' ',
+                                             ' ' 'TRANSPORTID' 'ZC103SDT0005' ' ' ' ',
+                                             ' ' 'CHARGED_ITEM' 'ZC103SDT0005' 'C' 'X',
+                                             ' ' 'DESCRIPTION' 'ZC103SDT0005' 'C' 'X',
+                                             ' ' 'CARGO_WEIGHT' 'ZC103SDT0005' ' ' ' ',
+                                             ' ' 'CARGO_UNIT' 'ZC103SDT0005' ' ' ' ',
+                                             ' ' 'UNIT_PRICE' 'ZC103SDT0005' ' ' ' ',
+                                             ' ' 'UNIT_DISCOUNT_AMOUNT' 'ZC103SDT0005' ' ' ' ',
+                                             ' ' 'CURRENCY' 'ZC103SDT0005' ' ' ' '.
+  ENDIF.
+
+  IF go_main_container IS INITIAL.
+    PERFORM set_layout.
+    PERFORM create_100_object.
+    PERFORM register_tree_event.
+    PERFORM build_node.
+    PERFORM exclude_100_toolbar.
+
+    CALL METHOD go_tree-&gt;add_nodes
+      EXPORTING
+        table_structure_name = 'MTREESNODE'
+        node_table           = node_table.
+
+    CALL METHOD go_tree-&gt;expand_node
+      EXPORTING
+        node_key = 'ROOT'.
+
+    SET HANDLER : lcl_event_handler=&gt;double_click FOR go_stop_alv_grid,
+                  lcl_event_handler=&gt;top_of_page FOR go_tree_grid.
+  ENDIF.
+
+<font color ="#0000FF">*-- Display Head ALV</font>
+  CALL METHOD go_stop_alv_grid-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant           = gs_tvariant
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_tlayout
+      it_toolbar_excluding = gt_ui_functions
+    CHANGING
+      it_outtab            = gt_hdisplay
+      it_fieldcatalog      = gt_tfcat.
+
+<font color ="#0000FF">*-- Display Line ALV</font>
+  CALL METHOD go_sbottom_alv_grid-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant           = gs_bvariant
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_blayout
+      it_toolbar_excluding = gt_ui_functions
+    CHANGING
+      it_outtab            = gt_ldisplay
+      it_fieldcatalog      = gt_bfcat.
+
+  PERFORM refresh_stop_table.
+  PERFORM refresh_sbottom_table.
+  PERFORM register_top_of_page_event.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_top_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_top_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_tfcat-key = pv_key.
+  gs_tfcat-fieldname = pv_field.
+  gs_tfcat-ref_field = pv_table.
+  gs_tfcat-just = pv_just.
+  gs_tfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'STATUS'.
+      gs_tfcat-coltext = '결제 상태'.
+    WHEN 'ICON_MAIL_STATUS'.
+      gs_tfcat-coltext = '메일 전송 상태'.
+    WHEN 'BILLNUM'.
+      gs_tfcat-coltext = '대금청구 문서 번호'.
+    WHEN 'BELNR'.
+      gs_tfcat-coltext = '전표번호'.
+    WHEN 'GJAHR'.
+      gs_tfcat-coltext = '전기 일자'.
+    WHEN 'BPID'.
+      gs_tfcat-coltext = '거래처 ID'.
+    WHEN 'BPNAME'.
+      gs_tfcat-coltext = '거래처명'.
+    WHEN 'BPTYPE'.
+      gs_tfcat-coltext = 'BP 구분'.
+    WHEN 'TOTAL_AMOUNT'.
+      gs_tfcat-coltext = '총 청구 금액'.
+      gs_tfcat-cfieldname = 'CURRENCY'.
+    WHEN 'TAX_AMOUNT'.
+      gs_tfcat-coltext = '총 부가가치세'.
+      gs_tfcat-cfieldname = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_tfcat-coltext = '통화'.
+    WHEN 'BILLING_STATUS'.
+      gs_tfcat-coltext = '대금청구 상태'.
+    WHEN 'MAIL_STATUS'.
+      gs_tfcat-coltext = '메일 전송 상태'.
+    WHEN 'DOC_FLAG'.
+      gs_tfcat-coltext = '전표발행여부'.
+  ENDCASE.
+
+  APPEND gs_tfcat TO gt_tfcat.
+  CLEAR : gs_tfcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_bottom_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_bottom_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_bfcat-key = pv_key.
+  gs_bfcat-fieldname = pv_field.
+  gs_bfcat-ref_table = pv_table.
+  gs_bfcat-just = pv_just.
+  gs_bfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'CHARGED_ITEM'.
+      gs_bfcat-coltext = '청구 항목 구분'.
+    WHEN 'UNIT_PRICE' OR 'UNIT_DISCOUNT_AMOUNT'.
+      gs_bfcat-cfieldname = 'CURRENCY'.
+    WHEN 'CARGO_WEIGHT'.
+      gs_bfcat-qfieldname = 'CARGO_UNIT'.
+    WHEN 'TICKET_QUANTITY'.
+      gs_bfcat-qfieldname = 'TICKEY_UNIT'.
+    WHEN 'CURRENCY'.
+      gs_bfcat-coltext = '통화'.
+    WHEN 'BILLITEMNO'.
+      gs_bfcat-coltext = '대금청구 라인아이템 넘버'.
+  ENDCASE.
+
+  APPEND gs_bfcat TO gt_bfcat.
+  CLEAR : gs_bfcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_layout .
+
+<font color ="#0000FF">*-- Top layout(Header)</font>
+  gs_tlayout-zebra = abap_true.
+  gs_tlayout-cwidth_opt = 'A'.
+  gs_tlayout-sel_mode = 'A'.
+
+<font color ="#0000FF">*-- Bottom layout(Line Item)</font>
+  gs_blayout-zebra = abap_true.
+  gs_blayout-cwidth_opt = 'A'.
+  gs_blayout-sel_mode = 'D'.
+
+<font color ="#0000FF">*-- Top Variant</font>
+  gs_tvariant-report = sy-repid.
+  gs_tvariant-handle = 'ALV1'.
+
+<font color ="#0000FF">*-- Bottom Variant</font>
+  gs_bvariant-report = sy-repid.
+  gs_bvariant-handle = 'ALV2'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form create_100_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM create_100_object .
+
+<font color ="#0000FF">*-- Top-of-page Container</font>
+  CREATE OBJECT go_topp_container
+    EXPORTING
+      repid     = sy-cprog
+      dynnr     = sy-dynnr
+      side      = cl_gui_docking_container=&gt;dock_at_top
+      extension = 30.
+
+<font color ="#0000FF">*-- Create Top-document</font>
+  CREATE OBJECT go_dyndoc_id
+    EXPORTING
+      style = 'ALV_GRID'.
+
+<font color ="#0000FF">*-- Main Container</font>
+  CREATE OBJECT go_main_container
+    EXPORTING
+      repid     = sy-cprog
+      dynnr     = sy-dynnr
+      side      = go_main_container-&gt;dock_at_left
+      extension = 3000.
+
+<font color ="#0000FF">*-- Main : Split Container</font>
+  CREATE OBJECT go_msplit_container
+    EXPORTING
+      parent  = go_main_container
+      rows    = 1
+      columns = 2.
+
+<font color ="#0000FF">*-- Patch -&gt; Left Container : Tree</font>
+  CALL METHOD go_msplit_container-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_left_container.
+
+<font color ="#0000FF">*-- Patch -&gt; Right Container : T, B Split</font>
+  CALL METHOD go_msplit_container-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = go_right_container.
+
+<font color ="#0000FF">*-- Sub : Split Container</font>
+  CREATE OBJECT go_ssplit_container
+    EXPORTING
+      parent  = go_right_container
+      rows    = 2
+      columns = 1.
+
+<font color ="#0000FF">*-- Patch -&gt; Top Container</font>
+  CALL METHOD go_ssplit_container-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_stop_container.
+
+<font color ="#0000FF">*-- Patch -&gt; Bottom Container</font>
+  CALL METHOD go_ssplit_container-&gt;get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = go_sbottom_container.
+
+<font color ="#0000FF">*-- Set Width(Tree)</font>
+  CALL METHOD go_msplit_container-&gt;set_column_width
+    EXPORTING
+      id    = 1
+      width = 10.
+
+<font color ="#0000FF">*-- Tree Object</font>
+  CREATE OBJECT go_tree
+    EXPORTING
+      parent              = go_left_container
+      node_selection_mode = cl_gui_simple_tree=&gt;node_sel_mode_single.
+
+<font color ="#0000FF">*-- Patch Tree, Top, Bottom ALV</font>
+  CREATE OBJECT go_tree_grid
+    EXPORTING
+      i_parent = go_left_container.
+
+  CREATE OBJECT go_stop_alv_grid
+    EXPORTING
+      i_parent = go_stop_container.
+
+  CREATE OBJECT go_sbottom_alv_grid
+    EXPORTING
+      i_parent = go_sbottom_container.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form register_tree_event</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM register_tree_event .
+
+  event-eventid = cl_gui_simple_tree=&gt;eventid_node_double_click.
+  event-appl_event = 'X'.
+  APPEND event TO events.
+
+  CALL METHOD go_tree-&gt;set_registered_events
+    EXPORTING
+      events                    = events
+    EXCEPTIONS
+      cntl_error                = 1
+      cntl_system_error         = 2
+      illegal_event_combination = 3
+      OTHERS                    = 4.
+
+  IF sy-subrc &lt;&gt; 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+               WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  SET HANDLER : lcl_event_handler=&gt;node_double_click FOR go_tree.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form build_node</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM build_node .
+
+  DATA : ls_node TYPE mtreesnode.
+
+  ls_node-node_key   = 'ROOT'.
+  ls_node-text       = 'Business Partner'.
+  ls_node-isfolder   = 'X'.
+  ls_node-n_image    = '@06@'.   " 접은 이미지
+  ls_node-exp_image  = '@07@'.   " 펼친 이미지
+  APPEND ls_node TO node_table.
+  CLEAR ls_node.
+
+  " BP Type 노드 -&gt; 중복없이 한 번씩만
+  LOOP AT gt_bptype INTO gs_bptype.
+
+    ls_node-node_key   = gs_bptype-bptype.
+    ls_node-relatkey   = 'ROOT'.
+    ls_node-text       = gs_bptype-bptypename.
+    ls_node-isfolder   = 'X'.
+    ls_node-n_image    = '@54@'.   " 접은 이미지
+    ls_node-exp_image  = '@55@'.   " 펼친 이미지
+    APPEND ls_node TO node_table.
+    CLEAR: ls_node, gs_bptype.
+
+  ENDLOOP.
+
+  LOOP AT gt_tree INTO gs_tree.
+
+    ls_node-node_key  = gs_tree-bpid.
+    ls_node-relatkey  = gs_tree-bptype.
+    ls_node-isfolder  = ' '.
+    ls_node-text      = gs_tree-bpname.
+    APPEND ls_node TO node_table.
+    CLEAR: ls_node, gs_tree.
+
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form exclude_100_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM exclude_100_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form excel_download</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM excel_download .
+
+  DATA : lt_roid   TYPE lvc_t_roid,
+         ls_roid   TYPE lvc_s_roid,
+         lv_line   TYPE i,
+         lv_answer.
+
+<font color ="#0000FF">*-- GET Selected row</font>
+  CALL METHOD go_stop_alv_grid-&gt;get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+<font color ="#0000FF">*-- Message</font>
+  IF lt_roid IS INITIAL.
+    MESSAGE s001 WITH TEXT-e02 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Only Single Line</font>
+  lv_line = lines( lt_roid ).
+
+  IF lv_line GT 1.
+    MESSAGE s001 WITH TEXT-e03 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Dialog Box</font>
+  PERFORM set_POPUP_TO_CONFIRM CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1' OR lv_answer EQ '2'.
+
+  IF lv_answer EQ '2'.
+    gv_pdf = abap_true.
+  ENDIF.
+
+<font color ="#0000FF">*-- GET Selected Header Info</font>
+  ls_roid = VALUE #( lt_roid[ 1 ] OPTIONAL ).
+  gs_hdisplay = VALUE #( gt_hdisplay[ ls_roid-row_id ] OPTIONAL ).
+
+<font color ="#0000FF">*-- IF gt_line is initial -&gt; get line data</font>
+  IF gt_line IS INITIAL.
+    PERFORM get_line_data USING gs_hdisplay-billnum.
+  ENDIF.
+
+  IF objfile IS INITIAL.
+    TRY.
+        CREATE OBJECT objfile.
+    ENDTRY.
+  ENDIF.
+
+<font color ="#0000FF">*-- Open file save window</font>
+  IF pfolder IS NOT INITIAL.
+    initialfolder = pfolder.
+  ELSE.
+    objfile-&gt;get_temp_directory( CHANGING temp_dir = initialfolder
+                                 EXCEPTIONS cntl_error = 1
+                                           error_no_gui = 2
+                                           not_supported_by_gui = 3 ).
+  ENDIF.
+
+  objfile-&gt;directory_browse( EXPORTING initial_folder = initialfolder
+                             CHANGING selected_folder = pickedfolder
+                             EXCEPTIONS cntl_error = 1
+                                        error_no_gui = 2
+                                        not_supported_by_gui = 3 ).
+
+  IF sy-subrc = 0.
+    pfolder = pickedfolder.
+  ELSE.
+    MESSAGE 'An error has occured picking a folder' TYPE 'I' DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  IF pfolder IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  CALL METHOD objfile-&gt;free.
+  FREE objfile.
+
+  PERFORM download_excel.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_POPUP_TO_CONFIRM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      &lt;-- LV_ANSWER</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_POPUP_TO_CONFIRM  CHANGING pv_answer.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar       = '데이터 저장'
+      text_question  = '어떤 타입으로 저장하시겠습니까?'
+      text_button_1  = 'Excel'
+      icon_button_1  = 'ICON_XLS'
+      text_button_2  = 'PDF'
+      icon_button_2  = 'ICON_PDF'
+      default_button = '2'
+    IMPORTING
+      answer         = pv_answer.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_line_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; GS_HEAD_ORDERID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_line_data  USING    pv_head_billnum.
+
+  DATA : lv_billnum TYPE zc103sdt0004-billnum.
+
+  lv_billnum = pv_head_billnum.
+
+<font color ="#0000FF">*-- Get Line Data</font>
+  SELECT billnum, billitemno, bookingid, transportid, charged_item, description,
+         ticket_quantity, cargo_weight, cargo_unit, ticket_unit, unit_price,
+         unit_discount_amount, unit_tax_amount, currency
+    FROM zc103sdt0005
+    WHERE billnum EQ @lv_billnum
+    INTO CORRESPONDING FIELDS OF TABLE @gt_line.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form download_excel</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM download_excel .
+
+  DATA : lv_rc     TYPE i,
+         lv_bpname TYPE zc103sdt0001-bpname,
+         lv_bptype TYPE zc103sdt0001-bptype.
+
+<font color ="#0000FF">*-- File name</font>
+  CLEAR : gv_temp_filename.
+
+<font color ="#0000FF">*-- Get BPname</font>
+  SELECT SINGLE bpname, bptype
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_hdisplay-bpid
+    INTO ( @lv_bpname, @lv_bptype ).
+
+  CONCATENATE pfolder '\' lv_bpname '.XLS'
+            INTO gv_temp_filename.
+
+<font color ="#0000FF">*-- Set Excel Format by bptype</font>
+  IF lv_bptype EQ 'T'.
+    gv_form = 'ZBILLING_CARGO'.
+  ELSEIF ( lv_bptype EQ 'B' ) OR
+         ( lv_bptype EQ 'NB' ).
+    gv_form = 'ZBILLING_CARGO'.
+  ENDIF.
+
+  PERFORM download_template   USING gv_form gv_temp_filename.
+  PERFORM open_excel_template USING gv_form.
+  PERFORM fill_excel_line CHANGING lv_bpname lv_bptype.
+
+<font color ="#0000FF">*-- 기본적으로 Sheet 1을 보여주도록 셋팅</font>
+  CALL METHOD OF excel 'SHEETS' = sheet EXPORTING #1 = 1.
+  CALL METHOD OF sheet 'SELECT' NO FLUSH.
+
+<font color ="#0000FF">*-- 모두 출력후 맨윗칸으로 커서 이동</font>
+  CALL METHOD OF excel 'Cells' = cell
+    EXPORTING
+      #1 = 1
+      #2 = 1.
+
+  CALL METHOD OF cell 'Select'.
+
+  SET PROPERTY OF excel 'VISIBLE' = 1 . "엑셀 데이타를 다 뿌리고나서 보여줌
+
+<font color ="#0000FF">*-- Convert to PDF</font>
+  IF gv_pdf EQ abap_true.
+    PERFORM convert_to_pdf.
+    MESSAGE s001 WITH TEXT-s02.
+  ELSE.
+    MESSAGE s001 WITH TEXT-s03.
+  ENDIF.
+
+  CLEAR : gv_pdf.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form download_template</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; GV_FORM</font>
+<font color ="#0000FF">*&      --&gt; GV_TEMP_FILENAME</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM download_template  USING    p_zform
+                                 p_filename.
+
+  DATA : wwwdata_item LIKE wwwdatatab,
+         rc           TYPE i.
+
+  gv_file = p_filename.
+
+  CALL FUNCTION 'WS_FILE_DELETE'
+    EXPORTING
+      file   = gv_file
+    IMPORTING
+      return = rc.
+
+  IF rc = 0 OR rc = 1.
+
+  ELSE.
+    MESSAGE e001  WITH '임시파일 초기화 실패.'
+                       '이전에 Excel에서 자료를 OPEN하였는지 확인.'.
+  ENDIF.
+
+  SELECT SINGLE * FROM wwwdata
+    INTO CORRESPONDING FIELDS OF wwwdata_item
+   WHERE objid = p_zform.
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      key         = wwwdata_item
+      destination = gv_file.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form open_excel_template</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; GV_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM open_excel_template  USING    p_gv_form.
+  IF excel IS INITIAL.
+    CREATE OBJECT excel 'EXCEL.APPLICATION'.
+  ENDIF.
+
+  IF sy-subrc NE 0.
+    MESSAGE i001 WITH sy-msgli.
+  ENDIF.
+
+  CALL METHOD OF excel 'WORKBOOKS' = workbook.
+  SET PROPERTY OF excel 'VISIBLE' = 0 .
+
+  CALL METHOD OF workbook 'OPEN' EXPORTING #1 = gv_file.
+
+<font color ="#0000FF">*-- Sheet에대한 설정을 할때 사용된다.</font>
+
+
+
+
+
+
+  GET PROPERTY OF : workbook    'Application' = application,
+                    application 'ActiveSheet' = activesheet.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form fill_excel_line</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM fill_excel_line CHANGING pv_bpname pv_bptype.
+
+  DATA : lv_bpname              TYPE zc103sdt0001-bpname,
+         lv_bptype              TYPE zc103sdt0001-bptype,
+         lv_billdate(10),
+         lv_total_price(20),
+         lv_billnum(8),
+         lv_line                TYPE i,
+         lv_ticket_quantity(20),
+         lv_cargo_weight(20),
+         lv_discount_amount(20),
+         lv_unit_tax_amount(20),
+         lv_unit_price(20),
+         lv_charged_item(20).
+
+  CLEAR : gs_line, gt_line.
+
+  SELECT billnum, billitemno, bookingid, transportid, charged_item, description,
+         ticket_quantity, cargo_weight, cargo_unit, ticket_unit, unit_price, unit_discount_amount,
+         unit_tax_amount, currency
+    FROM zc103sdt0005
+    WHERE billnum EQ @gs_hdisplay-billnum
+    INTO CORRESPONDING FIELDS OF TABLE @gt_line.
+
+  lv_bpname = pv_bpname.
+  lv_bptype = pv_bptype.
+
+<font color ="#0000FF">*-- GET bp Name</font>
+  SELECT SINGLE bpname
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_hdisplay-bpid
+    INTO ( @lv_bpname ).
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Write Billing Header</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- 대금청구 발생일</font>
+  CLEAR : lv_billdate.
+  lv_billdate = sy-datum(4) && '.' && sy-datum+4(2) && '.' &&
+                 sy-datum+6(2).
+  PERFORM fill_cells USING 8 3 lv_billdate.
+
+<font color ="#0000FF">*-- BP명</font>
+  PERFORM fill_cells USING 9 3 lv_bpname.
+
+<font color ="#0000FF">*-- Currency</font>
+  PERFORM fill_cells USING 8 9 gs_hdisplay-currency.
+
+
+<font color ="#0000FF">*-- Total Price</font>
+  WRITE gs_hdisplay-total_amount CURRENCY gs_hdisplay-currency TO lv_total_price.
+  PERFORM fill_cells USING 9 9 lv_total_price.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Write Billing Line Item</font>
+<font color ="#0000FF">**********************************************************************</font>
+  lv_billnum = gs_hdisplay-billnum.
+  lv_line = 14.
+
+  LOOP AT gt_line INTO gs_line WHERE billnum EQ lv_billnum.
+
+    WRITE gs_line-ticket_quantity UNIT gs_line-ticket_unit TO lv_ticket_quantity.
+    WRITE gs_line-cargo_weight UNIT gs_line-cargo_unit TO lv_cargo_weight.
+    WRITE gs_line-unit_discount_amount CURRENCY gs_line-currency TO lv_discount_amount.
+    WRITE gs_line-unit_price CURRENCY gs_line-currency TO lv_unit_price.
+    WRITE gs_line-unit_tax_amount CURRENCY gs_line-currency TO lv_unit_tax_amount.
+    WRITE gs_line-cargo_weight UNIT gs_line-cargo_unit TO lv_cargo_weight.
+
+<font color ="#0000FF">*-- Change Charged_item Text</font>
+    IF gs_line-charged_item EQ 'A'.
+      lv_charged_item = '여객'.
+    ELSEIF gs_line-charged_item EQ 'B'.
+      lv_charged_item = '화물'.
+    ENDIF.
+
+<font color ="#0000FF">*-- Separate Type</font>
+    IF lv_bptype EQ 'T'.
+      PERFORM fill_cells USING lv_line 2 gs_hdisplay-billnum.
+      PERFORM fill_cells USING lv_line 3 lv_charged_item.
+      PERFORM fill_cells USING lv_line 4 gs_line-description.
+      PERFORM fill_cells USING lv_line 5 lv_ticket_quantity.
+      PERFORM fill_cells USING lv_line 6 gs_hdisplay-currency.
+      PERFORM fill_cells USING lv_line 7 lv_unit_price.
+      PERFORM fill_cells USING lv_line 8 lv_unit_tax_amount.
+      PERFORM fill_cells USING lv_line 9 lv_discount_amount.
+
+      lv_line += 1.
+
+    ELSE.
+      PERFORM fill_cells USING lv_line 2 gs_hdisplay-billnum.
+      PERFORM fill_cells USING lv_line 3 lv_charged_item.
+      PERFORM fill_cells USING lv_line 4 gs_line-description.
+      PERFORM fill_cells USING lv_line 5 lv_cargo_weight.
+      PERFORM fill_cells USING lv_line 6 gs_hdisplay-currency.
+      PERFORM fill_cells USING lv_line 7 lv_unit_price.
+      PERFORM fill_cells USING lv_line 8 lv_unit_tax_amount.
+      PERFORM fill_cells USING lv_line 9 lv_discount_amount.
+
+      lv_line += 1.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form convert_to_pdf</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM convert_to_pdf .
+
+  DATA : lv_rc     TYPE i,
+         lv_bpname TYPE zc103sdt0001-bpname.
+
+  CLEAR gv_temp_filename_pdf.
+
+<font color ="#0000FF">*-- GET bp Name</font>
+  SELECT SINGLE bpname
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_hdisplay-bpid
+    INTO ( @lv_bpname ).
+
+  CONCATENATE pfolder '\' lv_bpname '.PDF'
+            INTO gv_temp_filename_pdf.
+
+  GET PROPERTY OF excel 'Workbooks' = workbook
+    EXPORTING #1 = 1.
+
+  CALL METHOD OF workbook 'ExportAsFixedFormat'
+    EXPORTING
+      #1 = '0'
+      #2 = gv_temp_filename_pdf.
+
+  CALL METHOD OF workbook 'Close'
+    EXPORTING
+      #1 = 0.
+
+  CALL METHOD OF excel 'Quit'.
+
+  CALL METHOD cl_gui_frontend_services=&gt;file_delete
+    EXPORTING
+      filename = CONV #( gv_temp_filename )
+    CHANGING
+      rc       = lv_rc.
+
+  CALL METHOD OF workbook 'ExportAsFixedFormat'
+    EXPORTING
+      #1 = 0
+      #2 = gv_temp_filename_pdf.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form fill_cells</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_8</font>
+<font color ="#0000FF">*&      --&gt; P_3</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM fill_cells  USING i j val.
+
+  CALL METHOD OF excel 'CELLS' = cell
+    EXPORTING
+      #1 = i " 행
+      #2 = j. "열
+
+  SET PROPERTY OF cell 'VALUE' = val.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_head_field_to_text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_head_field_to_text .
+
+  CLEAR : gs_bpname.
+
+<font color ="#0000FF">*-- Set Fixed Value field TO Text</font>
+  LOOP AT gt_hdisplay ASSIGNING FIELD-SYMBOL(&lt;fs_hdis&gt;).
+<font color ="#0000FF">*-- Set BPname Field</font>
+    READ TABLE gt_bpname INTO gs_bpname WITH KEY bpid = &lt;fs_hdis&gt;-bpid.
+    &lt;fs_hdis&gt;-bpname = gs_bpname-bpname.
+
+<font color ="#0000FF">*-- Set billing_status To Text</font>
+    CASE &lt;fs_hdis&gt;-billing_status.
+      WHEN 'Y'.
+        &lt;fs_hdis&gt;-billing_status = '결제 완료'.
+      WHEN 'N'.
+        &lt;fs_hdis&gt;-billing_status = '미결제'.
+      WHEN 'C'.
+        &lt;fs_hdis&gt;-billing_status = '결제 취소'.
+    ENDCASE.
+<font color ="#0000FF">*-- Set doc_flag To Text</font>
+    CASE &lt;fs_hdis&gt;-doc_flag.
+      WHEN 'Y'.
+        &lt;fs_hdis&gt;-doc_flag = '전표생성 완료'.
+      WHEN 'N'.
+        &lt;fs_hdis&gt;-doc_flag = '전표생성 미완료'.
+    ENDCASE.
+<font color ="#0000FF">*-- Set bptype To Text</font>
+    CASE &lt;fs_hdis&gt;-bptype.
+      WHEN 'T'.
+        &lt;fs_hdis&gt;-bptype = '여행사'.
+      WHEN 'B'.
+        &lt;fs_hdis&gt;-bptype = '화물 계약사'.
+      WHEN 'NB'.
+        &lt;fs_hdis&gt;-bptype = '화물 미계약사'.
+    ENDCASE.
+<font color ="#0000FF">*-- Set mail_status To Text</font>
+    CASE &lt;fs_hdis&gt;-mail_status.
+      WHEN 'Y'.
+        &lt;fs_hdis&gt;-mail_status = '메일 전송 완료'.
+      WHEN 'N'.
+        &lt;fs_hdis&gt;-mail_status = '메일 전송 미완료'.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_bpname_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_bpname_data .
+
+<font color ="#0000FF">*-- Get bpname ITab</font>
+  SELECT bpid, bpname, bptype
+    FROM zc103sdt0001
+    INTO CORRESPONDING FIELDS OF TABLE @gt_bpname.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_line_field_to_text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_line_field_to_text .
+
+<font color ="#0000FF">*-- Change Fixed Value Field To Text</font>
+  LOOP AT gt_ldisplay ASSIGNING FIELD-SYMBOL(&lt;fs_ldis&gt;).
+<font color ="#0000FF">*-- Set Text : charged_item</font>
+    CASE &lt;fs_ldis&gt;-charged_item.
+      WHEN 'A'.
+        &lt;fs_ldis&gt;-charged_item = '여객'.
+      WHEN 'B'.
+        &lt;fs_ldis&gt;-charged_item = '화물'.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form top_of_page</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM top_of_page .
+
+<font color ="#0000FF">*-- Set Top-of-page</font>
+  DATA : lr_dd_table TYPE REF TO cl_dd_table_element,
+         col_field   TYPE REF TO cl_dd_area,
+         col_value   TYPE REF TO cl_dd_area.
+
+  DATA : lv_text TYPE sdydo_text_element.
+
+  CALL METHOD go_dyndoc_id-&gt;add_table
+    EXPORTING
+      no_of_columns = 2
+      border        = '0'
+    IMPORTING
+      table         = lr_dd_table.
+
+<font color ="#0000FF">*-- Set column</font>
+  CALL METHOD lr_dd_table-&gt;add_column
+    IMPORTING
+      column = col_field.
+
+  CALL METHOD lr_dd_table-&gt;add_column
+    IMPORTING
+      column = col_value.
+
+<font color ="#0000FF">*-- Print Billing Year</font>
+  IF pa_year IS NOT INITIAL.
+    lv_text = pa_year && '년'.
+    PERFORM add_row USING lr_dd_table col_field col_value '대금청구년도 : ' lv_text.
+  ELSEIF pa_year IS INITIAL.
+    CLEAR : lv_text.
+    lv_text = '전체조회'.
+    PERFORM add_row USING lr_dd_table col_field col_value '대금청구년도 : ' lv_text.
+  ENDIF.
+
+  PERFORM set_top_of_page.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form add_row</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; LR_DD_TABLE</font>
+<font color ="#0000FF">*&      --&gt; COL_FIELD</font>
+<font color ="#0000FF">*&      --&gt; COL_VALUE</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; PA_YEAR</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM add_row  USING pr_dd_table  TYPE REF TO cl_dd_table_element
+                    pv_col_field TYPE REF TO cl_dd_area
+                    pv_col_value TYPE REF TO cl_dd_area
+                    pv_field
+                    pv_text.
+
+  DATA : lv_text TYPE sdydo_text_element.
+
+<font color ="#0000FF">*-- Set Field</font>
+  lv_text = pv_field.
+
+  CALL METHOD pv_col_field-&gt;add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_document=&gt;strong
+      sap_color    = cl_dd_document=&gt;list_heading_inv.
+
+  CALL METHOD pv_col_field-&gt;add_gap
+    EXPORTING
+      width = 3.
+
+<font color ="#0000FF">*-- Set Value</font>
+  lv_text = pv_text.
+
+  CALL METHOD pv_col_value-&gt;add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_document=&gt;heading
+      sap_color    = cl_dd_document=&gt;list_negative_inv.
+
+  CALL METHOD pv_col_value-&gt;add_gap
+    EXPORTING
+      width = 3.
+
+  CALL METHOD pr_dd_table-&gt;new_row.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form register_top_of_page_event</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM register_top_of_page_event .
+
+  CALL METHOD go_dyndoc_id-&gt;initialize_document
+    EXPORTING
+      background_color = cl_dd_area=&gt;col_textarea.
+
+  CALL METHOD go_tree_grid-&gt;list_processing_events
+    EXPORTING
+      i_event_name = 'TOP_OF_PAGE'
+      i_dyndoc_id  = go_dyndoc_id.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_top_of_page</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_top_of_page .
+
+  IF go_html_cntrl IS INITIAL.
+    CREATE OBJECT go_html_cntrl
+      EXPORTING
+        parent = go_topp_container.
+  ENDIF.
+
+  CALL METHOD go_dyndoc_id-&gt;merge_document.
+  go_dyndoc_id-&gt;html_control = go_html_cntrl.
+
+  CALL METHOD go_dyndoc_id-&gt;display_document
+    EXPORTING
+      reuse_control = 'X'
+      parent        = go_topp_container.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form mail_process</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM mail_process .
+  DATA : lt_roid  TYPE lvc_t_roid,
+         ls_roid  TYPE lvc_s_roid,
+         lv_msg   TYPE string,
+         lv_cnt   TYPE i,
+         lv_email TYPE zc103sdt0001-email.
+
+  CALL METHOD go_stop_alv_grid-&gt;get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE s000 WITH TEXT-e04 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  lv_cnt = lines( lt_roid ).
+
+  IF ( lv_cnt GT 1 ).
+    MESSAGE s000 WITH TEXT-e05 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  ls_roid = VALUE #( lt_roid[ 1 ] OPTIONAL ).
+
+  CLEAR gs_hdisplay.
+  gs_hdisplay = VALUE #( gt_hdisplay[ ls_roid-row_id ] OPTIONAL ).
+
+<font color ="#0000FF">*-- Check Purchase</font>
+  IF ( gs_hdisplay-billing_status EQ '결제 완료' ).
+    MESSAGE i000 WITH TEXT-e06 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 100.
+  ENDIF.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Mail Process</font>
+<font color ="#0000FF">**********************************************************************</font>
+  PERFORM make_email_content.
+
+<font color ="#0000FF">*-- Get mail receiver</font>
+  PERFORM get_mail_receiver CHANGING lv_email.
+
+<font color ="#0000FF">*-- Call send mail function</font>
+  _init reclist.
+  reclist-receiver = lv_email.
+  reclist-rec_type = 'U'.
+  APPEND reclist.
+
+  CALL FUNCTION 'SO_NEW_DOCUMENT_ATT_SEND_API1'
+    EXPORTING
+      document_data              = doc_chng
+      put_in_outbox              = 'X'
+      commit_work                = 'X'
+    TABLES
+      packing_list               = objpack
+      contents_bin               = objbin
+      contents_txt               = objtxt
+      receivers                  = reclist
+    EXCEPTIONS
+      too_many_receivers         = 1
+      document_not_sent          = 2
+      document_type_not_exist    = 3
+      operation_no_authorization = 4
+      parameter_error            = 5
+      x_error                    = 6
+      enqueue_error              = 7
+      OTHERS                     = 8.
+
+  IF sy-subrc NE 0.
+    _msg_build sy-msgid sy-msgno sy-msgv1 sy-msgv2
+               sy-msgv3 sy-msgv4 lv_msg.
+    MESSAGE s001 WITH lv_msg DISPLAY LIKE 'E'.
+  ELSE.
+    MESSAGE s001 WITH TEXT-s01.
+    PERFORM change_mail_status.
+    PERFORM set_head_field_to_text.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form make_email_content</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM make_email_content .
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*  Create mail content - HTML Format</font>
+<font color ="#0000FF">**********************************************************************</font>
+  DATA : lv_email      TYPE pa0105-usrid,
+         lv_str        TYPE string,
+         lv_objbin     LIKE TABLE OF objbin WITH HEADER LINE,
+         lv_amount(20),
+         lv_date(20),
+         lv_title(200),
+         lv_bpname(10).
+
+<font color ="#0000FF">*-- Begin of Attachment</font>
+  DATA : act_filetype LIKE rlgrap-filetype,
+         act_filename LIKE rlgrap-filename.
+<font color ="#0000FF">*-- End of Attachment</font>
+
+  CLASS cl_abap_char_utilities DEFINITION LOAD.
+  CONSTANTS : lv_vt   TYPE c VALUE cl_abap_char_utilities=&gt;horizontal_tab,
+              lv_cret TYPE c VALUE cl_abap_char_utilities=&gt;cr_lf.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*  첨부파일</font>
+<font color ="#0000FF">**********************************************************************</font>
+  DATA : file         LIKE rlgrap-filename,
+         mail_file    TYPE string,
+         lv_filesize  TYPE i,
+         lv_answer(1).
+
+  PERFORM popup_to_make_pdf CHANGING lv_answer.
+
+  IF lv_answer EQ '1'.
+    PERFORM make_billing_pdf.
+  ENDIF.
+
+  CALL FUNCTION 'UPLOAD'
+    EXPORTING
+      filetype     = 'BIN'
+    IMPORTING
+      act_filename = act_filename
+      act_filetype = act_filetype
+    TABLES
+      data_tab     = objbin.
+
+  IF act_filename IS INITIAL.
+    LEAVE TO SCREEN 100.
+  ENDIF.
+
+  _init : objtxt, objpack.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Set mail title</font>
+<font color ="#0000FF">**********************************************************************</font>
+  CLEAR : lv_date, lv_title.
+  lv_date = sy-datum+0(4) && '년' && ' ' && sy-datum+4(2) && '월' && ' ' &&
+            sy-datum+6(2) && '일'.
+  PERFORM get_bpname_bybpid CHANGING lv_bpname.
+  CONCATENATE lv_date ' ' lv_bpname ' ' '대금청구내역' INTO lv_title RESPECTING BLANKS.
+
+  CLEAR : doc_chng, lv_str.
+  doc_chng-obj_descr = lv_title.
+
+  lv_str = '대금청구내역서 보내드립니다. &lt;br&gt;확인 바랍니다.'.
+  APPEND lv_str TO objtxt.
+
+<font color ="#0000FF">*-- Content option</font>
+  CLEAR : tab_lines, lv_str.
+  DESCRIBE TABLE objtxt LINES tab_lines.
+  READ TABLE objtxt INDEX tab_lines.
+  doc_chng-doc_size = ( tab_lines - 1 ) * 12255 + strlen( objtxt ).
+
+<font color ="#0000FF">*-- 메일 헤더, 본문 정보</font>
+  CLEAR objpack-transf_bin.
+  objpack-head_start = 1.
+  objpack-head_num = 0.
+  objpack-body_start = 1.
+  objpack-body_num = tab_lines.
+  objpack-doc_type = 'HTM'.
+  APPEND objpack.
+
+  DATA: objhead LIKE solisti1 OCCURS 1 WITH HEADER LINE.
+  objhead = act_filename.
+  APPEND objhead.
+
+  DATA f_lines TYPE i.
+  DATA doc_size TYPE i.
+
+  DATA : BEGIN OF lt_split OCCURS 0,
+           content(50),
+         END OF lt_split.
+
+  CLEAR : tab_lines.
+  DESCRIBE TABLE objbin LINES f_lines.
+  doc_chng-doc_size = f_lines * 255.
+  doc_chng-obj_name = 'Request mail'.
+  doc_chng-obj_descr = lv_title.
+
+  DATA : doc_type(3).
+
+<font color ="#0000FF">*-- GET file name</font>
+  SPLIT act_filename AT '\' INTO TABLE lt_split.
+  READ TABLE lt_split INDEX lines( lt_split ).
+
+<font color ="#0000FF">*-- Get document type</font>
+  SPLIT act_filename AT '.' INTO act_filename doc_type.
+
+<font color ="#0000FF">*-- Attachment (pdf-Attachment)</font>
+  objpack-transf_bin = 'X'. " 이진형식의 전송을 위한 플래그
+  objpack-head_start = 1.   " 본문의 시작
+  objpack-head_num   = 0.   " 본문 헤더라인 수
+  objpack-body_start = 1.   " 첨부파일 본문의 시작
+  objpack-doc_size = doc_chng-doc_size.
+  objpack-body_num = f_lines.         " 첨부 파일 본문의 길이
+  objpack-doc_type = doc_type.        " 문서타입
+  objpack-obj_name = doc_type && '_file'.  " 객체이름
+  objpack-obj_descr = lt_split-content.    " 파일이름
+  APPEND objpack.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_bpname_bybpid</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_bpname_bybpid CHANGING pv_bpname.
+
+<font color ="#0000FF">*-- Get bpid</font>
+  SELECT SINGLE bpname
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_hdisplay-bpid
+    INTO ( @pv_bpname ).
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_mail_receiver</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_mail_receiver CHANGING pv_email.
+
+<font color ="#0000FF">*-- Get bp email</font>
+  SELECT SINGLE email
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_hdisplay-bpid
+    INTO ( @pv_email ).
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form make_billing_pdf</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM make_billing_pdf .
+
+  IF objfile IS INITIAL.
+    TRY.
+        CREATE OBJECT objfile.
+    ENDTRY.
+  ENDIF.
+
+<font color ="#0000FF">*-- OPEN file save WINDOW</font>
+  IF pfolder IS NOT INITIAL.
+    initialfolder = pfolder.
+  ELSE.
+    objfile-&gt;get_temp_directory( CHANGING temp_dir = initialfolder
+                                 EXCEPTIONS cntl_error = 1
+                                           error_no_gui = 2
+                                           not_supported_by_gui = 3 ).
+  ENDIF.
+
+  objfile-&gt;directory_browse( EXPORTING initial_folder = initialfolder
+                             CHANGING selected_folder = pickedfolder
+                             EXCEPTIONS cntl_error = 1
+                                        error_no_gui = 2
+                                        not_supported_by_gui = 3 ).
+
+  IF sy-subrc = 0.
+    pfolder = pickedfolder.
+  ELSE.
+    MESSAGE 'An error has occured picking a folder' TYPE 'I' DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  IF pfolder IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  CALL METHOD objfile-&gt;free.
+  FREE objfile.
+
+  PERFORM download_pdf.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form download_pdf</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM download_pdf .
+
+  DATA : lv_rc     TYPE i,
+         lv_bpname TYPE zc103sdt0001-bpname,
+         lv_bptype TYPE zc103sdt0001-bptype.
+
+<font color ="#0000FF">*-- File name</font>
+  CLEAR : gv_temp_filename.
+
+<font color ="#0000FF">*-- Get BPname</font>
+  SELECT SINGLE bpname, bptype
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_hdisplay-bpid
+    INTO ( @lv_bpname, @lv_bptype ).
+
+  CONCATENATE pfolder '\' lv_bpname '.XLS'
+            INTO gv_temp_filename.
+
+  CONCATENATE pfolder '\' lv_bpname '.PDF'
+              INTO gv_mail_filename.
+
+  CONCATENATE lv_bpname '.PDF'
+              INTO gv_filename.
+
+<font color ="#0000FF">*-- Set Excel Format by bptype</font>
+  IF lv_bptype EQ 'T'.
+    gv_form = 'ZBILLING_CARGO'.
+  ELSEIF ( lv_bptype EQ 'B' ) OR
+         ( lv_bptype EQ 'NB' ).
+    gv_form = 'ZBILLING_CARGO'.
+  ENDIF.
+
+  PERFORM download_template   USING gv_form gv_temp_filename.
+  PERFORM open_excel_template USING gv_form.
+  PERFORM fill_excel_line CHANGING lv_bpname lv_bptype.
+
+<font color ="#0000FF">*-- 기본적으로 Sheet 1을 보여주도록 셋팅</font>
+  CALL METHOD OF excel 'SHEETS' = sheet EXPORTING #1 = 1.
+  CALL METHOD OF sheet 'SELECT' NO FLUSH.
+
+<font color ="#0000FF">*-- 모두 출력후 맨윗칸으로 커서 이동</font>
+  CALL METHOD OF excel 'Cells' = cell
+    EXPORTING
+      #1 = 1
+      #2 = 1.
+
+  CALL METHOD OF cell 'Select'.
+
+  SET PROPERTY OF excel 'VISIBLE' = 1 .
+
+<font color ="#0000FF">*-- Convert to PDF</font>
+  PERFORM convert_to_pdf.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form popup_to_make_pdf</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      &lt;-- LV_ANSWER</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM popup_to_make_pdf  CHANGING pv_answer.
+
+  call function <a href ="zc1f030001/zc1f030001.html">'ZC1F030001'</a>
+    EXPORTING
+      iv_action = '해당 BP의 대금청구문서(PDF)를 생성'
+    IMPORTING
+      ev_answer = pv_answer.
+
+  IF pv_answer = '2'.  " No를 선택하면 종료
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form change_mail_status</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM change_mail_status .
+
+  DATA : lt_save TYPE TABLE OF zc103sdt0004.
+
+<font color ="#0000FF">*-- Set hdisplay</font>
+  DATA : lv_index TYPE sy-tabix.
+  SORT : gt_hdisplay BY billnum ASCENDING.
+
+  READ TABLE gt_hdisplay INTO DATA(ls_hdis) WITH KEY billnum = gs_hdisplay-billnum.
+  lv_index = sy-tabix.
+
+<font color ="#0000FF">*-- Change mail_status</font>
+  ls_hdis-mail_status = 'Y'.
+  ls_hdis-icon_mail_status = icon_led_green.
+
+<font color ="#0000FF">*-- Input billing date</font>
+  IF ls_hdis-billing_date IS INITIAL.
+    ls_hdis-billing_date = sy-datum.
+  ENDIF.
+
+<font color ="#0000FF">*-- Set Time Stamp</font>
+  IF ( ls_hdis-erdat IS INITIAL ).
+    ls_hdis-erdat = sy-datum.
+    ls_hdis-ernam = sy-uname.
+    ls_hdis-erzet = sy-uzeit.
+  ELSE.
+    ls_hdis-aedat = sy-datum.
+    ls_hdis-aezet = sy-uzeit.
+    ls_hdis-aenam = sy-uname.
+  ENDIF.
+  MODIFY gt_hdisplay FROM ls_hdis INDEX lv_index TRANSPORTING mail_status billing_date erdat ernam erzet
+                                                              icon_mail_status aedat aezet aenam.
+  PERFORM set_head_field_to_value.
+
+<font color ="#0000FF">*-- Move data to save ITab</font>
+  lt_save = CORRESPONDING #( gt_hdisplay ).
+
+<font color ="#0000FF">*-- Update DB Table</font>
+  MODIFY zc103sdt0004 FROM TABLE lt_save.
+  CLEAR : gs_hdisplay, gs_head.
+
+  PERFORM set_head_field_to_text.
+
+<font color ="#0000FF">*-- Set head</font>
+  CLEAR : lv_index.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_head_field_to_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_head_field_to_value .
+
+<font color ="#0000FF">*-- SET Fixed Value FIELD to Text</font>
+  LOOP AT gt_hdisplay ASSIGNING FIELD-SYMBOL(&lt;fs_hdis&gt;).
+
+<font color ="#0000FF">*-- Set billing_status To Text</font>
+    CASE &lt;fs_hdis&gt;-billing_status.
+      WHEN '결제 완료'.
+        &lt;fs_hdis&gt;-billing_status = 'Y'.
+      WHEN '미결제'.
+        &lt;fs_hdis&gt;-billing_status = 'N'.
+      WHEN '결제 취소'.
+        &lt;fs_hdis&gt;-billing_status = 'C'.
+    ENDCASE.
+<font color ="#0000FF">*-- Set doc_flag To Text</font>
+    CASE &lt;fs_hdis&gt;-doc_flag.
+      WHEN '전표생성 완료'.
+        &lt;fs_hdis&gt;-doc_flag = 'Y'.
+      WHEN '전표생성 미완료'.
+        &lt;fs_hdis&gt;-doc_flag = 'N'.
+    ENDCASE.
+<font color ="#0000FF">*-- Set mail_status To Text</font>
+    CASE &lt;fs_hdis&gt;-mail_status.
+      WHEN '메일 전송 완료'.
+        &lt;fs_hdis&gt;-mail_status = 'Y'.
+      WHEN '메일 전송 미완료'.
+        &lt;fs_hdis&gt;-mail_status = 'N'.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

@@ -1,0 +1,4595 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0007F01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0007F01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZC103SDR0007F01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include          ZC103SDR0007F01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_base_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_input_base_data .
+
+<font color ="#0000FF">*-- Get Normal Customer Data(B2C)</font>
+  SELECT input_head, input_line, input_type, custid, matid, countryfrom, countryto,
+         flightid, scheduleid, conditionid, currency, unit_price, total_price,
+         input_date, header_status, orderid, so_status, class, used_mileage,
+         ticket_quantity, ticket_unit, meal_type, souvenir_qty, souvenir_unit,
+         erdat, ernam, erzet, aedat, aenam, aezet
+    FROM zc103_cds_idata
+    WHERE input_type EQ 'CU'
+      AND input_date EQ @pa_date
+    INTO CORRESPONDING FIELDS OF TABLE @gt_cu.
+
+<font color ="#0000FF">*-- Get Travel Agency Data(B2B)</font>
+  SELECT input_head, input_line, input_type, bpid, unrg_custname, unrg_custemail,
+         matid, countryfrom, countryto, flightid, scheduleid, conditionid, currency,
+         unit_price, total_price, input_date, header_status, orderid, so_status,
+         class, used_mileage, ticket_quantity, ticket_unit, meal_type, souvenir_qty,
+         souvenir_unit, erdat, ernam, erzet, aedat, aenam, aezet
+    FROM zc103_cds_idata
+    WHERE input_type EQ 'TA'
+    AND input_date EQ @pa_date
+    INTO CORRESPONDING FIELDS OF TABLE @gt_ta.
+
+<font color ="#0000FF">*-- Get Contracted Carrier(B2B)</font>
+  SELECT input_head, input_line, input_type, bpid, matid, countryfrom, countryto,
+         flightid, scheduleid, conditionid, currency, unit_price, total_price, input_date,
+         header_status, orderid, so_status, weight, weight_unit, volume,
+         erdat, ernam, erzet, aedat, aenam, aezet
+    FROM zc103_cds_idata
+    WHERE input_type EQ 'CC'
+    AND input_date EQ @pa_date
+    INTO CORRESPONDING FIELDS OF TABLE @gt_cc.
+
+<font color ="#0000FF">*-- Get Non-Contracted Carrier(B2B)</font>
+  SELECT input_head, input_line, input_type, bpid, unrg_bpname, unrg_bpemail, matid,
+         countryfrom, countryto, flightid, scheduleid, conditionid, currency,
+         unit_price, total_price, input_date, header_status, orderid, so_status,
+         weight, weight_unit, volume, erdat, ernam, erzet, aedat, aenam, aezet
+    FROM zc103_cds_idata
+    WHERE input_type EQ 'NC'
+    AND input_date EQ @pa_date
+    INTO CORRESPONDING FIELDS OF TABLE @gt_nc.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_status</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_status .
+
+<font color ="#0000FF">*-- Set Customer Status</font>
+  LOOP AT gt_cu ASSIGNING FIELD-SYMBOL(&lt;fs_cu&gt;).
+    IF &lt;fs_cu&gt;-so_status EQ 'N'.
+      &lt;fs_cu&gt;-order_status = icon_led_red.
+    ELSEIF &lt;fs_cu&gt;-so_status EQ 'Y'.
+      &lt;fs_cu&gt;-order_status = icon_led_green.
+      &lt;fs_cu&gt;-order_possible = icon_system_help.
+    ELSEIF &lt;fs_cu&gt;-so_status EQ 'F'.
+      &lt;fs_cu&gt;-so_status = icon_led_red.
+    ENDIF.
+  ENDLOOP.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*-- Set Travel Agency Status</font>
+  LOOP AT gt_ta ASSIGNING FIELD-SYMBOL(&lt;fs_ta&gt;).
+    IF &lt;fs_ta&gt;-so_status EQ 'N'.
+      &lt;fs_ta&gt;-order_status = icon_led_red.
+    ELSEIF &lt;fs_ta&gt;-so_status EQ 'Y'.
+      &lt;fs_ta&gt;-order_status = icon_led_green.
+      &lt;fs_ta&gt;-order_possible = icon_system_help.
+    ELSEIF &lt;fs_ta&gt;-so_status EQ 'F'.
+      &lt;fs_ta&gt;-so_status = icon_led_red.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Set Contracted Carrier Status</font>
+  LOOP AT gt_cc ASSIGNING FIELD-SYMBOL(&lt;fs_cc&gt;).
+    IF &lt;fs_cc&gt;-so_status EQ 'N'.
+      &lt;fs_cc&gt;-order_status = icon_led_red.
+    ELSEIF &lt;fs_cc&gt;-so_status EQ 'Y'.
+      &lt;fs_cc&gt;-order_status = icon_led_green.
+      &lt;fs_cc&gt;-order_possible = icon_system_help.
+    ELSEIF &lt;fs_cc&gt;-so_status EQ 'F'.
+      &lt;fs_cc&gt;-so_status = icon_led_red.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Set Non-Contracted Carrier Status</font>
+  LOOP AT gt_nc ASSIGNING FIELD-SYMBOL(&lt;fs_nc&gt;).
+    IF &lt;fs_nc&gt;-so_status EQ 'N'.
+      &lt;fs_nc&gt;-order_status = icon_led_red.
+    ELSEIF &lt;fs_nc&gt;-so_status EQ 'Y'.
+      &lt;fs_nc&gt;-order_status = icon_led_green.
+      &lt;fs_nc&gt;-order_possible = icon_system_help.
+    ELSEIF &lt;fs_nc&gt;-so_status EQ 'F'.
+      &lt;fs_nc&gt;-so_status = icon_led_red.
+    ENDIF.
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_cu&gt;, &lt;fs_ta&gt;, &lt;fs_cc&gt;, &lt;fs_nc&gt;.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_date</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_date .
+
+<font color ="#0000FF">*-- Set pa_date</font>
+  pa_date = sy-datum.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Module BEFORE_100_SCREEN OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+MODULE before_100_screen OUTPUT.
+
+  PERFORM set_so_status.
+  PERFORM display_100_screen.
+
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_so_status</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_so_status .
+
+  DATA : lt_soc LIKE TABLE OF gs_soc.
+
+  CLEAR : gv_csoy, gv_cson, gv_csof.
+
+<font color ="#0000FF">*-- Get Data(gt_soc, lt_soc)</font>
+  SELECT input_head, MIN( input_line ) AS input_line
+    FROM zc103_cds_idata
+    WHERE input_date EQ @pa_date
+    GROUP BY input_head
+    INTO CORRESPONDING FIELDS OF TABLE @gt_soc.
+
+  SELECT input_head, input_line, so_status
+    FROM zc103_cds_idata
+    WHERE input_date EQ @pa_date
+    INTO CORRESPONDING FIELDS OF TABLE @lt_soc.
+
+<font color ="#0000FF">*-- Patch so_status Data</font>
+  SORT : lt_soc BY input_head ASCENDING.
+  LOOP AT gt_soc ASSIGNING FIELD-SYMBOL(&lt;fs_soc&gt;).
+    READ TABLE lt_soc INTO DATA(ls_soc) WITH KEY input_head = &lt;fs_soc&gt;-input_head
+                                                 input_line = &lt;fs_soc&gt;-input_line
+                                        BINARY SEARCH.
+    &lt;fs_soc&gt;-so_status = ls_soc-so_status.
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_soc&gt;.
+
+<font color ="#0000FF">*-- Count SO Status</font>
+  LOOP AT gt_soc INTO gs_soc.
+    IF ( gs_soc-so_status EQ 'Y' ).
+      gv_csoy += 1.
+    ELSEIF ( gs_soc-so_status EQ 'N' ).
+      gv_cson += 1.
+    ELSEIF ( gs_soc-so_status EQ 'F' ).
+      gv_csof += 1.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form display_100_screen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM display_100_screen .
+
+  READ TABLE gt_hdisplay INTO gs_hdisplay INDEX 1.
+
+<font color ="#0000FF">*-- Set Field Catalog by order type(Header)</font>
+  CLEAR : gt_brtfcat, gt_brbfcat.
+  IF ( gs_hdisplay-order_type EQ '여행사' ) OR
+     ( gs_hdisplay-order_type EQ '계약 화물사' ) OR
+     ( gs_hdisplay-order_type EQ '미계약 화물사' ).
+    PERFORM set_100_head_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'BPID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_DATE' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CANCEL_DEADLINE' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_TYPE' 'ZC103SDT0006' 'C' 'X',
+                                          ' ' 'TOTAL_AMOUNT' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_STATUS' 'ZC103SDT0006' 'C' 'X',
+                                          ' ' 'BILLING_STATUS' 'ZC103SDT0006' 'C' 'X',
+                                          ' ' 'SRV_END_STATUS' 'ZC103SDT0006' 'C' 'X'.
+  ELSEIF ( gs_hdisplay-order_type EQ '일반 고객' ).
+    PERFORM set_100_head_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CUSTID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_DATE' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CANCEL_DEADLINE' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_TYPE' 'ZC103SDT0006' 'C' 'X',
+                                          ' ' 'TOTAL_AMOUNT' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_STATUS' 'ZC103SDT0006' 'C' 'X',
+                                          ' ' 'SRV_END_STATUS' 'ZC103SDT0006' 'C' 'X'.
+  ELSE.
+    PERFORM set_100_head_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'BPID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CUSTID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_DATE' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CANCEL_DEADLINE' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_TYPE' 'ZC103SDT0006' 'C' 'X',
+                                          ' ' 'TOTAL_AMOUNT' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_STATUS' 'ZC103SDT0006' 'C' 'X',
+                                          ' ' 'SRV_END_STATUS' 'ZC103SDT0006' 'C' 'X'.
+  ENDIF.
+
+<font color ="#0000FF">*-- Set Field Catalog by order type(Line)</font>
+  IF ( gs_hdisplay-order_type EQ '여행사' ).
+    PERFORM set_100_line_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0007' ' ' ' ',
+                                               'X' 'ORDERITEMNO' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'BOOKINGID' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CHARGED_ITEM' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'DESCRIPTION' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'TICKET_QUANTITY' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TICKET_UNIT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'UNIT_PRICE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TAX_AMOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'DISCOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CURRENCY' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'USED_MILEAGE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'ORDER_STATUS' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'SRV_END_STATUS' 'ZC103SDT0007' 'C' 'X'.
+  ELSEIF ( gs_hdisplay-order_type EQ '계약 화물사' ) OR
+         ( gs_hdisplay-order_type EQ '미계약 화물사' ).
+    PERFORM set_100_line_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0007' ' ' ' ',
+                                               'X' 'ORDERITEMNO' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TRANSPORTID' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CHARGED_ITEM' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'DESCRIPTION' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'CARGO_WEIGHT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CARGO_UNIT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'UNIT_PRICE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TAX_AMOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'DISCOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CURRENCY' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'USED_MILEAGE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'ORDER_STATUS' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'SRV_END_STATUS' 'ZC103SDT0007' 'C' 'X'.
+  ELSEIF ( gs_hdisplay-order_type EQ '일반 고객' ).
+    PERFORM set_100_line_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0007' ' ' ' ',
+                                               'X' 'ORDERITEMNO' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'BOOKINGID' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CHARGED_ITEM' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'DESCRIPTION' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'TICKET_QUANTITY' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TICKET_UNIT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'UNIT_PRICE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TAX_AMOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'DISCOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CURRENCY' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'USED_MILEAGE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'ORDER_STATUS' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'SRV_END_STATUS' 'ZC103SDT0007' 'C' 'X'.
+  ELSE.
+    PERFORM set_100_line_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0007' ' ' ' ',
+                                               'X' 'ORDERITEMNO' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'BOOKINGID' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TRANSPORTID' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CHARGED_ITEM' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'DESCRIPTION' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'CARGO_WEIGHT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CARGO_UNIT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'UNIT_PRICE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'TAX_AMOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'DISCOUNT' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'CURRENCY' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'USED_MILEAGE' 'ZC103SDT0007' ' ' ' ',
+                                               ' ' 'ORDER_STATUS' 'ZC103SDT0007' 'C' 'X',
+                                               ' ' 'SRV_END_STATUS' 'ZC103SDT0007' 'C' 'X'.
+  ENDIF.
+
+  IF go_bright_container IS INITIAL.
+
+    PERFORM set_100_layout.
+    PERFORM create_100_object.
+    PERFORM exclude_100_toolbar.
+
+<font color ="#0000FF">*-- Set handler 추가 필요</font>
+  ENDIF.
+
+<font color ="#0000FF">*-- Display Head ALV</font>
+  CALL METHOD go_brtop_alv_grid-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant           = gs_brtvariant
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_brtlayout
+      it_toolbar_excluding = gt_ui_functions
+    CHANGING
+      it_outtab            = gt_hdisplay
+      it_fieldcatalog      = gt_brtfcat.
+
+<font color ="#0000FF">*-- Display Line ALV</font>
+  CALL METHOD go_brbottom_alv_grid-&gt;set_table_for_first_display
+    EXPORTING
+      is_variant           = gs_brbvariant
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_brblayout
+      it_toolbar_excluding = gt_ui_functions
+    CHANGING
+      it_outtab            = gt_ldisplay
+      it_fieldcatalog      = gt_brbfcat.
+
+  PERFORM refresh_brtop_table.
+  PERFORM refresh_brbottom_table.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_100_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_100_head_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_brtfcat-key = pv_key.
+  gs_brtfcat-fieldname = pv_field.
+  gs_brtfcat-ref_table = pv_table.
+  gs_brtfcat-just = pv_just.
+  gs_brtfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'TOTAL_AMOUNT'.
+      gs_brtfcat-cfieldname = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_brtfcat-coltext = '통화'.
+  ENDCASE.
+
+  APPEND gs_brtfcat TO gt_brtfcat.
+  CLEAR : gs_brtfcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_100_line_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_100_line_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_brbfcat-key = pv_key.
+  gs_brbfcat-fieldname = pv_field.
+  gs_brbfcat-ref_table = pv_table.
+  gs_brbfcat-just = pv_just.
+  gs_brbfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'TICKET_QUANTITY'.
+      gs_brbfcat-qfieldname = 'TICKET_UNIT'.
+    WHEN 'CARGO_WEIGHT'.
+      gs_brbfcat-qfieldname = 'CARGO_UNIT'.
+    WHEN 'UNIT_PRICE'.
+      gs_brbfcat-cfieldname = 'CURRENCY'.
+    WHEN 'TAX_AMOUNT'.
+      gs_brbfcat-cfieldname = 'CURRENCY'.
+    WHEN 'DISCOUNT'.
+      gs_brbfcat-cfieldname = 'CURRENCY'.
+    WHEN 'USED_MILEAGE'.
+      gs_brbfcat-cfieldname = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_brbfcat-coltext = '통화'.
+  ENDCASE.
+
+  APPEND gs_brbfcat TO gt_brbfcat.
+  CLEAR : gs_brbfcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_100_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_100_layout .
+
+<font color ="#0000FF">*-- For Header Layout</font>
+  gs_brtlayout-zebra = abap_true.
+  gs_brtlayout-cwidth_opt = 'A'.
+
+<font color ="#0000FF">*-- For Line Layout</font>
+  gs_brblayout-zebra = abap_true.
+  gs_brblayout-cwidth_opt = 'A'.
+
+<font color ="#0000FF">*-- For Header Variant</font>
+  gs_brtvariant-report = sy-repid.
+  gs_brtvariant-handle = 'ALV1'.
+
+<font color ="#0000FF">*-- For Line Variant</font>
+  gs_brbvariant-report = sy-repid.
+  gs_brtvariant-handle = 'ALV2'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form create_100_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM create_100_object .
+
+<font color ="#0000FF">*-- Bottom Right Container</font>
+  CREATE OBJECT go_bright_container
+    EXPORTING
+      container_name = 'BRIGHT_CONT'.
+
+<font color ="#0000FF">*-- Split Container</font>
+  CREATE OBJECT go_brsplit_container
+    EXPORTING
+      parent  = go_bright_container
+      rows    = 2
+      columns = 1.
+
+<font color ="#0000FF">*-- Patch Container : Top Container</font>
+  CALL METHOD go_brsplit_container-&gt;get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_brtop_container.
+
+<font color ="#0000FF">*-- Patch Container : Bottom Container</font>
+  CALL METHOD go_brsplit_container-&gt;get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = go_brbottom_container.
+
+<font color ="#0000FF">*-- Patch ALV : Top ALV</font>
+  CREATE OBJECT go_brtop_alv_grid
+    EXPORTING
+      i_parent = go_brtop_container.
+
+<font color ="#0000FF">*-- Patch ALV : Bottom ALV</font>
+  CREATE OBJECT go_brbottom_alv_grid
+    EXPORTING
+      i_parent = go_brbottom_container.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form exclude_100_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM exclude_100_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_brtop_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_brtop_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_brtop_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_brbottom_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_brbottom_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_brbottom_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_subscreen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_subscreen .
+
+<font color ="#0000FF">*-- Set Subscreen Number</font>
+  CASE gc_tab-activetab.
+    WHEN 'TAB1'.
+      gv_subscreen = '0101'.
+    WHEN 'TAB2'.
+      gv_subscreen = '0102'.
+    WHEN 'TAB3'.
+      gv_subscreen = '0103'.
+    WHEN 'TAB4'.
+      gv_subscreen = '0104'.
+    WHEN OTHERS.
+      gc_tab-activetab = 'TAB1'.
+      gv_subscreen = '0101'.
+  ENDCASE.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form display_101_screen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM display_101_screen .
+
+  IF go_101_container IS INITIAL.
+
+    PERFORM set_101_field_catalog USING : 'X' 'ORDER_POSSIBLE' ' ' 'C' 'X',
+                                          'X' 'ORDER_STATUS' ' ' 'C' 'X',
+                                          'X' 'INPUT_HEAD' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'INPUT_TYPE' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'CUSTID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'COUNTRYFROM' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'COUNTRYTO' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'FLIGHTID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SCHEDULEID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'TOTAL_PRICE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'INPUT_DATE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'ORDERID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SO_STATUS' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'TICKET_QUANTITY' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'TICKET_UNIT' 'ZC103_CDS_IDATA' ' ' ' '.
+
+    PERFORM create_101_object.
+    PERFORM set_101_layout_variant.
+    PERFORM exclude_101_toolbar.
+
+    SET HANDLER : lcl_event_handler=&gt;cu_edit_toolbar FOR go_101_alv_grid,
+                  lcl_event_handler=&gt;user_command FOR go_101_alv_grid,
+                  lcl_event_handler=&gt;cu_double_click FOR go_101_alv_grid.
+
+<font color ="#0000FF">*-- Display Customer ALV</font>
+    CALL METHOD go_101_alv_grid-&gt;set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_101_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_101_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_cudisplay
+        it_fieldcatalog      = gt_101_fcat.
+
+  ENDIF.
+
+  PERFORM refresh_cu_table.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_display_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_display_data .
+  DATA : lv_total_price     TYPE wrbtr,
+         lv_ticket_quantity TYPE zc103sdt0011-totalticket.
+
+  DATA : lt_head     TYPE TABLE OF zc103_cds_idata,
+         lt_all_data TYPE TABLE OF zc103_cds_idata.
+
+<font color ="#0000FF">*-- Get All Data</font>
+  SELECT input_head, input_line, input_type, bpid, custid, unrg_custname, unrg_custemail,
+         matid, countryfrom, countryto,flightid, scheduleid, conditionid, currency,
+         unit_price, total_price, input_date, header_status, orderid, so_status,
+         class, used_mileage, ticket_quantity, ticket_unit, meal_type, souvenir_qty,
+         souvenir_unit, weight, weight_unit, volume, erdat, ernam, erzet, aenam, aedat, aezet
+    FROM zc103_cds_idata
+    WHERE so_status EQ 'N'
+      AND input_date EQ @pa_date
+    INTO CORRESPONDING FIELDS OF TABLE @lt_all_data.
+
+<font color ="#0000FF">*-- Group by Head</font>
+  SELECT input_head, MIN( input_line ) AS input_line, SUM( total_price ) AS total_price
+    FROM zc103_cds_idata
+    WHERE so_status EQ 'N'
+      AND input_date EQ @pa_date
+    GROUP BY input_head
+    INTO CORRESPONDING FIELDS OF TABLE @lt_head.
+
+<font color ="#0000FF">*-- Patch Input_type</font>
+  SORT : lt_all_data BY input_head ASCENDING.
+  LOOP AT lt_head ASSIGNING FIELD-SYMBOL(&lt;fs_head&gt;).
+    lv_total_price = &lt;fs_head&gt;-total_price.
+    READ TABLE lt_all_data INTO DATA(ls_all_data) WITH KEY input_head = &lt;fs_head&gt;-input_head
+                                                  BINARY SEARCH.
+    &lt;fs_head&gt; = CORRESPONDING #( ls_all_data ).
+    &lt;fs_head&gt;-total_price = lv_total_price.
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_head&gt;.
+
+<font color ="#0000FF">*-- Move Grouping input_head data</font>
+  LOOP AT lt_head INTO DATA(ls_head).
+    CASE ls_head-input_type.
+      WHEN 'CU'.
+        gs_cudisplay = CORRESPONDING #( ls_head ).
+        gs_cudisplay-order_status = icon_led_red.
+<font color ="#0000FF">*-- Check so_status</font>
+        IF ( gs_cudisplay-so_status EQ 'F' ).
+          gs_cudisplay-order_possible = icon_incomplete.
+        ELSE.
+          gs_cudisplay-order_possible = icon_system_help.
+        ENDIF.
+        APPEND gs_cudisplay TO gt_cudisplay.
+      WHEN 'TA'.
+        gs_tadisplay = CORRESPONDING #( ls_head ).
+        gs_tadisplay-order_status = icon_led_red.
+<font color ="#0000FF">*-- CHECK so_status</font>
+        IF ( gs_tadisplay-so_status EQ 'F' ).
+          gs_tadisplay-order_possible = icon_incomplete.
+        ELSE.
+          gs_tadisplay-order_possible = icon_system_help.
+        ENDIF.
+        APPEND gs_tadisplay TO gt_tadisplay.
+      WHEN 'CC'.
+        gs_ccdisplay = CORRESPONDING #( ls_head ).
+        gs_ccdisplay-order_status = icon_led_red.
+<font color ="#0000FF">*-- CHECK so_status</font>
+        IF ( gs_ccdisplay-so_status EQ 'F' ).
+          gs_ccdisplay-order_possible = icon_incomplete.
+        ELSE.
+          gs_ccdisplay-order_possible = icon_system_help.
+        ENDIF.
+        APPEND gs_ccdisplay TO gt_ccdisplay.
+      WHEN 'NC'.
+        gs_ncdisplay = CORRESPONDING #( ls_head ).
+        gs_ncdisplay-order_status = icon_led_red.
+<font color ="#0000FF">*-- CHECK so_status</font>
+        IF ( gs_ncdisplay-so_status EQ 'F' ).
+          gs_ncdisplay-order_possible = icon_incomplete.
+        ELSE.
+          gs_ncdisplay-order_possible = icon_system_help.
+        ENDIF.
+        APPEND gs_ncdisplay TO gt_ncdisplay.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_head_value_to_text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_head_value_to_text.
+
+<font color ="#0000FF">*-- Change gt_cudisplay Value field to Text</font>
+  LOOP AT gt_cudisplay ASSIGNING FIELD-SYMBOL(&lt;fs_cu&gt;).
+    IF ( &lt;fs_cu&gt;-so_status EQ 'Y' ).
+      &lt;fs_cu&gt;-order_status = icon_led_green.
+      &lt;fs_cu&gt;-order_possible = icon_checked.
+    ELSEIF ( &lt;fs_cu&gt;-so_status EQ 'N' ).
+      &lt;fs_cu&gt;-order_status = icon_led_red.
+    ELSEIF ( &lt;fs_cu&gt;-so_status EQ 'F' ).
+      &lt;fs_cu&gt;-order_possible = icon_incomplete.
+    ENDIF.
+
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_cu&gt;-input_type.
+      WHEN 'CU'.
+        &lt;fs_cu&gt;-input_type = '일반 고객(B2C)'.
+      WHEN 'CC'.
+        &lt;fs_cu&gt;-input_type = '계약 화물사(B2B)'.
+      WHEN 'NC'.
+        &lt;fs_cu&gt;-input_type = '미계약 화물사(B2B)'.
+      WHEN 'TA'.
+        &lt;fs_cu&gt;-input_type = '여행사(B2B)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_cu&gt;-countryfrom.
+      WHEN '00'.
+        &lt;fs_cu&gt;-countryfrom = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_cu&gt;-countryfrom = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_cu&gt;-countryfrom = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_cu&gt;-countryfrom = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_cu&gt;-countryfrom = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_cu&gt;-countryfrom = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_cu&gt;-countryfrom = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_cu&gt;-countryto.
+      WHEN '00'.
+        &lt;fs_cu&gt;-countryto = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_cu&gt;-countryto = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_cu&gt;-countryto = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_cu&gt;-countryto = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_cu&gt;-countryto = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_cu&gt;-countryto = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_cu&gt;-countryto = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_cu&gt;-so_status.
+      WHEN 'Y'.
+        &lt;fs_cu&gt;-so_status = '판매오더 전환 완료'.
+      WHEN 'N'.
+        &lt;fs_cu&gt;-so_status = '판매오더 전환 미완료'.
+      WHEN 'F'.
+        &lt;fs_cu&gt;-so_status = '유효성 검사 실패'.
+    ENDCASE.
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_cu&gt;.
+
+<font color ="#0000FF">*-- Change gt_tadisplay Value FIELD to Text</font>
+  LOOP AT gt_tadisplay ASSIGNING FIELD-SYMBOL(&lt;fs_ta&gt;).
+    IF ( &lt;fs_ta&gt;-so_status EQ 'Y' ).
+      &lt;fs_ta&gt;-order_status = icon_led_green.
+      &lt;fs_ta&gt;-order_possible = icon_checked.
+    ELSEIF ( &lt;fs_ta&gt;-so_status EQ 'N' ).
+      &lt;fs_ta&gt;-order_status = icon_led_red.
+    ELSEIF ( &lt;fs_ta&gt;-so_status EQ 'F' ).
+      &lt;fs_ta&gt;-order_possible = icon_incomplete.
+    ENDIF.
+
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_ta&gt;-input_type.
+      WHEN 'CU'.
+        &lt;fs_ta&gt;-input_type = '일반 고객(B2C)'.
+      WHEN 'CC'.
+        &lt;fs_ta&gt;-input_type = '계약 화물사(B2B)'.
+      WHEN 'NC'.
+        &lt;fs_ta&gt;-input_type = '미계약 화물사(B2B)'.
+      WHEN 'TA'.
+        &lt;fs_ta&gt;-input_type = '여행사(B2B)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_ta&gt;-countryfrom.
+      WHEN '00'.
+        &lt;fs_ta&gt;-countryfrom = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_ta&gt;-countryfrom = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_ta&gt;-countryfrom = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_ta&gt;-countryfrom = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_ta&gt;-countryfrom = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_ta&gt;-countryfrom = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_ta&gt;-countryfrom = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_ta&gt;-countryto.
+      WHEN '00'.
+        &lt;fs_ta&gt;-countryto = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_ta&gt;-countryto = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_ta&gt;-countryto = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_ta&gt;-countryto = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_ta&gt;-countryto = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_ta&gt;-countryto = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_ta&gt;-countryto = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_ta&gt;-so_status.
+      WHEN 'Y'.
+        &lt;fs_ta&gt;-so_status = '판매오더 전환 완료'.
+      WHEN 'N'.
+        &lt;fs_ta&gt;-so_status = '판매오더 전환 미완료'.
+      WHEN 'F'.
+        &lt;fs_ta&gt;-so_status = '유효성 검사 실패'.
+    ENDCASE.
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_ta&gt;.
+
+<font color ="#0000FF">*-- Change gt_ccdisplay Value FIELD to Text</font>
+  LOOP AT gt_ccdisplay ASSIGNING FIELD-SYMBOL(&lt;fs_cc&gt;).
+    IF ( &lt;fs_cc&gt;-so_status EQ 'Y' ).
+      &lt;fs_cc&gt;-order_status = icon_led_green.
+      &lt;fs_cc&gt;-order_possible = icon_checked.
+    ELSEIF ( &lt;fs_cc&gt;-so_status EQ 'N' ).
+      &lt;fs_cc&gt;-order_status = icon_led_red.
+    ELSEIF ( &lt;fs_cc&gt;-so_status EQ 'F' ).
+      &lt;fs_cc&gt;-order_possible = icon_incomplete.
+    ENDIF.
+
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_cc&gt;-input_type.
+      WHEN 'CU'.
+        &lt;fs_cc&gt;-input_type = '일반 고객(B2C)'.
+      WHEN 'CC'.
+        &lt;fs_cc&gt;-input_type = '계약 화물사(B2B)'.
+      WHEN 'NC'.
+        &lt;fs_cc&gt;-input_type = '미계약 화물사(B2B)'.
+      WHEN 'TA'.
+        &lt;fs_cc&gt;-input_type = '여행사(B2B)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_cc&gt;-countryfrom.
+      WHEN '00'.
+        &lt;fs_cc&gt;-countryfrom = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_cc&gt;-countryfrom = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_cc&gt;-countryfrom = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_cc&gt;-countryfrom = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_cc&gt;-countryfrom = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_cc&gt;-countryfrom = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_cc&gt;-countryfrom = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_cc&gt;-countryto.
+      WHEN '00'.
+        &lt;fs_cc&gt;-countryto = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_cc&gt;-countryto = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_cc&gt;-countryto = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_cc&gt;-countryto = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_cc&gt;-countryto = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_cc&gt;-countryto = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_cc&gt;-countryto = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_cc&gt;-so_status.
+      WHEN 'Y'.
+        &lt;fs_cc&gt;-so_status = '판매오더 전환 완료'.
+      WHEN 'N'.
+        &lt;fs_cc&gt;-so_status = '판매오더 전환 미완료'.
+      WHEN 'F'.
+        &lt;fs_cc&gt;-so_status = '유효성 검사 실패'.
+    ENDCASE.
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_cc&gt;.
+
+<font color ="#0000FF">*-- Change gt_ccdisplay Value FIELD to Text</font>
+  LOOP AT gt_ncdisplay ASSIGNING FIELD-SYMBOL(&lt;fs_nc&gt;).
+    IF ( &lt;fs_nc&gt;-so_status EQ 'Y' ).
+      &lt;fs_nc&gt;-order_status = icon_led_green.
+      &lt;fs_nc&gt;-order_possible = icon_checked.
+    ELSEIF ( &lt;fs_nc&gt;-so_status EQ 'N' ).
+      &lt;fs_nc&gt;-order_status = icon_led_red.
+    ELSEIF ( &lt;fs_nc&gt;-so_status EQ 'F' ).
+      &lt;fs_nc&gt;-order_possible = icon_incomplete.
+    ENDIF.
+
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_nc&gt;-input_type.
+      WHEN 'CU'.
+        &lt;fs_nc&gt;-input_type = '일반 고객(B2C)'.
+      WHEN 'CC'.
+        &lt;fs_nc&gt;-input_type = '계약 화물사(B2B)'.
+      WHEN 'NC'.
+        &lt;fs_nc&gt;-input_type = '미계약 화물사(B2B)'.
+      WHEN 'TA'.
+        &lt;fs_nc&gt;-input_type = '여행사(B2B)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_nc&gt;-countryfrom.
+      WHEN '00'.
+        &lt;fs_nc&gt;-countryfrom = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_nc&gt;-countryfrom = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_nc&gt;-countryfrom = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_nc&gt;-countryfrom = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_nc&gt;-countryfrom = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_nc&gt;-countryfrom = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_nc&gt;-countryfrom = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_nc&gt;-countryto.
+      WHEN '00'.
+        &lt;fs_nc&gt;-countryto = '대한민국(인천)'.
+      WHEN '01'.
+        &lt;fs_nc&gt;-countryto = '대한민국(부산/김해)'.
+      WHEN '02'.
+        &lt;fs_nc&gt;-countryto = '오스트레일리아(시드니)'.
+      WHEN '03'.
+        &lt;fs_nc&gt;-countryto = '베트남(하노이)'.
+      WHEN '04'.
+        &lt;fs_nc&gt;-countryto = '아랍에미리트(두바이)'.
+      WHEN '05'.
+        &lt;fs_nc&gt;-countryto = '독일(프랑크푸르트)'.
+      WHEN '06'.
+        &lt;fs_nc&gt;-countryto = '미국(LA)'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_nc&gt;-so_status.
+      WHEN 'Y'.
+        &lt;fs_nc&gt;-so_status = '판매오더 전환 완료'.
+      WHEN 'N'.
+        &lt;fs_nc&gt;-so_status = '판매오더 전환 미완료'.
+      WHEN 'F'.
+        &lt;fs_nc&gt;-so_status = '유효성 검사 실패'.
+    ENDCASE.
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_nc&gt;.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_101_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_101_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_101_fcat-key = pv_key.
+  gs_101_fcat-fieldname = pv_field.
+  gs_101_fcat-ref_table = pv_table.
+  gs_101_fcat-just = pv_just.
+  gs_101_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ORDER_POSSIBLE'.
+      gs_101_fcat-coltext = '유효성 여부'.
+    WHEN 'ORDER_STATUS'.
+      gs_101_fcat-coltext = '판매오더 전환 상태'.
+    WHEN 'TOTAL_PRICE'.
+      gs_101_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'TICKET_QUANTITY'.
+      gs_101_fcat-qfieldname = 'TICKET_UNIT'.
+  ENDCASE.
+
+  APPEND gs_101_fcat TO gt_101_fcat.
+  CLEAR : gs_101_fcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form create_101_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM create_101_object .
+
+  CREATE OBJECT go_101_container
+    EXPORTING
+      container_name = '101_CONT'.
+
+  CREATE OBJECT go_101_alv_grid
+    EXPORTING
+      i_parent = go_101_container.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_101_layout_variant</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_101_layout_variant .
+
+<font color ="#0000FF">*-- Set 101 layout</font>
+  gs_101_layout-zebra = abap_true.
+  gs_101_layout-cwidth_opt = 'A'.
+  gs_101_layout-sel_mode = 'D'.
+
+<font color ="#0000FF">*-- Set 101 variant</font>
+  gs_101_variant-report = sy-repid.
+  gs_101_variant-handle = 'SUB1'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form exclude_101_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM exclude_101_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_cu_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_cu_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_101_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_102_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_102_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_102_fcat-key = pv_key.
+  gs_102_fcat-fieldname = pv_field.
+  gs_102_fcat-ref_table = pv_table.
+  gs_102_fcat-just = pv_just.
+  gs_102_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ORDER_POSSIBLE'.
+      gs_102_fcat-coltext = '유효성 여부'.
+    WHEN 'TOTAL_PRICE'.
+      gs_102_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'ORDER_STATUS'.
+      gs_102_fcat-coltext = '판매오더 전환 상태'.
+    WHEN 'TICKET_QUANTITY'.
+      gs_102_fcat-qfieldname = 'TICKET_UNIT'.
+  ENDCASE.
+
+  APPEND gs_102_fcat TO gt_102_fcat.
+  CLEAR : gs_102_fcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form create_102_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM create_102_object .
+
+  CREATE OBJECT go_102_container
+    EXPORTING
+      container_name = '102_CONT'.
+
+  CREATE OBJECT go_102_alv_grid
+    EXPORTING
+      i_parent = go_102_container.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_102_layout_variant</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_102_layout_variant .
+
+<font color ="#0000FF">*-- Set 102 layout</font>
+  gs_102_layout-zebra = abap_true.
+  gs_102_layout-cwidth_opt = 'A'.
+  gs_102_layout-sel_mode = 'D'.
+
+<font color ="#0000FF">*-- Set 102 variant</font>
+  gs_102_variant-report = sy-repid.
+  gs_102_variant-handle = 'SUB2'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form exclude_102_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM exclude_102_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_ta_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_ta_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_102_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form display_103_screen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM display_103_screen .
+
+  IF go_103_container IS INITIAL.
+
+    PERFORM set_103_field_catalog USING : 'X' 'ORDER_POSSIBLE' ' ' 'C' 'X',
+                                          'X' 'ORDER_STATUS' ' ' 'C' 'X',
+                                          'X' 'INPUT_HEAD' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'INPUT_TYPE' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'BPID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'MATID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'COUNTRYFROM' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'COUNTRYTO' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'FLIGHTID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SCHEDULEID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'TOTAL_PRICE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'INPUT_DATE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'ORDERID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SO_STATUS' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'WEIGHT' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'WEIGHT_UNIT' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'VOLUME' 'ZC103_CDS_IDATA' ' ' ' '.
+
+    PERFORM create_103_object.
+    PERFORM set_103_layout_variant.
+    PERFORM exclude_103_toolbar.
+
+    SET HANDLER : lcl_event_handler=&gt;cc_edit_toolbar FOR go_103_alv_grid,
+                  lcl_event_handler=&gt;user_command FOR go_103_alv_grid,
+                  lcl_event_handler=&gt;cc_double_click FOR go_103_alv_grid.
+<font color ="#0000FF">*-- Display Contracted Carrier ALV</font>
+    CALL METHOD go_103_alv_grid-&gt;set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_103_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_103_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_ccdisplay
+        it_fieldcatalog      = gt_103_fcat.
+
+  ENDIF.
+
+  PERFORM refresh_cc_table.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_103_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_103_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_103_fcat-key = pv_key.
+  gs_103_fcat-fieldname = pv_field.
+  gs_103_fcat-ref_table = pv_table.
+  gs_103_fcat-just = pv_just.
+  gs_103_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ORDER_POSSIBLE'.
+      gs_103_fcat-coltext = '유효성 여부'.
+    WHEN 'ORDER_STATUS'.
+      gs_103_fcat-coltext = '판매오더 전환 상태'.
+    WHEN 'TOTAL_PRICE'.
+      gs_103_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'WEIGHT'.
+      gs_103_fcat-qfieldname = 'WEIGHT_UNIT'.
+  ENDCASE.
+
+  APPEND gs_103_fcat TO gt_103_fcat.
+  CLEAR : gs_103_fcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form create_103_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM create_103_object .
+
+  CREATE OBJECT go_103_container
+    EXPORTING
+      container_name = '103_CONT'.
+
+  CREATE OBJECT go_103_alv_grid
+    EXPORTING
+      i_parent = go_103_container.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_103_layout_variant</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_103_layout_variant .
+
+<font color ="#0000FF">*-- Set 103 layout</font>
+  gs_103_layout-zebra = abap_true.
+  gs_103_layout-cwidth_opt = 'A'.
+  gs_103_layout-sel_mode = 'D'.
+
+<font color ="#0000FF">*-- Set 103 variant</font>
+  gs_103_variant-report = sy-repid.
+  gs_103_variant-handle = 'SUB3'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form exclude_103_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM exclude_103_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_cc_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_cc_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_103_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form display_104_screen</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM display_104_screen .
+
+  IF go_104_container IS INITIAL.
+
+    PERFORM set_104_field_catalog USING : 'X' 'ORDER_POSSIBLE' ' ' 'C' 'X',
+                                          'X' 'ORDER_STATUS' ' ' 'C' ' ',
+                                          'X' 'INPUT_HEAD' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'INPUT_TYPE' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'BPID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'MATID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'COUNTRYFROM' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'COUNTRYTO' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'FLIGHTID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SCHEDULEID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'UNIT_PRICE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'TOTAL_PRICE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'INPUT_DATE' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'ORDERID' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'SO_STATUS' 'ZC103_CDS_IDATA' 'C' 'X',
+                                          ' ' 'WEIGHT' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'WEIGHT_UNIT' 'ZC103_CDS_IDATA' ' ' ' ',
+                                          ' ' 'VOLUME' 'ZC103_CDS_IDATA' ' ' ' '.
+    PERFORM create_104_object.
+    PERFORM set_104_layout_variant.
+    PERFORM exclude_104_toolbar.
+
+    SET HANDLER : lcl_event_handler=&gt;nc_edit_toolbar FOR go_104_alv_grid,
+                  lcl_event_handler=&gt;user_command FOR go_104_alv_grid,
+                  lcl_event_handler=&gt;nc_double_click FOR go_104_alv_grid.
+
+<font color ="#0000FF">*-- Display Non-Contracted Carrier</font>
+    CALL METHOD go_104_alv_grid-&gt;set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_104_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_104_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_ncdisplay
+        it_fieldcatalog      = gt_104_fcat.
+
+  ENDIF.
+
+  PERFORM refresh_nc_table.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_104_field_catalog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&      --&gt; P_</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_104_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_104_fcat-key = pv_key.
+  gs_104_fcat-fieldname = pv_field.
+  gs_104_fcat-ref_table = pv_table.
+  gs_104_fcat-just = pv_just.
+  gs_104_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ORDER_POSSIBLE'.
+      gs_104_fcat-coltext = '유효성 여부'.
+    WHEN 'ORDER_STATUS'.
+      gs_104_fcat-coltext = '판매오더 전환 상태'.
+    WHEN 'UNIT_PRCIE'.
+      gs_104_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'TOTAL_PRICE'.
+      gs_104_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'WEGIHT'.
+      gs_104_fcat-qfieldname = 'WEIGHT_UNIT'.
+  ENDCASE.
+
+  APPEND gs_104_fcat TO gt_104_fcat.
+  CLEAR : gs_104_fcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form create_104_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM create_104_object .
+
+  CREATE OBJECT go_104_container
+    EXPORTING
+      container_name = '104_CONT'.
+
+  CREATE OBJECT go_104_alv_grid
+    EXPORTING
+      i_parent = go_104_container.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_104_layout_variant</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_104_layout_variant .
+
+  gs_104_layout-zebra = abap_true.
+  gs_104_layout-cwidth_opt = 'A'.
+  gs_104_layout-sel_mode = 'D'.
+
+  gs_104_variant-report = sy-repid.
+  gs_104_variant-handle = 'SUB4'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form exclude_104_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM exclude_104_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=&gt;mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form refresh_nc_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM refresh_nc_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_104_alv_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form edit_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_OBJECT</font>
+<font color ="#0000FF">*&      --&gt; E_INTERACTIVE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM cu_edit_toolbar  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                            pv_interactive.
+
+  DATA : lv_disabled,
+         ls_button TYPE stb_button.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'CUITAB'.
+  ls_button-icon = icon_detail.
+  ls_button-quickinfo = 'Insert CU Data'.
+  ls_button-text = TEXT-t02.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form user_command</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_UCOMM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM user_command  USING    pv_ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'CUITAB'.
+      PERFORM insert_cu_data.
+    WHEN 'TAITAB'.
+      PERFORM insert_ta_data.
+    WHEN 'CCITAB'.
+      PERFORM insert_cc_data.
+    WHEN 'NCITAB'.
+      PERFORM insert_nc_data.
+  ENDCASE.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_data_to_tables</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_cu_data .
+
+  DATA : lt_roid      TYPE lvc_t_roid,
+         ls_roid      TYPE lvc_s_roid,
+         lv_answer(1),
+         lv_bookingid TYPE zc103sdt0011-bookingid,
+         lv_tabix     TYPE sy-tabix,
+         lv_orderid   TYPE zc103sdt0006-orderid.
+
+<font color ="#0000FF">*-- For Mileage</font>
+  DATA : BEGIN OF ls_mile.
+<font color ="#0000FF">*           input_head TYPE zc103sdt0015-input_head,</font>
+<font color ="#0000FF">*           input_line TYPE zc103sdt0015-input_line.</font>
+           include structure <a href ="zc103sdt0010/dictionary-zc103sdt0010.html">zc103sdt0010</a>.
+  DATA : END OF ls_mile,
+  lt_mile LIKE TABLE OF ls_mile.
+
+<font color ="#0000FF">*-- For Booking</font>
+  DATA : BEGIN OF ls_booking.
+<font color ="#0000FF">*           input_head TYPE zc103sdt0015-input_head,</font>
+<font color ="#0000FF">*           input_line TYPE zc103sdt0015-input_line.</font>
+           include structure <a href ="zc103sdt0011/dictionary-zc103sdt0011.html">zc103sdt0011</a>.
+  DATA : END OF ls_booking,
+  lt_booking LIKE TABLE OF ls_booking.
+
+  CALL METHOD go_101_alv_grid-&gt;get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i000 WITH TEXT-e01 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Pop-up Dialog</font>
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+  CHECK lv_answer  EQ '1'.
+
+<font color ="#0000FF">*-- Set field : Text to Value</font>
+  PERFORM set_cu_table_to_value.
+
+<font color ="#0000FF">*-- Check so_status EQ F</font>
+  LOOP AT lt_roid INTO ls_roid.
+    READ TABLE gt_cudisplay INTO gs_cudisplay INDEX ls_roid-row_id.
+    IF gs_cudisplay-so_status EQ 'F'.
+      MESSAGE i001 WITH gs_cudisplay-input_head '건은 유효하지 않은 데이터 입니다.' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_cu_table.
+      LEAVE TO SCREEN 100.
+    ELSEIF gs_cudisplay-so_status EQ 'Y'.
+      MESSAGE i001 WITH gs_cudisplay-input_head '건은 오더 전환이 완료된 건입니다.' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_cu_table.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert Data to Tables</font>
+  LOOP AT lt_roid INTO ls_roid.
+    CLEAR : lt_booking, lt_mile.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '여객 예약 테이블'</font>
+    READ TABLE gt_cudisplay INTO gs_cudisplay INDEX ls_roid-row_id.
+    lv_tabix = sy-tabix.
+    PERFORM insert_booking_table CHANGING ls_booking lv_bookingid.
+    APPEND ls_booking TO lt_booking.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '마일리지 이력 테이블'</font>
+    READ TABLE gt_cu INTO gs_cu WITH KEY input_head = gs_cudisplay-input_head.
+    IF ( gs_cu-used_mileage IS INITIAL ).
+<font color ="#0000FF">*-- Insert Mileage</font>
+      PERFORM insert_mileage CHANGING ls_mile.
+<font color ="#0000FF">*-- Setting Bookingid</font>
+      ls_mile-bookingid = lv_bookingid.
+      APPEND ls_mile TO lt_mile.
+    ELSEIF ( gs_cu-used_mileage IS NOT INITIAL ).
+<font color ="#0000FF">*-- Use Mileage</font>
+      PERFORM count_mileage.
+    ENDIF.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '항공권 테이블, 유료상품, 기내식 테이블'</font>
+    PERFORM insert_boarding_table USING lv_bookingid lv_tabix.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '판매오더 헤더, 라인'</font>
+    PERFORM insert_sales_order USING lv_bookingid lv_orderid.
+
+    MODIFY gt_cudisplay FROM gs_cudisplay INDEX lv_tabix.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '대금청구 헤더, 라인'</font>
+    PERFORM insert_billing USING lv_orderid lv_bookingid.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- 전체 DB Table 적용</font>
+    MODIFY zc103sdt0011 FROM TABLE lt_booking.
+    MODIFY zc103sdt0010 FROM TABLE lt_mile.
+    LOOP AT gt_cu INTO gs_cu WHERE so_status = 'Y'.
+      UPDATE zc103sdt0015 SET so_status = gs_cu-so_status WHERE input_head = gs_cu-input_head
+                                                            AND input_line = gs_cu-input_line.
+    ENDLOOP.
+
+  ENDLOOP.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+  PERFORM set_head_value_to_text.
+  PERFORM refresh_cu_table.
+
+  MESSAGE i000 WITH TEXT-s01 DISPLAY LIKE 'S'.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form ta_edit_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_OBJECT</font>
+<font color ="#0000FF">*&      --&gt; E_INTERACTIVE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM ta_edit_toolbar  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                               pv_interactive.
+  DATA : lv_disabled,
+         ls_button TYPE stb_button.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'TAITAB'.
+  ls_button-icon = icon_detail.
+  ls_button-quickinfo = 'Insert TA Data'.
+  ls_button-text = TEXT-t02.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form cc_edit_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_OBJECT</font>
+<font color ="#0000FF">*&      --&gt; E_INTERACTIVE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM cc_edit_toolbar  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                               pv_interactive.
+
+  DATA : lv_disabled,
+         ls_button TYPE stb_button.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'CCITAB'.
+  ls_button-icon = icon_detail.
+  ls_button-quickinfo = 'Insert CC Data'.
+  ls_button-text = TEXT-t02.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form nc_edit_toolbar</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_OBJECT</font>
+<font color ="#0000FF">*&      --&gt; E_INTERACTIVE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM nc_edit_toolbar  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                               pv_interactive.
+
+  DATA : lv_disabled,
+           ls_button TYPE stb_button.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'NCITAB'.
+  ls_button-icon = icon_detail.
+  ls_button-quickinfo = 'Insert NC Data'.
+  ls_button-text = TEXT-t02.
+  APPEND ls_button TO po_object-&gt;mt_toolbar.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_popup_to_confirm</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      &lt;-- LV_ANSWER</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_popup_to_confirm  CHANGING pv_answer.
+
+  call function <a href ="zc1f030001/zc1f030001.html">'ZC1F030001'</a>
+    EXPORTING
+      iv_action = '판매오더로 전환'
+    IMPORTING
+      ev_answer = pv_answer.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_cu_table_to_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_cu_table_to_value .
+
+<font color ="#0000FF">*-- Convert Text to Value</font>
+  LOOP AT gt_cudisplay ASSIGNING FIELD-SYMBOL(&lt;fs_cu&gt;).
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_cu&gt;-input_type.
+      WHEN '일반 고객(B2C)'.
+        &lt;fs_cu&gt;-input_type = 'CU'.
+      WHEN '계약 화물사(B2B)'.
+        &lt;fs_cu&gt;-input_type = 'CC'.
+      WHEN '미계약 화물사(B2B)'.
+        &lt;fs_cu&gt;-input_type = 'NC'.
+      WHEN '여행사(B2B)'.
+        &lt;fs_cu&gt;-input_type = 'TA'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_cu&gt;-countryfrom.
+      WHEN '대한민국(인천)'.
+        &lt;fs_cu&gt;-countryfrom = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_cu&gt;-countryfrom = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_cu&gt;-countryfrom = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_cu&gt;-countryfrom = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_cu&gt;-countryfrom = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_cu&gt;-countryfrom = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_cu&gt;-countryfrom = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_cu&gt;-countryto.
+      WHEN '대한민국(인천)'.
+        &lt;fs_cu&gt;-countryto = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_cu&gt;-countryto = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_cu&gt;-countryto = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_cu&gt;-countryto = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_cu&gt;-countryto = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_cu&gt;-countryto = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_cu&gt;-countryto = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_cu&gt;-so_status.
+      WHEN '판매오더 전환 완료'.
+        &lt;fs_cu&gt;-so_status = 'Y'.
+      WHEN '판매오더 전환 미완료'.
+        &lt;fs_cu&gt;-so_status = 'N'.
+      WHEN '유효성 검사 실패'.
+        &lt;fs_cu&gt;-so_status = 'F'.
+    ENDCASE.
+
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_cu&gt;.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_mileage</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_mileage CHANGING ps_mile TYPE zc103sdt0010.
+
+  DATA : lv_number TYPE n LENGTH 4.
+
+<font color ="#0000FF">*-- Mileage Number range</font>
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZMILENUM'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc EQ 0.
+    CONCATENATE 'MILE' lv_number INTO ps_mile-mileage_id.
+  ELSE.
+    MESSAGE e000 WITH TEXT-e02.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Calculate Expire date</font>
+  CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+    EXPORTING
+      date      = gs_cu-input_date    " 기준 날짜
+      days      = 0
+      months    = 0
+      years     = 3
+    IMPORTING
+      calc_date = ps_mile-expire_date.     " 결과 날짜
+
+<font color ="#0000FF">*-- Insert Mileage Data</font>
+  ps_mile-custid = gs_cu-custid.
+  ps_mile-occur_date = gs_cu-input_date.
+  ps_mile-event_type = 'A'.
+  ps_mile-mile_amount = 0.
+
+<font color ="#0000FF">*-- Cacluate Mileage</font>
+  IF ( gs_cu-class = 'P' ).
+    ps_mile-mile_total = gs_cu-unit_price / 10.
+  ELSEIF ( gs_cu-class EQ 'E' ).
+    ps_mile-mile_total = gs_cu-unit_price / 20.
+  ENDIF.
+
+  ps_mile-balance_after = ps_mile-mile_total.
+  ps_mile-currency = gs_cu-currency.
+  ps_mile-erdat = sy-datum.
+  ps_mile-ernam = sy-uname.
+  ps_mile-erzet = sy-uzeit.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_booking_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      &lt;-- LS_BOOKING</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_booking_table  CHANGING ps_booking TYPE zc103sdt0011 pv_bookingid.
+
+  DATA : lv_number TYPE n LENGTH 5.
+
+<font color ="#0000FF">*-- Bookingid Number range</font>
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZBOOKINGID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc EQ 0.
+    CONCATENATE 'BKG' lv_number INTO ps_booking-bookingid.
+  ELSE.
+    MESSAGE e000 WITH TEXT-e03.
+    EXIT.
+  ENDIF.
+
+  ps_booking-custid = gs_cudisplay-custid.
+  ps_booking-conditionid = gs_cudisplay-conditionid.
+  ps_booking-countryfrom = gs_cudisplay-countryfrom.
+  ps_booking-countryto = gs_cudisplay-countryto.
+  ps_booking-flightid = gs_cudisplay-flightid.
+  ps_booking-scheduleid = gs_cudisplay-scheduleid.
+  ps_booking-bookingdate = gs_cudisplay-input_date.
+  ps_booking-totalticket = gs_cudisplay-ticket_quantity.
+  ps_booking-totalprice = gs_cudisplay-total_price.
+  ps_booking-currency = gs_cudisplay-currency.
+  ps_booking-book_status = 'A'.
+  ps_booking-erdat = sy-datum.
+  ps_booking-ernam = sy-uname.
+  ps_booking-erzet = sy-uzeit.
+
+  pv_bookingid = ps_booking-bookingid.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form count_mileage</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      &lt;-- LS_MILE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM count_mileage.
+
+  DATA : lt_mile_data TYPE TABLE OF zc103sdt0010,
+         lv_used_mile TYPE zc103sdt0010-mile_amount.
+
+<font color ="#0000FF">*-- Get Mileage table by custid</font>
+  SELECT mileage_id, custid, occur_date, expire_date, event_type, bookingid,
+         mile_amount, balance_after, mile_total, currency, erdat, ernam, erzet,
+         aenam, aezet, aedat
+    FROM zc103sdt0010
+    WHERE custid EQ @gs_cu-custid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_mile_data.
+
+  lv_used_mile = gs_cu-used_mileage.
+
+<font color ="#0000FF">*-- Count Mileage</font>
+  SORT : lt_mile_data BY expire_date ASCENDING.
+  LOOP AT lt_mile_data ASSIGNING FIELD-SYMBOL(&lt;fs_mile&gt;).
+    IF ( lv_used_mile &gt;= 0 ).
+      IF ( &lt;fs_mile&gt;-event_type = 'B' ) OR
+       ( &lt;fs_mile&gt;-event_type = 'A' ).
+        IF ( &lt;fs_mile&gt;-balance_after &gt; lv_used_mile ).
+          &lt;fs_mile&gt;-balance_after -= lv_used_mile.
+          &lt;fs_mile&gt;-mile_amount +=  lv_used_mile.
+          &lt;fs_mile&gt;-event_type = 'B'.
+          lv_used_mile = 0.
+        ELSEIF ( &lt;fs_mile&gt;-balance_after = lv_used_mile ).
+          &lt;fs_mile&gt;-balance_after = 0.
+          &lt;fs_mile&gt;-mile_amount = &lt;fs_mile&gt;-mile_total.
+          &lt;fs_mile&gt;-event_type = 'C'.
+          lv_used_mile = 0.
+        ELSE.
+          lv_used_mile -= &lt;fs_mile&gt;-balance_after.
+          &lt;fs_mile&gt;-balance_after = 0.
+          &lt;fs_mile&gt;-mile_amount = &lt;fs_mile&gt;-mile_total.
+          &lt;fs_mile&gt;-event_type = 'C'.
+        ENDIF.
+      ENDIF.
+<font color ="#0000FF">*-- Time Stamp</font>
+      IF &lt;fs_mile&gt;-erdat IS INITIAL.
+        &lt;fs_mile&gt;-erdat = sy-datum.
+        &lt;fs_mile&gt;-ernam = sy-uname.
+        &lt;fs_mile&gt;-erzet = sy-uzeit.
+      ELSE.
+        &lt;fs_mile&gt;-aedat = sy-datum.
+        &lt;fs_mile&gt;-aenam = sy-uname.
+        &lt;fs_mile&gt;-aezet = sy-uzeit.
+      ENDIF.
+    ELSE.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+
+  MODIFY zc103sdt0010 FROM TABLE lt_mile_data.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_boarding_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_boarding_table USING pv_bookingid pv_tabix.
+
+<font color ="#0000FF">*-- For boarding</font>
+  DATA : lt_boarding  TYPE TABLE OF zc103sdt0014,
+         ls_boarding  TYPE zc103sdt0014,
+         lv_number    TYPE n LENGTH 5,
+         lv_name      TYPE zc103sdt0002-name,
+         lv_email     TYPE zc103sdt0002-email,
+         lv_status(1),
+         lv_tabix     TYPE sy-tabix.
+
+<font color ="#0000FF">*-- For Souvenir</font>
+  DATA : lt_souvenir       TYPE TABLE OF zc103sdt0012,
+         ls_souvenir       TYPE zc103sdt0012,
+         lv_souvenir_count TYPE i,
+         lv_souvenir_text  TYPE zc103mmt0001-matname,
+         lv_souvenir_code  TYPE zc103sdt0012-souvenir_type,
+         lv_souvenir_price TYPE zc103mmt0005-price.
+
+<font color ="#0000FF">*-- For meal</font>
+  DATA : lt_meal TYPE TABLE OF zc103sdt0013,
+         ls_meal TYPE zc103sdt0013.
+
+  CLEAR : gs_cu.
+
+<font color ="#0000FF">*-- Insert boarding table</font>
+  LOOP AT gt_cu INTO gs_cu WHERE input_head = gs_cudisplay-input_head.
+    lv_tabix = sy-tabix.
+    CLEAR : ls_souvenir, ls_boarding, ls_meal.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*  For Boarding</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Ticketid Number range</font>
+    CLEAR : lv_number.
+    CALL FUNCTION 'NUMBER_GET_NEXT'
+      EXPORTING
+        nr_range_nr = '01'
+        object      = 'ZTICKETID'
+      IMPORTING
+        number      = lv_number
+      EXCEPTIONS
+        OTHERS      = 1.
+
+    IF sy-subrc EQ 0.
+      CONCATENATE 'TKT' lv_number INTO ls_boarding-ticketid.
+    ELSE.
+      MESSAGE e000 WITH TEXT-e04.
+      EXIT.
+    ENDIF.
+
+    ls_boarding-bookingid = pv_bookingid.
+    ls_boarding-class = gs_cu-class.
+
+<font color ="#0000FF">*-- PassengerID Number range</font>
+    CLEAR : lv_number.
+    CALL FUNCTION 'NUMBER_GET_NEXT'
+      EXPORTING
+        nr_range_nr = '01'
+        object      = 'ZPASSENGER'
+      IMPORTING
+        number      = lv_number
+      EXCEPTIONS
+        OTHERS      = 1.
+
+    IF sy-subrc EQ 0.
+      CONCATENATE 'PSG' lv_number INTO ls_boarding-passengerid.
+    ELSE.
+      MESSAGE e000 WITH TEXT-e04.
+      CONTINUE.
+    ENDIF.
+<font color ="#0000FF">*-- Get name</font>
+    SELECT SINGLE name, email
+      FROM zc103sdt0002
+      WHERE custid EQ @gs_cu-custid
+      INTO ( @lv_name, @lv_email ).
+
+    ls_boarding-passengername = lv_name.
+    ls_boarding-passengermail = lv_email.
+
+<font color ="#0000FF">*-- Seat code</font>
+    call function <a href ="zc1fm03sd0002/zc1fm03sd0002.html">'ZC1FM03SD0002'</a>
+      EXPORTING
+        iv_scheduleid = gs_cu-scheduleid
+        iv_class      = gs_cu-class
+      IMPORTING
+        ev_seatcode   = ls_boarding-seatcode
+        ev_result     = lv_status.
+
+<font color ="#0000FF">*-- Change Seat Table Status</font>
+    UPDATE zc103sdt0021 SET assigned = 'Y'
+                            ticketid = ls_boarding-ticketid
+                            aedat = sy-datum
+                            aezet = sy-uzeit
+                            aenam = sy-uname
+    WHERE scheduleid = gs_cu-scheduleid
+                                             AND seatcode = ls_boarding-seatcode.
+
+    IF lv_status EQ 'F'.
+<font color ="#0000FF">*-- 유효성 검사 실패</font>
+      CLEAR : ls_boarding.
+      gs_cu-so_status = 'F'.
+      MODIFY gt_cu FROM gs_cu INDEX lv_tabix.
+      gs_cudisplay-so_status = 'F'.
+      MESSAGE i000 WITH TEXT-e06 DISPLAY LIKE 'E'.
+      MODIFY gt_cudisplay FROM gs_cudisplay INDEX pv_tabix.
+<font color ="#0000FF">*-- Chage DB Status</font>
+      UPDATE zc103sdt0015 SET so_status = gs_cudisplay-so_status WHERE input_head = gs_cu-input_head
+                                                                   AND input_line = gs_cu-input_line.
+
+      PERFORM refresh_cu_table.
+      PERFORM set_head_value_to_text.
+      CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+        EXPORTING
+          new_code = 'ENTER'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+    ls_boarding-countryfrom = gs_cu-countryfrom.
+    ls_boarding-countryto = gs_cu-countryto.
+    ls_boarding-flightid = gs_cu-flightid.
+    ls_boarding-scheduleid = gs_cu-scheduleid.
+    ls_boarding-mealtype = gs_cu-meal_type.
+    ls_boarding-ticket_status = 'N'.
+    ls_boarding-erdat = sy-datum.
+    ls_boarding-ernam = sy-uname.
+    ls_boarding-erzet = sy-uzeit.
+
+    APPEND ls_boarding TO lt_boarding.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* For Souvenir</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Set Souvenir data</font>
+    lv_souvenir_count += 1.
+    ls_souvenir-ticketid = ls_boarding-ticketid.
+    ls_souvenir-souvenirid = lv_souvenir_count.
+    ls_souvenir-passengerid = ls_boarding-passengerid.
+
+<font color ="#0000FF">*-- Get souvenir_type</font>
+    SELECT SINGLE matname
+      FROM zc103mmt0001
+      WHERE matid EQ @gs_cu-matid
+      INTO ( @lv_souvenir_text ).
+
+    CASE lv_souvenir_text.
+      WHEN '향수 세트'.
+        lv_souvenir_code = 'A'.
+      WHEN '화장품'.
+        lv_souvenir_code = 'B'.
+      WHEN '미니어처'.
+        lv_souvenir_code = 'C'.
+      WHEN '초콜릿 & 와인 세트'.
+        lv_souvenir_code = 'D'.
+      WHEN '프레스티지 어매니티 키트'.
+        lv_souvenir_code = 'E'.
+      WHEN '이코노미 칫솔/치약 키트'.
+        lv_souvenir_code = 'F'.
+      WHEN '기내 전용 안대 & 귀마개 세트'.
+        lv_souvenir_code = 'G'.
+      WHEN '기내용 핸드크림 & 림밤 세트'.
+        lv_souvenir_code = 'H'.
+    ENDCASE.
+
+    ls_souvenir-souvenir_type = lv_souvenir_code.
+    ls_souvenir-qty = gs_cu-souvenir_qty.
+    ls_souvenir-unit = gs_cu-souvenir_unit.
+
+<font color ="#0000FF">*-- Get souvenir unit price</font>
+    SELECT SINGLE price
+      FROM zc103mmt0005
+      WHERE matid EQ @gs_cu-matid
+      INTO ( @lv_souvenir_price ).
+
+    ls_souvenir-unit_price = lv_souvenir_price.
+    ls_souvenir-total_price = ( lv_souvenir_price * ls_souvenir-qty ).
+    ls_souvenir-currency = gs_cu-currency.
+    ls_souvenir-status = 'N'.
+    ls_souvenir-erdat = sy-datum.
+    ls_souvenir-ernam = sy-uname.
+    ls_souvenir-erzet = sy-uzeit.
+
+    APPEND ls_souvenir TO lt_souvenir.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*  For Meal</font>
+<font color ="#0000FF">**********************************************************************</font>
+    ls_meal-ticketid = ls_boarding-ticketid.
+    ls_meal-passengerid = ls_boarding-passengerid.
+    ls_meal-mealtype = gs_cu-meal_type.
+    ls_meal-erdat = sy-datum.
+    ls_meal-ernam = sy-uname.
+    ls_meal-erzet = sy-uzeit.
+
+    APPEND ls_meal TO lt_meal.
+
+    IF sy-subrc EQ 0.
+      gs_cu-so_status = 'Y'.
+      MODIFY gt_cu FROM gs_cu INDEX lv_tabix.
+    ENDIF.
+
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert DB table</font>
+  IF ( lt_boarding IS NOT INITIAL ).
+    MODIFY zc103sdt0014 FROM TABLE lt_boarding.
+  ENDIF.
+
+  IF ( lt_souvenir IS NOT INITIAL ).
+    MODIFY zc103sdt0012 FROM TABLE lt_souvenir.
+  ENDIF.
+
+  IF ( lt_meal IS NOT INITIAL ).
+    MODIFY zc103sdt0013 FROM TABLE lt_meal.
+  ENDIF.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_sales_order</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_sales_order USING pv_bookingid pv_orderid.
+
+  DATA : lv_number     TYPE n LENGTH 6,
+         lv_itemno     TYPE i,
+         lv_departdate TYPE zc103sdt0018-departdate.
+
+  DATA : lt_hso TYPE TABLE OF zc103sdt0006,
+         ls_hso TYPE zc103sdt0006,
+         lt_lso TYPE TABLE OF zc103sdt0007,
+         ls_lso TYPE zc103sdt0007.
+
+  DATA : lv_discount      TYPE i,
+         lv_discount_rate TYPE p DECIMALS 1.
+
+<font color ="#0000FF">*-- Insert SO Header</font>
+<font color ="#0000FF">*-- Orderid Number range</font>
+  CLEAR : lv_number.
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZORDERID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc EQ 0.
+    CONCATENATE 'SO' lv_number INTO ls_hso-orderid.
+  ELSE.
+    MESSAGE e000 WITH TEXT-e05.
+    EXIT.
+  ENDIF.
+
+  pv_orderid = ls_hso-orderid.
+
+  ls_hso-custid = gs_cudisplay-custid.
+  ls_hso-conditionid = gs_cudisplay-conditionid.
+  ls_hso-order_date = gs_cudisplay-input_date.
+
+<font color ="#0000FF">*-- Get Cancel Deadline</font>
+  SELECT SINGLE departdate
+    FROM zc103sdt0018
+    WHERE scheduleid EQ @gs_cudisplay-scheduleid
+    INTO ( @lv_departdate ).
+
+<font color ="#0000FF">*-- Calculate Cancel Deadline</font>
+  lv_departdate -= 14.
+  ls_hso-cancel_deadline = lv_departdate.
+  ls_hso-order_type = 'C'.
+  ls_hso-total_amount = gs_cudisplay-total_price.
+  ls_hso-currency = gs_cudisplay-currency.
+  ls_hso-order_status = 'Y'.
+  ls_hso-billing_status = 'X'.
+  ls_hso-srv_end_status = 'X'.
+  ls_hso-erdat = sy-datum.
+  ls_hso-ernam = sy-uname.
+  ls_hso-erzet = sy-uzeit.
+
+  APPEND ls_hso TO lt_hso.
+
+<font color ="#0000FF">*-- Insert SO head data</font>
+  MODIFY zc103sdt0006 FROM TABLE lt_hso.
+
+  IF sy-subrc EQ 0.
+    gs_cudisplay-orderid = ls_hso-orderid.
+  ENDIF.
+
+<font color ="#0000FF">*-- Set SO line</font>
+  LOOP AT gt_cu INTO gs_cu WHERE input_head = gs_cudisplay-input_head.
+    lv_itemno += 1.
+    ls_lso-orderid = ls_hso-orderid.
+    ls_lso-orderitemno = lv_itemno.
+    ls_lso-bookingid = pv_bookingid.
+    ls_lso-charged_item = 'A'.
+    ls_lso-ticket_quantity = gs_cu-ticket_quantity.
+    ls_lso-ticket_unit = gs_cu-ticket_unit.
+    ls_lso-unit_price = gs_cu-unit_price.
+    ls_lso-tax_amount = ( gs_cu-total_price / 10 ).
+<font color ="#0000FF">*-- Get discount percent</font>
+    SELECT SINGLE discountrate
+      FROM zc103sdt0003
+      WHERE conditionid EQ @gs_cu-conditionid
+      INTO ( @lv_discount ).
+
+    lv_discount_rate = lv_discount / 100.
+
+    ls_lso-discount = ( gs_cu-unit_price * lv_discount_rate ) * gs_cu-ticket_quantity.
+    ls_lso-currency = gs_cu-currency.
+    ls_lso-used_mileage = gs_cu-used_mileage.
+    ls_lso-order_status = 'Y'.
+    ls_lso-srv_end_status = 'X'.
+    ls_lso-erdat = sy-datum.
+    ls_lso-erzet = sy-uzeit.
+    ls_lso-ernam = sy-uname.
+
+    APPEND ls_lso TO lt_lso.
+
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert SO line data</font>
+  MODIFY zc103sdt0007 FROM TABLE lt_lso.
+
+  IF sy-subrc EQ 0.
+    gs_cudisplay-so_status = 'Y'.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form cu_double_click</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_ROW</font>
+<font color ="#0000FF">*&      --&gt; E_COLUMN</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM cu_double_click  USING    pv_row
+                               pv_column.
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  CLEAR : gt_hdisplay, gt_ldisplay, gs_hdisplay, gs_ldisplay,
+          gt_hso, gs_hso, gt_lso, gs_lso.
+
+  READ TABLE gt_cudisplay INTO gs_cudisplay INDEX pv_row.
+
+<font color ="#0000FF">*-- Get head data</font>
+  SELECT orderid, bpid, custid, conditionid, order_date, cancel_deadline,
+         order_type, total_amount, currency, cancel_reason, order_status,
+         billing_status, srv_end_status
+    FROM zc103sdt0006
+    WHERE orderid EQ @gs_cudisplay-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_hso.
+
+  IF gt_hso IS INITIAL.
+    MESSAGE i000 WITH TEXT-e07 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Get line data</font>
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description,
+         ticket_quantity, ticket_unit, cargo_weight, cargo_unit, unit_price,
+         tax_amount, discount, currency, used_mileage, order_status, srv_end_status
+    FROM zc103sdt0007
+    WHERE orderid EQ @gs_cudisplay-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_lso.
+
+<font color ="#0000FF">*-- Move data to Head display</font>
+  LOOP AT gt_hso INTO gs_hso.
+    gs_hdisplay = CORRESPONDING #( gs_hso ).
+    APPEND gs_hdisplay TO gt_hdisplay.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Move data to Line display</font>
+  LOOP AT gt_lso INTO gs_lso.
+    gs_ldisplay = CORRESPONDING #( gs_lso ).
+    APPEND gs_ldisplay TO gt_ldisplay.
+  ENDLOOP.
+
+  PERFORM set_so_head_to_text.
+  PERFORM set_so_line_to_text.
+
+  PERFORM refresh_brtop_table.
+  PERFORM refresh_brbottom_table.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_so_head_to_text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_so_head_to_text .
+
+<font color ="#0000FF">*-- Set Head Text field</font>
+  LOOP AT gt_hdisplay ASSIGNING FIELD-SYMBOL(&lt;fs_hdis&gt;).
+<font color ="#0000FF">*-- For Order Type</font>
+    CASE &lt;fs_hdis&gt;-order_type.
+      WHEN 'T'.
+        &lt;fs_hdis&gt;-order_type = '여행사'.
+      WHEN 'B'.
+        &lt;fs_hdis&gt;-order_type = '계약 화물사'.
+      WHEN 'NB'.
+        &lt;fs_hdis&gt;-order_type = '미계약 화물사'.
+      WHEN 'C'.
+        &lt;fs_hdis&gt;-order_type = '일반 고객'.
+    ENDCASE.
+<font color ="#0000FF">*-- For Order Status</font>
+    CASE &lt;fs_hdis&gt;-order_status.
+      WHEN 'Y'.
+        &lt;fs_hdis&gt;-order_status = '결제 완료'.
+      WHEN 'N'.
+        &lt;fs_hdis&gt;-order_status = '미결제'.
+      WHEN 'C'.
+        &lt;fs_hdis&gt;-order_status = '결제 취소'.
+    ENDCASE.
+<font color ="#0000FF">*-- For Billing Status</font>
+    CASE &lt;fs_hdis&gt;-billing_status.
+      WHEN 'Y'.
+        &lt;fs_hdis&gt;-billing_status = '대금청구 완료'.
+      WHEN 'N'.
+        &lt;fs_hdis&gt;-billing_status = '대금청구 미완료'.
+      WHEN 'X'.
+        &lt;fs_hdis&gt;-billing_status = '일반 고객(B2C, 청구 불필요)'.
+    ENDCASE.
+<font color ="#0000FF">*-- For Service end status</font>
+    CASE &lt;fs_hdis&gt;-srv_end_status.
+      WHEN 'Y'.
+        &lt;fs_hdis&gt;-srv_end_status = '서비스 종료'.
+      WHEN 'N'.
+        &lt;fs_hdis&gt;-srv_end_status = '서비스 미종료'.
+      WHEN 'X'.
+        &lt;fs_hdis&gt;-srv_end_status = '일반고객(B2C, 청구 불필요)'.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_so_line_to_text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_so_line_to_text .
+
+<font color ="#0000FF">*-- SET Line Text FIELD</font>
+  LOOP AT gt_ldisplay ASSIGNING FIELD-SYMBOL(&lt;fs_ldis&gt;).
+<font color ="#0000FF">*-- For Charged Item</font>
+    CASE &lt;fs_ldis&gt;-charged_item.
+      WHEN 'A'.
+        &lt;fs_ldis&gt;-charged_item = '여객'.
+      WHEN 'B'.
+        &lt;fs_ldis&gt;-charged_item = '화물'.
+    ENDCASE.
+<font color ="#0000FF">*-- For Order Status</font>
+    CASE &lt;fs_ldis&gt;-order_status.
+      WHEN 'Y'.
+        &lt;fs_ldis&gt;-order_status = '결제 완료'.
+      WHEN 'N'.
+        &lt;fs_ldis&gt;-order_status = '미결제'.
+      WHEN 'C'.
+        &lt;fs_ldis&gt;-order_status = '결제 취소'.
+    ENDCASE.
+<font color ="#0000FF">*-- For Service end status</font>
+    CASE &lt;fs_ldis&gt;-srv_end_status.
+      WHEN 'Y'.
+        &lt;fs_ldis&gt;-srv_end_status = '서비스 종료'.
+      WHEN 'N'.
+        &lt;fs_ldis&gt;-srv_end_status = '서비스 미종료'.
+      WHEN 'X'.
+        &lt;fs_ldis&gt;-srv_end_status = '일반고객(B2C, 청구 불필요)'.
+    ENDCASE.
+  ENDLOOP.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_ta_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_ta_data .
+
+  DATA : lt_roid      TYPE lvc_t_roid,
+         ls_roid      TYPE lvc_s_roid,
+         lv_answer(1),
+         lv_bookingid TYPE zc103sdt0011-bookingid,
+         lv_tabix     TYPE sy-tabix.
+
+<font color ="#0000FF">*-- For Booking</font>
+  DATA : ls_booking TYPE zc103sdt0011,
+         lt_booking LIKE TABLE OF ls_booking.
+
+<font color ="#0000FF">*-- For check credit restirct using SO total_amount</font>
+  DATA : lv_so_total TYPE wrbtr.
+
+  CALL METHOD go_102_alv_grid-&gt;get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i000 WITH TEXT-e01 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Pop-up Dialog</font>
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+  CHECK lv_answer EQ '1'.
+
+<font color ="#0000FF">*-- Set field : Text to Value</font>
+  PERFORM set_ta_table_to_value.
+
+<font color ="#0000FF">*-- Check so_status EQ F</font>
+  DATA : lv_tatabix TYPE sy-tabix.
+  LOOP AT lt_roid INTO ls_roid.
+    READ TABLE gt_tadisplay INTO gs_tadisplay INDEX ls_roid-row_id.
+    lv_tatabix = sy-tabix.
+    IF gs_tadisplay-so_status EQ 'F'.
+      MESSAGE i001 WITH gs_tadisplay-input_head '건은 유효하지 않은 데이터 입니다.' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_ta_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0102'.
+      LEAVE TO SCREEN 100.
+    ELSEIF gs_tadisplay-so_status EQ 'Y'.
+      MESSAGE i001 WITH gs_tadisplay-input_head '건은 오더 전환이 완료된 건입니다' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_ta_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0102'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+<font color ="#0000FF">*-- Get so data by bpid</font>
+    LOOP AT gt_so INTO gs_so WHERE bpid EQ gs_tadisplay-bpid.
+      lv_so_total += gs_so-total_amount.
+    ENDLOOP.
+
+<font color ="#0000FF">*-- CHECK Credit Available</font>
+    DATA : lv_input_head TYPE zc103sdt0015-input_head.
+
+    READ TABLE gt_credit INTO gs_credit WITH KEY bpid = gs_tadisplay-bpid.
+    DATA(lv_rest_credit) = gs_credit-limit_amt_year - ( gs_credit-used_amt_year + lv_so_total ).
+    IF ( lv_rest_credit &lt; gs_tadisplay-total_price ).
+      MESSAGE i001 WITH gs_tadisplay-input_head '건은 여신 한도 초과로 인해 오더 전환이 불가능합니다.' DISPLAY LIKE 'E'.
+      gs_tadisplay-so_status = 'F'.
+      lv_input_head = gs_tadisplay-input_head.
+      MODIFY gt_tadisplay FROM gs_tadisplay INDEX lv_tatabix TRANSPORTING so_status.
+      UPDATE zc103sdt0015 SET so_status = 'F' WHERE input_head = lv_input_head.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_ta_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0102'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert Data to Tables</font>
+  LOOP AT lt_roid INTO ls_roid.
+    CLEAR : lt_booking.
+    READ TABLE gt_tadisplay INTO gs_tadisplay INDEX ls_roid-row_id.
+    lv_tabix = sy-tabix.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '여객 예약 테이블'</font>
+    PERFORM insert_ta_booking_table CHANGING ls_booking lv_bookingid.
+    APPEND ls_booking TO lt_booking.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '항공권 테이블, 유료상품, 기내식 테이블'</font>
+    PERFORM insert_ta_boarding_table USING lv_bookingid lv_tabix.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '판매오더 헤더, 라인'</font>
+    PERFORM insert_ta_sales_order USING lv_bookingid.
+
+    MODIFY gt_tadisplay FROM gs_tadisplay INDEX lv_tabix.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- 전체 db Table 적용</font>
+    MODIFY zc103sdt0011 FROM TABLE lt_booking.
+    LOOP AT gt_ta INTO gs_ta WHERE so_status = 'Y'.
+      UPDATE zc103sdt0015 SET so_status = gs_ta-so_status WHERE input_head = gs_ta-input_head
+                                                            AND input_line = gs_ta-input_line.
+    ENDLOOP.
+
+  ENDLOOP.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+  PERFORM set_head_value_to_text.
+  PERFORM refresh_ta_table.
+
+  MESSAGE i000 WITH TEXT-s01 DISPLAY LIKE 'S'.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_ta_table_to_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_ta_table_to_value .
+
+<font color ="#0000FF">*-- Convert Text to Value</font>
+  LOOP AT gt_tadisplay ASSIGNING FIELD-SYMBOL(&lt;fs_ta&gt;).
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_ta&gt;-input_type.
+      WHEN '일반 고객(B2C)'.
+        &lt;fs_ta&gt;-input_type = 'CU'.
+      WHEN '계약 화물사(B2B)'.
+        &lt;fs_ta&gt;-input_type = 'CC'.
+      WHEN '미계약 화물사(B2B)'.
+        &lt;fs_ta&gt;-input_type = 'NC'.
+      WHEN '여행사(B2B)'.
+        &lt;fs_ta&gt;-input_type = 'TA'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_ta&gt;-countryfrom.
+      WHEN '대한민국(인천)'.
+        &lt;fs_ta&gt;-countryfrom = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_ta&gt;-countryfrom = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_ta&gt;-countryfrom = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_ta&gt;-countryfrom = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_ta&gt;-countryfrom = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_ta&gt;-countryfrom = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_ta&gt;-countryfrom = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_ta&gt;-countryto.
+      WHEN '대한민국(인천)'.
+        &lt;fs_ta&gt;-countryto = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_ta&gt;-countryto = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_ta&gt;-countryto = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_ta&gt;-countryto = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_ta&gt;-countryto = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_ta&gt;-countryto = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_ta&gt;-countryto = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_ta&gt;-so_status.
+      WHEN '판매오더 전환 완료'.
+        &lt;fs_ta&gt;-so_status = 'Y'.
+      WHEN '판매오더 전환 미완료'.
+        &lt;fs_ta&gt;-so_status = 'N'.
+      WHEN '유효성 검사 실패'.
+        &lt;fs_ta&gt;-so_status = 'F'.
+    ENDCASE.
+
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_ta&gt;.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_ta_booking_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      &lt;-- LS_BOOKING</font>
+<font color ="#0000FF">*&      &lt;-- LV_BOOKINGID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_ta_booking_table  CHANGING ps_booking TYPE zc103sdt0011
+                                       pv_bookingid.
+
+  DATA : lv_number TYPE n LENGTH 5.
+
+<font color ="#0000FF">*-- Booking Number range</font>
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZBOOKINGID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc EQ 0.
+    CONCATENATE 'BKG' lv_number INTO ps_booking-bookingid.
+  ELSE.
+    MESSAGE e000 WITH TEXT-e03.
+    EXIT.
+  ENDIF.
+
+  ps_booking-bpid = gs_tadisplay-bpid.
+  ps_booking-conditionid = gs_tadisplay-conditionid.
+  ps_booking-countryfrom = gs_tadisplay-countryfrom.
+  ps_booking-countryto = gs_tadisplay-countryto.
+  ps_booking-flightid = gs_tadisplay-flightid.
+  ps_booking-scheduleid = gs_tadisplay-scheduleid.
+  ps_booking-bookingdate = gs_tadisplay-input_date.
+  ps_booking-totalticket = gs_tadisplay-ticket_quantity.
+  ps_booking-totalprice = gs_tadisplay-total_price.
+  ps_booking-currency = gs_tadisplay-currency.
+  ps_booking-book_status = 'A'.
+  ps_booking-erdat = sy-datum.
+  ps_booking-ernam = sy-uname.
+  ps_booking-erzet = sy-uzeit.
+
+  pv_bookingid = ps_booking-bookingid.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_ta_boarding_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; LV_BOOKINGID</font>
+<font color ="#0000FF">*&      --&gt; LV_TABIX</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_ta_boarding_table  USING    pv_bookingid
+                                        pv_tabix.
+
+<font color ="#0000FF">*-- For Boarding</font>
+  DATA : lt_boarding  TYPE TABLE OF zc103sdt0014,
+         ls_boarding  TYPE zc103sdt0014,
+         lv_number    TYPE n LENGTH 5,
+         lv_name      TYPE zc103sdt0002-name,
+         lv_email     TYPE zc103sdt0002-email,
+         lv_status(1),
+         lv_tabix     TYPE sy-tabix.
+
+<font color ="#0000FF">*-- For Souvenir</font>
+  DATA : lt_souvenir       TYPE TABLE OF zc103sdt0012,
+         ls_souvenir       TYPE zc103sdt0012,
+         lv_souvenir_count TYPE i,
+         lv_souvenir_text  TYPE zc103mmt0001-matname,
+         lv_souvenir_code  TYPE zc103sdt0012-souvenir_type,
+         lv_souvenir_price TYPE zc103mmt0005-price.
+
+<font color ="#0000FF">*-- For Meal</font>
+  DATA : lt_meal TYPE TABLE OF zc103sdt0013,
+         ls_meal TYPE zc103sdt0013.
+
+  CLEAR : gs_ta.
+
+<font color ="#0000FF">*-- Insert boarding table</font>
+  LOOP AT gt_ta ASSIGNING FIELD-SYMBOL(&lt;fs_ta&gt;) WHERE input_head = gs_tadisplay-input_head.
+    lv_tabix = sy-tabix.
+    CLEAR : ls_souvenir, ls_boarding, ls_meal.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* For Boarding</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Ticketid Number range</font>
+    CLEAR : lv_number.
+    CALL FUNCTION 'NUMBER_GET_NEXT'
+      EXPORTING
+        nr_range_nr = '01'
+        object      = 'ZTICKETID'
+      IMPORTING
+        number      = lv_number
+      EXCEPTIONS
+        OTHERS      = 1.
+
+    IF sy-subrc EQ 0.
+      CONCATENATE 'TKT' lv_number INTO ls_boarding-ticketid.
+    ELSE.
+      MESSAGE e000 WITH TEXT-e04.
+      EXIT.
+    ENDIF.
+
+    ls_boarding-bookingid = pv_bookingid.
+    ls_boarding-class = &lt;fs_ta&gt;-class.
+
+<font color ="#0000FF">*-- PassengerID Number range</font>
+    CLEAR : lv_number.
+    CALL FUNCTION 'NUMBER_GET_NEXT'
+      EXPORTING
+        nr_range_nr = '01'
+        object      = 'ZPASSENGER'
+      IMPORTING
+        number      = lv_number
+      EXCEPTIONS
+        OTHERS      = 1.
+
+    IF sy-subrc EQ 0.
+      CONCATENATE 'PSG' lv_number INTO ls_boarding-passengerid.
+    ELSE.
+      MESSAGE e000 WITH TEXT-e04.
+      CONTINUE.
+    ENDIF.
+
+    ls_boarding-passengername = &lt;fs_ta&gt;-unrg_custname.
+    ls_boarding-passengermail = &lt;fs_ta&gt;-unrg_custemail.
+
+<font color ="#0000FF">*-- Seat code</font>
+    call function <a href ="zc1fm03sd0002/zc1fm03sd0002.html">'ZC1FM03SD0002'</a>
+      EXPORTING
+        iv_scheduleid = &lt;fs_ta&gt;-scheduleid
+        iv_class      = &lt;fs_ta&gt;-class
+      IMPORTING
+        ev_seatcode   = ls_boarding-seatcode
+        ev_result     = lv_status.
+
+<font color ="#0000FF">*-- Update Seat Table Status</font>
+    UPDATE zc103sdt0021 SET assigned = 'Y'
+                            ticketid = ls_boarding-ticketid
+                            aedat = sy-datum
+                            aenam = sy-uname
+                            aezet = sy-uzeit
+    WHERE scheduleid = &lt;fs_ta&gt;-scheduleid
+                                             AND seatcode = ls_boarding-seatcode.
+
+    IF lv_status EQ 'F'.
+<font color ="#0000FF">*-- 유효성 검사 실패</font>
+      CLEAR : ls_boarding.
+      &lt;fs_ta&gt;-so_status = 'F'.
+      gs_tadisplay-so_status = 'F'.
+      MESSAGE i000 WITH TEXT-e06 DISPLAY LIKE 'E'.
+      MODIFY gt_tadisplay FROM gs_tadisplay INDEX pv_tabix.
+<font color ="#0000FF">*-- Change DB status</font>
+      UPDATE zc103sdt0015 SET so_status = gs_tadisplay-so_status
+       WHERE input_head = &lt;fs_ta&gt;-input_head
+         AND input_line = &lt;fs_ta&gt;-input_line.
+      PERFORM refresh_ta_table.
+      PERFORM set_head_value_to_text.
+      CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+        EXPORTING
+          new_code = 'ENTER'.
+      gv_subscreen = '0102'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+    ls_boarding-countryfrom = &lt;fs_ta&gt;-countryfrom.
+    ls_boarding-countryto = &lt;fs_ta&gt;-countryto.
+    ls_boarding-flightid = &lt;fs_ta&gt;-flightid.
+    ls_boarding-scheduleid = &lt;fs_ta&gt;-scheduleid.
+    ls_boarding-mealtype = &lt;fs_ta&gt;-meal_type.
+    ls_boarding-ticket_status = 'N'.
+    ls_boarding-erdat = sy-datum.
+    ls_boarding-ernam = sy-uname.
+    ls_boarding-erzet = sy-uzeit.
+
+    APPEND ls_boarding TO lt_boarding.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For Souvenir</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Set Souvenir data</font>
+    lv_souvenir_count += 1.
+    ls_souvenir-ticketid = ls_boarding-ticketid.
+    ls_souvenir-souvenirid = lv_souvenir_count.
+    ls_souvenir-passengerid = ls_boarding-passengerid.
+
+<font color ="#0000FF">*-- Get Souvenir_type</font>
+    SELECT SINGLE matname
+      FROM zc103mmt0001
+      WHERE matid EQ @&lt;fs_ta&gt;-matid
+      INTO ( @lv_souvenir_text ).
+
+    CASE lv_souvenir_text.
+      WHEN '향수 세트'.
+        lv_souvenir_code = 'A'.
+      WHEN '화장품'.
+        lv_souvenir_code = 'B'.
+      WHEN '미니어처'.
+        lv_souvenir_code = 'C'.
+      WHEN '초콜릿 & 와인 세트'.
+        lv_souvenir_code = 'D'.
+      WHEN '프레스티지 어매니티 키트'.
+        lv_souvenir_code = 'E'.
+      WHEN '이코노미 칫솔/치약 키트'.
+        lv_souvenir_code = 'F'.
+      WHEN '기내 전용 안대 & 귀마개 세트'.
+        lv_souvenir_code = 'G'.
+      WHEN '기내용 핸드크림 & 림밤 세트'.
+        lv_souvenir_code = 'H'.
+    ENDCASE.
+
+    ls_souvenir-souvenir_type = lv_souvenir_code.
+    ls_souvenir-qty = &lt;fs_ta&gt;-souvenir_qty.
+    ls_souvenir-unit = &lt;fs_ta&gt;-souvenir_unit.
+
+<font color ="#0000FF">*-- Get Souvenir unit price</font>
+    SELECT SINGLE price
+      FROM zc103mmt0005
+      WHERE matid EQ @&lt;fs_ta&gt;-matid
+      INTO ( @lv_souvenir_price ).
+
+    ls_souvenir-unit_price = lv_souvenir_price.
+    ls_souvenir-total_price = ( lv_souvenir_price * ls_souvenir-qty ).
+    ls_souvenir-currency = &lt;fs_ta&gt;-currency.
+    ls_souvenir-status = 'N'.
+    ls_souvenir-erdat = sy-datum.
+    ls_souvenir-ernam = sy-uname.
+    ls_souvenir-erzet = sy-uzeit.
+
+    APPEND ls_souvenir TO lt_souvenir.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*  For Meal</font>
+<font color ="#0000FF">**********************************************************************</font>
+    ls_meal-ticketid = ls_boarding-ticketid.
+    ls_meal-passengerid = ls_boarding-passengerid.
+    ls_meal-mealtype = &lt;fs_ta&gt;-meal_type.
+    ls_meal-erdat = sy-datum.
+    ls_meal-ernam = sy-uname.
+    ls_meal-erzet = sy-uzeit.
+
+    APPEND ls_meal TO lt_meal.
+
+    &lt;fs_ta&gt;-so_status = 'Y'.
+
+  ENDLOOP.
+
+<font color ="#0000FF">*-- INSERT db table</font>
+  IF ( lt_boarding IS NOT INITIAL ).
+    MODIFY zc103sdt0014 FROM TABLE lt_boarding.
+  ENDIF.
+
+  IF ( lt_souvenir IS NOT INITIAL ).
+    MODIFY zc103sdt0012 FROM TABLE lt_souvenir.
+  ENDIF.
+
+  IF ( lt_meal IS NOT INITIAL ).
+    MODIFY zc103sdt0013 FROM TABLE lt_meal.
+  ENDIF.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_ta_sales_order</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; LV_BOOKINGID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_ta_sales_order  USING    pv_bookingid.
+
+  DATA : lv_number     TYPE n LENGTH 6,
+         lv_itemno     TYPE i,
+         lv_departdate TYPE zc103sdt0018-departdate.
+
+  DATA : lt_hso TYPE TABLE OF zc103sdt0006,
+         ls_hso TYPE zc103sdt0006,
+         lt_lso TYPE TABLE OF zc103sdt0007,
+         ls_lso TYPE zc103sdt0007.
+
+  DATA : lv_discount      TYPE i,
+         lv_discount_rate TYPE p DECIMALS 1.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Set SO Head data</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Orderid Number range</font>
+  CLEAR : lv_number.
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZORDERID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc EQ 0.
+    CONCATENATE 'SO' lv_number INTO ls_hso-orderid.
+  ELSE.
+    MESSAGE e000 WITH TEXT-e05.
+    EXIT.
+  ENDIF.
+
+  ls_hso-bpid = gs_tadisplay-bpid.
+  ls_hso-conditionid = gs_tadisplay-conditionid.
+  ls_hso-order_date = gs_tadisplay-input_date.
+
+<font color ="#0000FF">*-- Get Departdate</font>
+  SELECT SINGLE departdate
+    FROM zc103sdt0018
+    WHERE scheduleid EQ @gs_tadisplay-scheduleid
+    INTO ( @lv_departdate ).
+
+<font color ="#0000FF">*-- Calculate Cancel Deadline</font>
+  lv_departdate -= 14.
+  ls_hso-cancel_deadline = lv_departdate.
+  ls_hso-order_type = 'T'.
+  ls_hso-total_amount = gs_tadisplay-total_price.
+  ls_hso-currency = gs_tadisplay-currency.
+  ls_hso-order_status = 'N'.
+  ls_hso-billing_status = 'N'.
+  ls_hso-srv_end_status = 'N'.
+  ls_hso-erdat = sy-datum.
+  ls_hso-ernam = sy-uname.
+  ls_hso-erzet = sy-uzeit.
+
+  APPEND ls_hso TO lt_hso.
+
+<font color ="#0000FF">*-- Insert SO head data</font>
+  MODIFY zc103sdt0006 FROM TABLE lt_hso.
+
+  IF sy-subrc EQ 0.
+    gs_tadisplay-orderid = ls_hso-orderid.
+  ENDIF.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Set line data</font>
+<font color ="#0000FF">**********************************************************************</font>
+  LOOP AT gt_ta INTO gs_ta WHERE input_head = gs_tadisplay-input_head.
+    CLEAR : ls_lso.
+    lv_itemno += 1.
+    ls_lso-orderid = ls_hso-orderid.
+    ls_lso-orderitemno = lv_itemno.
+    ls_lso-bookingid = pv_bookingid.
+    ls_lso-charged_item = 'A'.
+    ls_lso-ticket_quantity = gs_ta-ticket_quantity.
+    ls_lso-ticket_unit = gs_ta-ticket_unit.
+    ls_lso-unit_price = gs_ta-unit_price.
+    ls_lso-tax_amount = ( gs_ta-total_price / 10 ).
+
+<font color ="#0000FF">*-- Get discount percent</font>
+    SELECT SINGLE discountrate
+      FROM zc103sdt0003
+      WHERE conditionid EQ @gs_ta-conditionid
+      INTO ( @lv_discount ).
+
+    lv_discount_rate = lv_discount / 100.
+
+    ls_lso-discount = ( gs_ta-unit_price * lv_discount_rate ) * gs_ta-ticket_quantity.
+    ls_lso-currency = gs_ta-currency.
+    ls_lso-used_mileage = gs_ta-used_mileage.
+    ls_lso-order_status = 'N'.
+    ls_lso-srv_end_status = 'N'.
+    ls_lso-erdat = sy-datum.
+    ls_lso-erzet = sy-uzeit.
+    ls_lso-ernam = sy-uname.
+
+    APPEND ls_lso TO lt_lso.
+
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert SO line Data</font>
+  MODIFY zc103sdt0007 FROM TABLE lt_lso.
+
+  IF sy-subrc EQ 0.
+    gs_tadisplay-so_status = 'Y'.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form ta_double_click</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_ROW</font>
+<font color ="#0000FF">*&      --&gt; E_COLUMN</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM ta_double_click  USING    pv_row
+                               pv_column.
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  CLEAR : gt_hdisplay, gt_ldisplay, gs_hdisplay, gs_ldisplay,
+          gt_hso, gs_hso, gt_lso, gs_lso.
+
+  READ TABLE gt_tadisplay INTO gs_tadisplay INDEX pv_row.
+
+<font color ="#0000FF">*-- Get head data</font>
+  SELECT orderid, bpid, custid, conditionid, order_date, cancel_deadline,
+         order_type, total_amount, currency, cancel_reason, order_status,
+         billing_status, srv_end_status
+    FROM zc103sdt0006
+    WHERE orderid EQ @gs_tadisplay-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_hso.
+
+  IF gt_hso IS INITIAL.
+    MESSAGE i000 WITH TEXT-e07 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- GET line DATA</font>
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description,
+        ticket_quantity, ticket_unit, cargo_weight, cargo_unit, unit_price,
+        tax_amount, discount, currency, used_mileage, order_status, srv_end_status
+  FROM zc103sdt0007
+  WHERE orderid EQ @gs_tadisplay-orderid
+  INTO CORRESPONDING FIELDS OF TABLE @gt_lso.
+
+<font color ="#0000FF">*-- MOVE data TO Head display</font>
+  LOOP AT gt_hso INTO gs_hso.
+    gs_hdisplay = CORRESPONDING #( gs_hso ).
+    APPEND gs_hdisplay TO gt_hdisplay.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- MOVE data TO Line display</font>
+  LOOP AT gt_lso INTO gs_lso.
+    gs_ldisplay = CORRESPONDING #( gs_lso ).
+    APPEND gs_ldisplay TO gt_ldisplay.
+  ENDLOOP.
+
+  PERFORM set_so_head_to_text.
+  PERFORM set_so_line_to_text.
+
+  PERFORM refresh_brtop_table.
+  PERFORM refresh_brbottom_table.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_cc_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_cc_data .
+
+  DATA : lt_roid           TYPE lvc_t_roid,
+         ls_roid           TYPE lvc_s_roid,
+         lv_answer(1),
+         lv_tabix          TYPE sy-tabix,
+         lv_transportid    TYPE zc103sdt0017-transportid,
+         lv_cur_load_count TYPE i.
+
+  CALL METHOD go_103_alv_grid-&gt;get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i000 WITH TEXT-e01 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Pop-up Dialog</font>
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+  CHECK lv_answer EQ '1'.
+
+<font color ="#0000FF">*-- For CHECK credit restirct using so total_amount</font>
+  DATA : lv_so_total TYPE wrbtr.
+
+<font color ="#0000FF">*-- Set field : Text to Value</font>
+  PERFORM set_cc_table_to_value.
+
+<font color ="#0000FF">*-- CHECK so_status EQ f</font>
+  DATA : lv_cctabix TYPE sy-tabix.
+
+  LOOP AT lt_roid INTO ls_roid.
+    READ TABLE gt_ccdisplay INTO gs_ccdisplay INDEX ls_roid-row_id.
+    lv_cctabix = sy-tabix.
+    IF gs_ccdisplay-so_status EQ 'F'.
+      MESSAGE i001 WITH gs_ccdisplay-input_head '건은 유효하지 않은 데이터 입니다.' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_cc_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0103'.
+      LEAVE TO SCREEN 100.
+    ELSEIF gs_ccdisplay-so_status EQ 'Y'.
+      MESSAGE i001 WITH gs_ccdisplay-input_head '건은 오더 전환이 완료된 건입니다' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_cc_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0103'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+<font color ="#0000FF">*-- GET so DATA by bpid</font>
+    LOOP AT gt_so INTO gs_so WHERE bpid EQ gs_ccdisplay-bpid.
+      lv_so_total += gs_so-total_amount.
+    ENDLOOP.
+
+<font color ="#0000FF">*-- CHECK Credit Available</font>
+    DATA : lv_input_head TYPE zc103sdt0015-input_head.
+
+    READ TABLE gt_credit INTO gs_credit WITH KEY bpid = gs_ccdisplay-bpid.
+    DATA(lv_rest_credit) = gs_credit-limit_amt_year - ( gs_credit-used_amt_year + lv_so_total ).
+    IF ( lv_rest_credit &lt; gs_ccdisplay-total_price ).
+      MESSAGE i001 WITH gs_ccdisplay-input_head '건은 여신 한도 초과로 인해 오더 전환이 불가능합니다.' DISPLAY LIKE 'E'.
+      gs_ccdisplay-so_status = 'F'.
+      lv_input_head = gs_ccdisplay-input_head.
+      MODIFY gt_ccdisplay FROM gs_ccdisplay INDEX lv_cctabix TRANSPORTING so_status.
+      UPDATE zc103sdt0015 SET so_status = 'F' WHERE input_head = lv_input_head.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_cc_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0103'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert Data to Tables</font>
+  LOOP AT lt_roid INTO ls_roid.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '화물 예약 테이블'</font>
+    READ TABLE gt_ccdisplay INTO gs_ccdisplay INDEX ls_roid-row_id.
+    lv_tabix = sy-tabix.
+
+<font color ="#0000FF">*-- Check Loaded count</font>
+    SELECT SINGLE current_loaded_count_int
+      FROM zc103sdt0026
+      WHERE scheduleid EQ @gs_ccdisplay-scheduleid
+      INTO ( @lv_cur_load_count ).
+
+    IF ( lv_cur_load_count &gt; 10 ).
+      MESSAGE i000 WITH TEXT-e11 DISPLAY LIKE 'E'.
+      gv_subscreen = '0103'.
+
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_cc_table.
+
+      CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+        EXPORTING
+          new_code = 'ENTER'.
+
+      LEAVE TO SCREEN 100.
+
+    ENDIF.
+
+    PERFORM insert_cc_transport_table USING lv_transportid lv_cur_load_count.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '판매오더 헤더, 라인'</font>
+    PERFORM insert_cc_sales_order USING lv_transportid.
+
+    MODIFY gt_ccdisplay FROM gs_ccdisplay INDEX lv_tabix.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- 전체 DB Table 적용</font>
+    LOOP AT gt_cc INTO gs_cc WHERE so_status = 'Y'.
+      UPDATE zc103sdt0015 SET so_status = gs_cc-so_status WHERE input_head = gs_cc-input_head
+                                                            AND input_line = gs_cc-input_line.
+    ENDLOOP.
+  ENDLOOP.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+  PERFORM set_head_value_to_text.
+  PERFORM refresh_cc_table.
+
+  MESSAGE i000 WITH TEXT-s01 DISPLAY LIKE 'S'.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_billing</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_billing USING pv_orderid pv_bookingid.
+
+  DATA : lv_number TYPE n LENGTH 6.
+
+  DATA : lt_hbill        TYPE TABLE OF zc103sdt0004,
+         ls_hbill        TYPE zc103sdt0004,
+         lt_lbill        TYPE TABLE OF zc103sdt0005,
+         ls_lbill        TYPE zc103sdt0005,
+         lv_gjahr        TYPE bkpf-gjahr,
+         lv_tax          TYPE wert8,
+         lv_belnr        TYPE belnr_d,
+         lv_message      TYPE char100,
+         lv_billitemno   TYPE i,
+         lv_discount     TYPE i,
+         lv_discountrate TYPE p DECIMALS 1.
+
+<font color ="#0000FF">*-- BillNUM -&gt; Number Range(zbillnum)</font>
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZBILLNUM'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc = 0.
+    CONCATENATE 'BL' lv_number INTO ls_hbill-billnum.
+  ELSE.
+    MESSAGE i001 WITH TEXT-e10 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  ls_hbill-orderid = pv_orderid.
+
+<font color ="#0000FF">*-- Get Document Number</font>
+  lv_gjahr = sy-datum+0(4).
+  lv_tax = gs_cudisplay-total_price / 10.
+
+  IF ( gs_cu-used_mileage EQ 0 ).
+    call function <a href ="zc1fm03fi0003/zc1fm03fi0003.html">'ZC1FM03FI0003'</a>
+      EXPORTING
+        iv_billnum = ls_hbill-billnum
+        iv_gjahr   = lv_gjahr
+        iv_custid  = gs_cudisplay-custid
+        iv_total   = gs_cudisplay-total_price
+        iv_type    = 'C'
+        iv_b2ctype = 'C'
+        iv_tax     = lv_tax
+        iv_waers   = gs_cudisplay-currency
+      IMPORTING
+        ev_belnr   = lv_belnr
+        ev_message = lv_message.
+
+  ELSEIF ( gs_cu-used_mileage &lt; gs_cu-total_price ).
+    call function <a href ="zc1fm03fi0003/zc1fm03fi0003.html">'ZC1FM03FI0003'</a>
+      EXPORTING
+        iv_billnum = ls_hbill-billnum
+        iv_gjahr   = lv_gjahr
+        iv_custid  = gs_cudisplay-custid
+        iv_total   = gs_cudisplay-total_price
+        iv_type    = 'C'
+        iv_b2ctype = 'A'
+        iv_tax     = lv_tax
+        iv_waers   = gs_cudisplay-currency
+<font color ="#0000FF">*       IV_USCODE  =</font>
+        iv_mileage = gs_cu-used_mileage
+      IMPORTING
+        ev_belnr   = lv_belnr
+        ev_message = lv_message.
+
+  ELSEIF ( gs_cu-used_mileage = gs_cu-total_price ).
+    call function <a href ="zc1fm03fi0003/zc1fm03fi0003.html">'ZC1FM03FI0003'</a>
+      EXPORTING
+        iv_billnum = ls_hbill-billnum
+        iv_gjahr   = lv_gjahr
+        iv_custid  = gs_cudisplay-custid
+        iv_total   = gs_cudisplay-total_price
+        iv_type    = 'C'
+        iv_b2ctype = 'B'
+        iv_tax     = lv_tax
+        iv_waers   = gs_cudisplay-currency
+        iv_mileage = gs_cu-used_mileage
+      IMPORTING
+        ev_belnr   = lv_belnr
+        ev_message = lv_message.
+  ENDIF.
+
+  IF ( sy-subrc &lt;&gt; 0 ).
+    MESSAGE i000 WITH TEXT-e08 DISPLAY LIKE 'E'.
+    EXIT.
+  ELSE.
+    ls_hbill-doc_flag = 'Y'.
+  ENDIF.
+
+  ls_hbill-belnr = lv_belnr.
+  ls_hbill-gjahr = lv_gjahr.
+  ls_hbill-custid = gs_cudisplay-custid.
+  ls_hbill-total_amount = gs_cudisplay-total_price.
+  ls_hbill-tax_amount = gs_cudisplay-total_price / 10.
+  ls_hbill-currency = gs_cudisplay-currency.
+  ls_hbill-billing_status = 'Y'.
+  ls_hbill-mail_status = 'Y'.
+  ls_hbill-billing_date = gs_cudisplay-input_date.
+  ls_hbill-credit_status = 'X'.
+  ls_hbill-erdat = sy-datum.
+  ls_hbill-erzet = sy-uzeit.
+  ls_hbill-ernam = sy-uname.
+
+  APPEND ls_hbill TO lt_hbill.
+
+<font color ="#0000FF">*-- Update billing Head</font>
+  MODIFY zc103sdt0004 FROM TABLE lt_hbill.
+
+<font color ="#0000FF">*-- For biling Line Update</font>
+  LOOP AT gt_cu INTO gs_cu WHERE input_head = gs_cudisplay-input_head.
+    lv_billitemno += 1.
+    ls_lbill-billnum = ls_hbill-billnum.
+    ls_lbill-billitemno = lv_billitemno.
+    ls_lbill-bookingid = pv_bookingid.
+    ls_lbill-charged_item = 'A'.
+    ls_lbill-ticket_quantity = gs_cu-ticket_quantity.
+    ls_lbill-ticket_unit = gs_cu-ticket_unit.
+    ls_lbill-unit_price = gs_cu-unit_price.
+
+<font color ="#0000FF">*-- Get discount rate</font>
+    SELECT SINGLE discountrate
+      FROM zc103sdt0003
+      WHERE conditionid EQ @gs_cudisplay-conditionid
+      INTO ( @lv_discount ).
+
+    lv_discountrate = lv_discount / 100.
+
+    ls_lbill-unit_discount_amount = ( gs_cu-total_price * lv_discountrate ).
+    ls_lbill-currency = gs_cu-currency.
+    ls_lbill-erdat = sy-datum.
+    ls_lbill-ernam = sy-uname.
+    ls_lbill-erzet = sy-uzeit.
+
+    APPEND ls_lbill TO lt_lbill.
+
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert Bill Line data</font>
+  MODIFY zc103sdt0005 FROM TABLE lt_lbill.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_cc_transport_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_cc_transport_table USING pv_transportid
+                                     pv_cur_load_count.
+
+  DATA : lv_number     TYPE n LENGTH 6,
+         lv_departdate TYPE zc103sdt0018-departdate.
+
+  DATA : lt_trans TYPE TABLE OF zc103sdt0017,
+         ls_trans TYPE zc103sdt0017.
+
+<font color ="#0000FF">*-- TRANSPORTID -&gt; Number Range(ztransid)</font>
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZTRANSID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc = 0.
+    CONCATENATE 'TR' lv_number INTO ls_trans-transportid.
+  ELSE.
+    MESSAGE i001 WITH TEXT-e09 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  pv_transportid = ls_trans-transportid.
+
+  ls_trans-bpid = gs_ccdisplay-bpid.
+  ls_trans-matid = gs_ccdisplay-matid.
+  ls_trans-countryfrom = gs_ccdisplay-countryfrom.
+  ls_trans-countryto = gs_ccdisplay-countryto.
+
+<font color ="#0000FF">*-- Get Transport depart date</font>
+  SELECT SINGLE departdate
+    FROM zc103sdt0018
+    WHERE scheduleid EQ @gs_ccdisplay-scheduleid
+    INTO ( @lv_departdate ).
+
+  ls_trans-tdate = lv_departdate.
+  ls_trans-flightid = gs_ccdisplay-flightid.
+  ls_trans-scheduleid = gs_ccdisplay-scheduleid.
+  ls_trans-weight = gs_ccdisplay-weight.
+  ls_trans-weight_unit = gs_ccdisplay-weight_unit.
+  ls_trans-volume = gs_ccdisplay-volume.
+  ls_trans-uld_type = 'A'.
+  ls_trans-cc_checked = 'N'.
+
+<font color ="#0000FF">*-- Check confirmed</font>
+  lv_departdate -= 14.
+  IF ( lv_departdate &lt; sy-datum ).
+    ls_trans-is_confirmed = 'Y'.
+  ELSE.
+    ls_trans-is_confirmed = 'N'.
+  ENDIF.
+
+  ls_trans-priority = '1'.
+  ls_trans-price = gs_ccdisplay-total_price.
+  ls_trans-currency = gs_ccdisplay-currency.
+  ls_trans-erdat = sy-datum.
+  ls_trans-ernam = sy-uname.
+  ls_trans-erzet = sy-uzeit.
+
+  APPEND ls_trans TO lt_trans.
+
+<font color ="#0000FF">*-- Insert DB Table</font>
+  MODIFY zc103sdt0017 FROM TABLE lt_trans.
+
+<font color ="#0000FF">*-- Count Load Count</font>
+  pv_cur_load_count += 1.
+
+<font color ="#0000FF">*-- Update DB Table</font>
+  UPDATE zc103sdt0026 SET current_loaded_count_int = pv_cur_load_count
+                      WHERE scheduleid = gs_ccdisplay-scheduleid.
+
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_cc_sales_order</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; LV_TRANSPORTID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_cc_sales_order  USING    pv_transportid.
+
+  DATA : lv_number     TYPE n LENGTH 6,
+         lv_itemno     TYPE i,
+         lv_departdate TYPE zc103sdt0018-departdate.
+
+  DATA : lt_hso TYPE TABLE OF zc103sdt0006,
+         ls_hso TYPE zc103sdt0006,
+         lt_lso TYPE TABLE OF zc103sdt0007,
+         ls_lso TYPE zc103sdt0007.
+
+  DATA : lv_discount      TYPE i,
+         lv_discount_rate TYPE p DECIMALS 1.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Set SO Head data</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Orderid Number range</font>
+  CLEAR : lv_number.
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZORDERID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc EQ 0.
+    CONCATENATE 'SO' lv_number INTO ls_hso-orderid.
+  ELSE.
+    MESSAGE e000 WITH TEXT-e05.
+    EXIT.
+  ENDIF.
+
+  ls_hso-bpid = gs_ccdisplay-bpid.
+  ls_hso-conditionid = gs_ccdisplay-conditionid.
+  ls_hso-order_date = gs_ccdisplay-input_date.
+
+<font color ="#0000FF">*-- Get Departdate</font>
+  SELECT SINGLE departdate
+    FROM zc103sdt0018
+    WHERE scheduleid EQ @gs_ccdisplay-scheduleid
+    INTO ( @lv_departdate ).
+
+<font color ="#0000FF">*-- Calculate Cancel Deadline</font>
+  lv_departdate -= 14.
+  ls_hso-cancel_deadline = lv_departdate.
+  ls_hso-order_type = 'B'.
+  ls_hso-total_amount = gs_ccdisplay-total_price.
+  ls_hso-currency = gs_ccdisplay-currency.
+  ls_hso-order_status = 'N'.
+  ls_hso-billing_status = 'N'.
+  ls_hso-srv_end_status = 'N'.
+  ls_hso-erdat = sy-datum.
+  ls_hso-ernam = sy-uname.
+  ls_hso-erzet = sy-uzeit.
+
+  APPEND ls_hso TO lt_hso.
+
+<font color ="#0000FF">*-- Insert SO head data</font>
+  MODIFY zc103sdt0006 FROM TABLE lt_hso.
+
+  IF sy-subrc EQ 0.
+    gs_ccdisplay-orderid = ls_hso-orderid.
+  ENDIF.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Set line data</font>
+<font color ="#0000FF">**********************************************************************</font>
+  LOOP AT gt_cc ASSIGNING FIELD-SYMBOL(&lt;fs_cc&gt;) WHERE input_head = gs_ccdisplay-input_head.
+    CLEAR : ls_lso.
+    lv_itemno += 1.
+    ls_lso-orderid = ls_hso-orderid.
+    ls_lso-orderitemno = lv_itemno.
+    ls_lso-transportid = pv_transportid.
+    ls_lso-charged_item = 'B'.
+    ls_lso-cargo_weight = &lt;fs_cc&gt;-weight.
+    ls_lso-cargo_unit = &lt;fs_cc&gt;-weight_unit.
+    ls_lso-unit_price = &lt;fs_cc&gt;-unit_price.
+    ls_lso-tax_amount = &lt;fs_cc&gt;-total_price / 10.
+
+<font color ="#0000FF">*-- GET discount percent</font>
+    SELECT SINGLE discountrate
+      FROM zc103sdt0003
+      WHERE conditionid EQ @&lt;fs_cc&gt;-conditionid
+      INTO ( @lv_discount ).
+
+    lv_discount_rate = lv_discount / 100.
+
+    ls_lso-discount = ( &lt;fs_cc&gt;-unit_price * lv_discount_rate ) * &lt;fs_cc&gt;-weight.
+    ls_lso-currency = &lt;fs_cc&gt;-currency.
+    ls_lso-order_status = 'N'.
+    ls_lso-srv_end_status = 'N'.
+
+    &lt;fs_cc&gt;-so_status = 'Y'.
+
+    APPEND ls_lso TO lt_lso.
+
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert SO line Data</font>
+  MODIFY zc103sdt0007 FROM TABLE lt_lso.
+
+  IF ( sy-subrc EQ 0 ).
+    gs_ccdisplay-so_status = 'Y'.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form cc_double_click</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_ROW</font>
+<font color ="#0000FF">*&      --&gt; E_COLUMN</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM cc_double_click  USING    pv_row
+                               pv_column.
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  CLEAR : gt_hdisplay, gt_ldisplay, gs_hdisplay, gs_ldisplay,
+          gt_hso, gs_hso, gt_lso, gs_lso.
+
+  READ TABLE gt_ccdisplay INTO gs_ccdisplay INDEX pv_row.
+
+<font color ="#0000FF">*-- Get head data</font>
+  SELECT orderid, bpid, custid, conditionid, order_date, cancel_deadline,
+         order_type, total_amount, currency, cancel_reason, order_status,
+         billing_status, srv_end_status
+    FROM zc103sdt0006
+    WHERE orderid EQ @gs_ccdisplay-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_hso.
+
+  IF gt_hso IS INITIAL.
+    MESSAGE i000 WITH TEXT-e07 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- GET line DATA</font>
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description,
+          ticket_quantity, ticket_unit, cargo_weight, cargo_unit, unit_price,
+          tax_amount, discount, currency, used_mileage, order_status, srv_end_status
+  FROM zc103sdt0007
+  WHERE orderid EQ @gs_ccdisplay-orderid
+  INTO CORRESPONDING FIELDS OF TABLE @gt_lso.
+
+<font color ="#0000FF">*-- MOVE data TO Head display</font>
+  LOOP AT gt_hso INTO gs_hso.
+    gs_hdisplay = CORRESPONDING #( gs_hso ).
+    APPEND gs_hdisplay TO gt_hdisplay.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- MOVE data TO Line display</font>
+  LOOP AT gt_lso INTO gs_lso.
+    gs_ldisplay = CORRESPONDING #( gs_lso ).
+    APPEND gs_ldisplay TO gt_ldisplay.
+  ENDLOOP.
+
+  PERFORM set_so_head_to_text.
+  PERFORM set_so_line_to_text.
+
+  PERFORM refresh_brtop_table.
+  PERFORM refresh_brbottom_table.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_cc_table_to_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_cc_table_to_value .
+
+<font color ="#0000FF">*-- CONVERT TEXT to Value</font>
+  LOOP AT gt_ccdisplay ASSIGNING FIELD-SYMBOL(&lt;fs_cc&gt;).
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_cc&gt;-input_type.
+      WHEN '일반 고객(B2C)'.
+        &lt;fs_cc&gt;-input_type = 'CU'.
+      WHEN '계약 화물사(B2B)'.
+        &lt;fs_cc&gt;-input_type = 'CC'.
+      WHEN '미계약 화물사(B2B)'.
+        &lt;fs_cc&gt;-input_type = 'NC'.
+      WHEN '여행사(B2B)'.
+        &lt;fs_cc&gt;-input_type = 'TA'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_cc&gt;-countryfrom.
+      WHEN '대한민국(인천)'.
+        &lt;fs_cc&gt;-countryfrom = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_cc&gt;-countryfrom = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_cc&gt;-countryfrom = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_cc&gt;-countryfrom = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_cc&gt;-countryfrom = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_cc&gt;-countryfrom = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_cc&gt;-countryfrom = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_cc&gt;-countryto.
+      WHEN '대한민국(인천)'.
+        &lt;fs_cc&gt;-countryto = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_cc&gt;-countryto = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_cc&gt;-countryto = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_cc&gt;-countryto = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_cc&gt;-countryto = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_cc&gt;-countryto = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_cc&gt;-countryto = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_cc&gt;-so_status.
+      WHEN '판매오더 전환 완료'.
+        &lt;fs_cc&gt;-so_status = 'Y'.
+      WHEN '판매오더 전환 미완료'.
+        &lt;fs_cc&gt;-so_status = 'N'.
+      WHEN '유효성 검사 실패'.
+        &lt;fs_cc&gt;-so_status = 'F'.
+    ENDCASE.
+
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_cc&gt;.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_nc_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_nc_data .
+
+  DATA : lt_roid           TYPE lvc_t_roid,
+         ls_roid           TYPE lvc_s_roid,
+         lv_answer(1),
+         lv_tabix          TYPE sy-tabix,
+         lv_transportid    TYPE zc103sdt0017-transportid,
+         lv_cur_load_count TYPE i.
+
+  CALL METHOD go_104_alv_grid-&gt;get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+<font color ="#0000FF">*-- For CHECK credit restirct using so total_amount</font>
+  DATA : lv_so_total TYPE wrbtr.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i000 WITH TEXT-e01 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- Pop-up Dialog</font>
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+  CHECK lv_answer EQ '1'.
+
+<font color ="#0000FF">*-- SET FIELD : Text to Value</font>
+  PERFORM set_nc_table_to_value.
+
+<font color ="#0000FF">*-- CHECK so_status EQ f</font>
+  DATA : lv_nctabix TYPE sy-tabix.
+
+  LOOP AT lt_roid INTO ls_roid.
+    READ TABLE gt_ncdisplay INTO gs_ncdisplay INDEX ls_roid-row_id.
+    lv_nctabix = sy-tabix.
+    IF gs_ncdisplay-so_status EQ 'F'.
+      MESSAGE i001 WITH gs_ncdisplay-input_head '건은 유효하지 않은 데이터 입니다.' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_nc_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0104'.
+      LEAVE TO SCREEN 100.
+    ELSEIF gs_ncdisplay-so_status EQ 'Y'.
+      MESSAGE i001 WITH gs_ncdisplay-input_head '건은 오더 전환이 완료된 건입니다' DISPLAY LIKE 'E'.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_nc_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0104'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+<font color ="#0000FF">*-- GET so DATA by bpid</font>
+    LOOP AT gt_so INTO gs_so WHERE bpid EQ gs_ncdisplay-bpid.
+      lv_so_total += gs_so-total_amount.
+    ENDLOOP.
+
+<font color ="#0000FF">*-- CHECK Credit Available</font>
+    DATA : lv_input_head TYPE zc103sdt0015-input_head.
+    READ TABLE gt_credit INTO gs_credit WITH KEY bpid = gs_ncdisplay-bpid.
+    DATA(lv_rest_credit) = gs_credit-limit_amt_year - ( gs_credit-used_amt_year + lv_so_total ).
+    IF ( lv_rest_credit &lt; gs_ncdisplay-total_price ).
+      MESSAGE i001 WITH gs_ncdisplay-input_head '건은 여신 한도 초과로 인해 오더 전환이 불가능합니다.' DISPLAY LIKE 'E'.
+      gs_ncdisplay-so_status = 'F'.
+      lv_input_head = gs_ncdisplay-input_head.
+      MODIFY gt_ncdisplay FROM gs_ncdisplay INDEX lv_nctabix TRANSPORTING so_status.
+      UPDATE zc103sdt0015 SET so_status = 'F' WHERE input_head = lv_input_head.
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_nc_table.
+<font color ="#0000FF">*-- Set Screen Number</font>
+      gv_subscreen = '0104'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert Data to Tables</font>
+  LOOP AT lt_roid INTO ls_roid.
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '화물 예약 테이블'</font>
+    READ TABLE gt_ncdisplay INTO gs_ncdisplay INDEX ls_roid-row_id.
+    lv_tabix = sy-tabix.
+
+<font color ="#0000FF">*-- CHECK Loaded count</font>
+    SELECT SINGLE current_loaded_count_int
+      FROM zc103sdt0026
+      WHERE scheduleid EQ @gs_ncdisplay-scheduleid
+      INTO ( @lv_cur_load_count ).
+
+    IF ( lv_cur_load_count &gt; 10 ).
+      MESSAGE i000 WITH TEXT-e11 DISPLAY LIKE 'E'.
+      gv_subscreen = '0104'.
+
+      PERFORM set_head_value_to_text.
+      PERFORM refresh_nc_table.
+
+      CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+        EXPORTING
+          new_code = 'ENTER'.
+
+      LEAVE TO SCREEN 100.
+
+    ENDIF.
+
+    PERFORM insert_nc_transport_table USING lv_transportid lv_cur_load_count.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For '판매오더 헤더, 라인'</font>
+    PERFORM insert_nc_sales_order USING lv_transportid.
+
+    MODIFY gt_ncdisplay FROM gs_ncdisplay INDEX lv_tabix.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- 전체 DB Table 적용</font>
+    LOOP AT gt_nc INTO gs_nc WHERE so_status = 'Y'.
+      UPDATE zc103sdt0015 SET so_status = gs_nc-so_status WHERE input_head = gs_nc-input_head
+                                                            AND input_line = gs_nc-input_line.
+    ENDLOOP.
+  ENDLOOP.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+  PERFORM set_head_value_to_text.
+  PERFORM refresh_nc_table.
+
+  MESSAGE i000 WITH TEXT-s01 DISPLAY LIKE 'S'.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_nc_table_to_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_nc_table_to_value .
+
+<font color ="#0000FF">*-- CONVERT TEXT to Value</font>
+  LOOP AT gt_ncdisplay ASSIGNING FIELD-SYMBOL(&lt;fs_nc&gt;).
+<font color ="#0000FF">*-- Input_type</font>
+    CASE &lt;fs_nc&gt;-input_type.
+      WHEN '일반 고객(B2C)'.
+        &lt;fs_nc&gt;-input_type = 'CU'.
+      WHEN '계약 화물사(B2B)'.
+        &lt;fs_nc&gt;-input_type = 'CC'.
+      WHEN '미계약 화물사(B2B)'.
+        &lt;fs_nc&gt;-input_type = 'NC'.
+      WHEN '여행사(B2B)'.
+        &lt;fs_nc&gt;-input_type = 'TA'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryfrom</font>
+    CASE &lt;fs_nc&gt;-countryfrom.
+      WHEN '대한민국(인천)'.
+        &lt;fs_nc&gt;-countryfrom = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_nc&gt;-countryfrom = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_nc&gt;-countryfrom = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_nc&gt;-countryfrom = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_nc&gt;-countryfrom = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_nc&gt;-countryfrom = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_nc&gt;-countryfrom = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- Countryto</font>
+    CASE &lt;fs_nc&gt;-countryto.
+      WHEN '대한민국(인천)'.
+        &lt;fs_nc&gt;-countryto = '00'.
+      WHEN '대한민국(부산/김해)'.
+        &lt;fs_nc&gt;-countryto = '01'.
+      WHEN '오스트레일리아(시드니)'.
+        &lt;fs_nc&gt;-countryto = '02'.
+      WHEN '베트남(하노이)'.
+        &lt;fs_nc&gt;-countryto = '03'.
+      WHEN '아랍에미리트(두바이)'.
+        &lt;fs_nc&gt;-countryto = '04'.
+      WHEN '독일(프랑크푸르트)'.
+        &lt;fs_nc&gt;-countryto = '05'.
+      WHEN '미국(LA)'.
+        &lt;fs_nc&gt;-countryto = '06'.
+    ENDCASE.
+
+<font color ="#0000FF">*-- so_status</font>
+    CASE &lt;fs_nc&gt;-so_status.
+      WHEN '판매오더 전환 완료'.
+        &lt;fs_nc&gt;-so_status = 'Y'.
+      WHEN '판매오더 전환 미완료'.
+        &lt;fs_nc&gt;-so_status = 'N'.
+      WHEN '유효성 검사 실패'.
+        &lt;fs_nc&gt;-so_status = 'F'.
+    ENDCASE.
+
+  ENDLOOP.
+
+  UNASSIGN : &lt;fs_nc&gt;.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_nc_transport_table</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; LV_TRANSPORTID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_nc_transport_table  USING    pv_transportid
+                                         pv_cur_load_count.
+
+  DATA : lv_number     TYPE n LENGTH 6,
+         lv_departdate TYPE zc103sdt0018-departdate.
+
+  DATA : lt_trans TYPE TABLE OF zc103sdt0017,
+         ls_trans TYPE zc103sdt0017.
+
+<font color ="#0000FF">*-- transportid -&gt; Number Range(ztransid)</font>
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZTRANSID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc = 0.
+    CONCATENATE 'TR' lv_number INTO ls_trans-transportid.
+  ELSE.
+    MESSAGE i001 WITH TEXT-e09 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  pv_transportid = ls_trans-transportid.
+
+  ls_trans-bpid = gs_ncdisplay-bpid.
+  ls_trans-matid = gs_ncdisplay-matid.
+  ls_trans-countryfrom = gs_ncdisplay-countryfrom.
+  ls_trans-countryto = gs_ncdisplay-countryto.
+
+<font color ="#0000FF">*-- Get Transport depart date</font>
+  SELECT SINGLE departdate
+    FROM zc103sdt0018
+    WHERE scheduleid EQ @gs_ncdisplay-scheduleid
+    INTO ( @lv_departdate ).
+
+  ls_trans-tdate = lv_departdate.
+  ls_trans-flightid = gs_ncdisplay-flightid.
+  ls_trans-scheduleid = gs_ncdisplay-scheduleid.
+  ls_trans-weight = gs_ncdisplay-weight.
+  ls_trans-weight_unit = gs_ncdisplay-weight_unit.
+  ls_trans-volume = gs_ncdisplay-volume.
+  ls_trans-uld_type = 'A'.
+  ls_trans-cc_checked = 'N'.
+
+<font color ="#0000FF">*-- Check confirmed</font>
+  lv_departdate -= 14.
+  IF ( lv_departdate &lt; sy-datum ).
+    ls_trans-is_confirmed = 'Y'.
+  ELSE.
+    ls_trans-is_confirmed = 'N'.
+  ENDIF.
+
+  ls_trans-priority = '2'.
+  ls_trans-price = gs_ncdisplay-total_price.
+  ls_trans-currency = gs_ncdisplay-currency.
+  ls_trans-erdat = sy-datum.
+  ls_trans-ernam = sy-uname.
+  ls_trans-erzet = sy-uzeit.
+
+  APPEND ls_trans TO lt_trans.
+
+<font color ="#0000FF">*-- Insert DB Table</font>
+  MODIFY zc103sdt0017 FROM TABLE lt_trans.
+
+<font color ="#0000FF">*-- Count LOAD Count</font>
+  pv_cur_load_count += 1.
+
+<font color ="#0000FF">*-- Update DB Table</font>
+  UPDATE zc103sdt0026 SET current_loaded_count_int = pv_cur_load_count
+                      WHERE scheduleid = gs_ncdisplay-scheduleid.
+
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form insert_nc_sales_order</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; LV_TRANSPORTID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM insert_nc_sales_order  USING    pv_transportid.
+
+  DATA : lv_number     TYPE n LENGTH 6,
+         lv_itemno     TYPE i,
+         lv_departdate TYPE zc103sdt0018-departdate.
+
+  DATA : lt_hso TYPE TABLE OF zc103sdt0006,
+         ls_hso TYPE zc103sdt0006,
+         lt_lso TYPE TABLE OF zc103sdt0007,
+         ls_lso TYPE zc103sdt0007.
+
+  DATA : lv_discount      TYPE i,
+         lv_discount_rate TYPE p DECIMALS 1.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Set SO Head data</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- Orderid Number range</font>
+  CLEAR : lv_number.
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZORDERID'
+    IMPORTING
+      number      = lv_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc EQ 0.
+    CONCATENATE 'SO' lv_number INTO ls_hso-orderid.
+  ELSE.
+    MESSAGE e000 WITH TEXT-e05.
+    EXIT.
+  ENDIF.
+
+  ls_hso-bpid = gs_ncdisplay-bpid.
+  ls_hso-conditionid = gs_ncdisplay-conditionid.
+  ls_hso-order_date = gs_ncdisplay-input_date.
+
+<font color ="#0000FF">*-- Get Departdate</font>
+  SELECT SINGLE departdate
+    FROM zc103sdt0018
+    WHERE scheduleid EQ @gs_ncdisplay-scheduleid
+    INTO ( @lv_departdate ).
+
+<font color ="#0000FF">*-- Calculate Cancel Deadline</font>
+  lv_departdate -= 14.
+  ls_hso-cancel_deadline = lv_departdate.
+  ls_hso-order_type = 'NB'.
+  ls_hso-total_amount = gs_ncdisplay-total_price.
+  ls_hso-currency = gs_ncdisplay-currency.
+  ls_hso-order_status = 'N'.
+  ls_hso-billing_status = 'N'.
+  ls_hso-srv_end_status = 'N'.
+  ls_hso-erdat = sy-datum.
+  ls_hso-ernam = sy-uname.
+  ls_hso-erzet = sy-uzeit.
+
+  APPEND ls_hso TO lt_hso.
+
+<font color ="#0000FF">*-- Insert SO head data</font>
+  MODIFY zc103sdt0006 FROM TABLE lt_hso.
+
+  IF sy-subrc EQ 0.
+    gs_ncdisplay-orderid = ls_hso-orderid.
+  ENDIF.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Set line data</font>
+<font color ="#0000FF">**********************************************************************</font>
+  LOOP AT gt_nc ASSIGNING FIELD-SYMBOL(&lt;fs_nc&gt;) WHERE input_head = gs_ncdisplay-input_head.
+    CLEAR : ls_lso.
+    lv_itemno += 1.
+    ls_lso-orderid = ls_hso-orderid.
+    ls_lso-orderitemno = lv_itemno.
+    ls_lso-transportid = pv_transportid.
+    ls_lso-charged_item = 'B'.
+    ls_lso-cargo_weight = &lt;fs_nc&gt;-weight.
+    ls_lso-cargo_unit = &lt;fs_nc&gt;-weight_unit.
+    ls_lso-unit_price = &lt;fs_nc&gt;-unit_price.
+    ls_lso-tax_amount = &lt;fs_nc&gt;-total_price / 10.
+
+<font color ="#0000FF">*-- GET discount percent</font>
+    SELECT SINGLE discountrate
+      FROM zc103sdt0003
+      WHERE conditionid EQ @&lt;fs_nc&gt;-conditionid
+      INTO ( @lv_discount ).
+
+    lv_discount_rate = lv_discount / 100.
+
+    ls_lso-discount = ( &lt;fs_nc&gt;-unit_price * lv_discount_rate ) * &lt;fs_nc&gt;-weight.
+    ls_lso-currency = &lt;fs_nc&gt;-currency.
+    ls_lso-order_status = 'N'.
+    ls_lso-srv_end_status = 'N'.
+
+    &lt;fs_nc&gt;-so_status = 'Y'.
+
+    APPEND ls_lso TO lt_lso.
+
+  ENDLOOP.
+
+<font color ="#0000FF">*-- Insert SO line Data</font>
+  MODIFY zc103sdt0007 FROM TABLE lt_lso.
+
+  IF ( sy-subrc EQ 0 ).
+    gs_ncdisplay-so_status = 'Y'.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form nc_double_click</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      --&gt; E_ROW</font>
+<font color ="#0000FF">*&      --&gt; E_COLUMN</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM nc_double_click  USING    pv_row
+                               pv_column.
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  CLEAR : gt_hdisplay, gt_ldisplay, gs_hdisplay, gs_ldisplay,
+          gt_hso, gs_hso, gt_lso, gs_lso.
+
+  READ TABLE gt_ncdisplay INTO gs_ncdisplay INDEX pv_row.
+
+<font color ="#0000FF">*-- Get head data</font>
+  SELECT orderid, bpid, custid, conditionid, order_date, cancel_deadline,
+         order_type, total_amount, currency, cancel_reason, order_status,
+         billing_status, srv_end_status
+    FROM zc103sdt0006
+    WHERE orderid EQ @gs_ncdisplay-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_hso.
+
+  IF gt_hso IS INITIAL.
+    MESSAGE i000 WITH TEXT-e07 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*-- GET line DATA</font>
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description,
+          ticket_quantity, ticket_unit, cargo_weight, cargo_unit, unit_price,
+          tax_amount, discount, currency, used_mileage, order_status, srv_end_status
+  FROM zc103sdt0007
+  WHERE orderid EQ @gs_ncdisplay-orderid
+  INTO CORRESPONDING FIELDS OF TABLE @gt_lso.
+
+<font color ="#0000FF">*-- MOVE data TO Head display</font>
+  LOOP AT gt_hso INTO gs_hso.
+    gs_hdisplay = CORRESPONDING #( gs_hso ).
+    APPEND gs_hdisplay TO gt_hdisplay.
+  ENDLOOP.
+
+<font color ="#0000FF">*-- MOVE data TO Line display</font>
+  LOOP AT gt_lso INTO gs_lso.
+    gs_ldisplay = CORRESPONDING #( gs_lso ).
+    APPEND gs_ldisplay TO gt_ldisplay.
+  ENDLOOP.
+
+  PERFORM set_so_head_to_text.
+  PERFORM set_so_line_to_text.
+
+  PERFORM refresh_brtop_table.
+  PERFORM refresh_brbottom_table.
+
+  CALL METHOD cl_gui_cfw=&gt;set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form move_sales_order_page</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM move_sales_order_page .
+
+  DATA : lv_answer(1).
+
+  PERFORM popup_dialog CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+  CALL TRANSACTION 'ZC103SD0002' AND SKIP FIRST SCREEN.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form popup_dialog</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      &lt;-- LV_ANSWER</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM popup_dialog  CHANGING pv_answer.
+
+  call function <a href ="zc1f030001/zc1f030001.html">'ZC1F030001'</a>
+    EXPORTING
+      iv_action = '판매오더 관리 페이지로 이동'
+    IMPORTING
+      ev_answer = pv_answer.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_credit_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_credit_data .
+
+  SELECT bpid, limit_amt_year, used_amt_year, eval_year
+    FROM zc103sdt0016
+    WHERE eval_year EQ @sy-datum+0(4)
+    INTO CORRESPONDING FIELDS OF TABLE @gt_credit.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form get_so_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM get_so_data .
+
+<font color ="#0000FF">*-- Get SO Data(order_status = 'N')</font>
+  SELECT bpid, total_amount, order_status
+    FROM zc103sdt0006
+    WHERE order_status EQ 'N'
+    INTO CORRESPONDING FIELDS OF TABLE @gt_so.
+
+ENDFORM.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

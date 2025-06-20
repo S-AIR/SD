@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0003TOP</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0003TOP</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZC103SDR0003TOP</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include ZC103SDR0003TOP                          - Report ZC103SDR0003</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+REPORT zc103sdr0003 MESSAGE-ID zmsgc103.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* TABLES</font>
+<font color ="#0000FF">**********************************************************************</font>
+TABLES : zc103sdt0004, zc103sdt0005.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Macro</font>
+<font color ="#0000FF">**********************************************************************</font>
+DEFINE _init.
+
+  REFRESH &1.
+  CLEAR &1.
+
+END-OF-DEFINITION.
+DEFINE _msg_build.
+
+  CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+    EXPORTING
+      msgid               = &1
+      msgnr               = &2
+      msgv1               = &3
+      msgv2               = &4
+      msgv3               = &5
+      msgv4               = &6
+    IMPORTING
+      message_text_output = &7.
+
+END-OF-DEFINITION.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Class Instance</font>
+<font color ="#0000FF">**********************************************************************</font>
+DATA : go_main_container    TYPE REF TO cl_gui_docking_container,
+       go_msplit_container  TYPE REF TO cl_gui_splitter_container,
+       go_left_container    TYPE REF TO cl_gui_container,
+       go_right_container   TYPE REF TO cl_gui_container,
+       go_ssplit_container  TYPE REF TO cl_gui_splitter_container,
+       go_stop_container    TYPE REF TO cl_gui_container,
+       go_sbottom_container TYPE REF TO cl_gui_container,
+
+       go_tree_grid         TYPE REF TO cl_gui_alv_grid,
+       go_stop_alv_grid     TYPE REF TO cl_gui_alv_grid,
+       go_sbottom_alv_grid  TYPE REF TO cl_gui_alv_grid,
+       go_tree              TYPE REF TO cl_gui_simple_tree.
+
+<font color ="#0000FF">*-- For Top-of-page</font>
+DATA : go_topp_container TYPE REF TO cl_gui_docking_container,
+       go_dyndoc_id      TYPE REF TO cl_dd_document,
+       go_html_cntrl     TYPE REF TO cl_gui_html_viewer.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* ITab and WA</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For Billing Header</font>
+DATA : BEGIN OF gs_head.
+         include structure <a href ="zc103sdt0004/dictionary-zc103sdt0004.html">zc103sdt0004</a>.
+DATA :   status           TYPE icon-id,
+         icon_mail_status TYPE icon-id,
+         bptype           TYPE zc103sdt0001-bptype,
+       END OF gs_head,
+       gt_head LIKE TABLE OF gs_head.
+
+DATA : BEGIN OF gs_hdisplay,
+         billnum            TYPE zc103sdt0004-billnum,
+         orderid            TYPE zc103sdt0004-orderid,
+         belnr              TYPE zc103sdt0004-belnr,
+         gjahr              TYPE zc103sdt0004-gjahr,
+         bpid               TYPE zc103sdt0004-bpid,
+         bpname             TYPE zc103sdt0001-bpname,
+         bptype             TYPE zc103sdt0001-bptype,
+         total_amount       TYPE zc103sdt0004-total_amount,
+         tax_amount         TYPE zc103sdt0004-tax_amount,
+         currency           TYPE zc103sdt0004-currency,
+         billing_status(20),
+         mail_status(20),
+         credit_status      TYPE zc103sdt0004-credit_status,
+         doc_flag(20),
+         billing_date       TYPE zc103sdt0004-billing_date,
+         payment_date       TYPE zc103sdt0004-payment_date,
+         status             TYPE icon-id,
+         icon_mail_status   TYPE icon-id.
+         include structure <a href ="zc103pps0001/dictionary-zc103pps0001.html">zc103pps0001</a>.
+DATA : END OF gs_hdisplay,
+gt_hdisplay LIKE TABLE OF gs_hdisplay.
+
+<font color ="#0000FF">*-- For Billing Line Item</font>
+DATA : BEGIN OF gs_line.
+         include structure <a href ="zc103sdt0005/dictionary-zc103sdt0005.html">zc103sdt0005</a>.
+DATA : END OF gs_line,
+gt_line LIKE TABLE OF gs_line.
+
+DATA : BEGIN OF gs_ldisplay,
+         billnum              TYPE zc103sdt0005-billnum,
+         billitemno           TYPE zc103sdt0005-billitemno,
+         bookingid            TYPE zc103sdt0005-bookingid,
+         transportid          TYPE zc103sdt0005-transportid,
+         charged_item(20),
+         description          TYPE zc103sdt0005-description,
+         ticket_quantity      TYPE zc103sdt0005-ticket_quantity,
+         ticket_unit          TYPE zc103sdt0005-ticket_unit,
+         cargo_weight         TYPE zc103sdt0005-cargo_weight,
+         cargo_unit           TYPE zc103sdt0005-cargo_unit,
+         unit_price           TYPE zc103sdt0005-unit_price,
+         unit_discount_amount TYPE zc103sdt0005-unit_discount_amount,
+         unit_tax_amount      TYPE zc103sdt0005-unit_tax_amount,
+         currency             TYPE zc103sdt0005-currency.
+         include structure <a href ="zc103pps0001/dictionary-zc103pps0001.html">zc103pps0001</a>.
+DATA : END OF gs_ldisplay,
+gt_ldisplay LIKE TABLE OF gs_ldisplay.
+
+<font color ="#0000FF">*-- For BP Name</font>
+DATA : BEGIN OF gs_bpname,
+         bpid   TYPE zc103sdt0001-bpid,
+         bpname TYPE zc103sdt0001-bpname,
+         bptype TYPE zc103sdt0001-bptype,
+       END OF gs_bpname,
+       gt_bpname LIKE TABLE OF gs_bpname.
+
+<font color ="#0000FF">*-- For Tree</font>
+DATA : BEGIN OF gs_tree,
+         bpid   TYPE zc103sdt0001-bpid,
+         bpname TYPE zc103sdt0001-bpname,
+         bptype TYPE zc103sdt0001-bptype,
+       END OF gs_tree,
+       gt_tree LIKE TABLE OF gs_tree.
+
+DATA : BEGIN OF gs_bptype,
+         bptype     TYPE zc103sdt0001-bptype,
+         bptypename TYPE string,
+       END OF gs_bptype,
+       gt_bptype LIKE TABLE OF gs_bptype.
+
+<font color ="#0000FF">*-- For mail send</font>
+DATA : doc_chng  LIKE sodocchgi1,
+       tab_lines LIKE sy-tabix,
+       objtxt    LIKE solisti1   OCCURS 0 WITH HEADER LINE,
+       objpack   LIKE sopcklsti1 OCCURS 0 WITH HEADER LINE,
+       objbin    LIKE solisti1   OCCURS 0 WITH HEADER LINE,
+       reclist   LIKE somlreci1  OCCURS 0 WITH HEADER LINE.
+
+<font color ="#0000FF">*-- For Exclude</font>
+DATA : gt_ui_functions TYPE ui_functions.
+
+<font color ="#0000FF">*-- For ALV</font>
+<font color ="#0000FF">*-- Top Grid(Header)</font>
+DATA : gt_tfcat    TYPE lvc_t_fcat,
+       gs_tfcat    TYPE lvc_s_fcat,
+       gs_tvariant TYPE disvariant,
+       gs_tlayout  TYPE lvc_s_layo,
+<font color ="#0000FF">*-- Bottom Grid(Line Item)</font>
+       gt_bfcat    TYPE lvc_t_fcat,
+       gs_bfcat    TYPE lvc_s_fcat,
+       gs_bvariant TYPE disvariant,
+       gs_blayout  TYPE lvc_s_layo.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Declaration area for Node</font>
+<font color ="#0000FF">**********************************************************************</font>
+TYPES : node_table_type LIKE STANDARD TABLE OF mtreesnode
+                        WITH DEFAULT KEY.
+
+DATA : node_table TYPE node_table_type.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Declaration area for Tree Event</font>
+<font color ="#0000FF">**********************************************************************</font>
+DATA : events TYPE cntl_simple_events,
+       event  TYPE cntl_simple_event.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Common Variable</font>
+<font color ="#0000FF">**********************************************************************</font>
+DATA : gv_okcode TYPE sy-ucomm.
+
+<font color ="#0000FF">*-- For get bpname</font>
+DATA : gv_id   TYPE zc103sdt0001-bpid,
+       gv_name TYPE zc103sdt0001-bpname.
+
+<font color ="#0000FF">*-- For file browser</font>
+DATA : objfile       TYPE REF TO cl_gui_frontend_services,
+       pickedfolder  TYPE string,
+       initialfolder TYPE string,
+       fullinfo      TYPE string,
+       pfolder       TYPE rlgrap-filename. "MEMORY ID mfolder.
+
+<font color ="#0000FF">*-- For Excel</font>
+DATA: gv_tot_page   LIKE sy-pagno,          " Total page
+      gv_percent(3) TYPE n,                 " Reading percent
+      gv_file       LIKE rlgrap-filename,  " File name
+      gv_pdf(1).
+
+DATA : gv_temp_filename     LIKE rlgrap-filename,
+       gv_temp_filename_pdf LIKE rlgrap-filename,
+       gv_mail_filename     LIKE rlgrap-filename,
+       gv_filename          LIKE rlgrap-filename,
+       gv_form(40).
+
+DATA: excel       TYPE ole2_object,
+      workbook    TYPE ole2_object,
+      books       TYPE ole2_object,
+      book        TYPE ole2_object,
+      sheets      TYPE ole2_object,
+      sheet       TYPE ole2_object,
+      activesheet TYPE ole2_object,
+      application TYPE ole2_object,
+      pagesetup   TYPE ole2_object,
+      cells       TYPE ole2_object,
+      cell        TYPE ole2_object,
+      row         TYPE ole2_object,
+      buffer      TYPE ole2_object,
+      font        TYPE ole2_object,
+      range       TYPE ole2_object,  " Range
+      borders     TYPE ole2_object.
+
+DATA: cell1 TYPE ole2_object,
+      cell2 TYPE ole2_object.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

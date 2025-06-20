@@ -1,0 +1,283 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0012F01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0012F01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZC103SDR0012F01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include          ZC103SDR0012F01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_credit_table_total_value</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_credit_table_total_value .
+
+  DATA : lt_credit TYPE TABLE OF zc103sdt0004.
+
+<font color ="#0000FF">*-- Get Billing Data</font>
+  SELECT bpid, SUM( total_amount ) AS total_amount
+    FROM zc103sdt0004
+    WHERE billing_status EQ 'Y'
+      AND mail_status EQ 'Y'
+      AND doc_flag EQ 'Y'
+      AND gjahr EQ @sy-datum+0(4)
+    GROUP BY bpid
+    ORDER BY bpid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_credit.
+
+<font color ="#0000FF">*-- Calculate Each bp's Total_amount</font>
+  LOOP AT lt_credit INTO DATA(ls_credit).
+<font color ="#0000FF">*-- Set Time Stamp</font>
+    ls_credit-aedat = sy-datum.
+    ls_credit-aenam = sy-uname.
+    ls_credit-aezet = sy-uzeit.
+
+<font color ="#0000FF">*-- Update Credit Table</font>
+    UPDATE zc103sdt0016 SET used_amt_year = ls_credit-total_amount
+                        WHERE bpid EQ ls_credit-bpid.
+
+    IF sy-subrc EQ 0.
+      COMMIT WORK.
+    ELSE.
+      ROLLBACK WORK.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Form set_credit_table_score</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& --&gt;  p1        text</font>
+<font color ="#0000FF">*& &lt;--  p2        text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM set_credit_table_score .
+
+  DATA : lt_bill          TYPE TABLE OF zc103sdt0004,
+         lt_payment_base  TYPE TABLE OF zc103sdt0001,
+         lv_last_date     TYPE dats,
+         lv_delay_day     TYPE i,
+         lv_penalty_score TYPE i,
+         lt_credit_base   TYPE TABLE OF zc103sdt0029,
+         ls_credit_base   TYPE zc103sdt0029,
+         lv_plus_date     TYPE n LENGTH 2,
+         lv_base_date     TYPE i.
+
+  DATA : BEGIN OF ls_payment,
+           bpid        TYPE zc103sdt0001-bpid,
+           paymentterm TYPE i,
+         END OF ls_payment,
+         lt_payment LIKE TABLE OF ls_payment.
+
+<font color ="#0000FF">*-- For Sum penalty_score</font>
+  TYPES : BEGIN OF ts_psum,
+            bpid          TYPE zc103sdt0001-bpid,
+            penalty_score TYPE i,
+            delay_day     TYPE i,
+          END OF ts_psum.
+
+  DATA : ls_psumb TYPE ts_psum,
+         lt_psumb LIKE TABLE OF ls_psumb.
+
+<font color ="#0000FF">*-- For Collect</font>
+  DATA : ls_psum TYPE ts_psum,
+         lt_psum TYPE SORTED TABLE OF ts_psum
+                 WITH UNIQUE KEY bpid.
+
+  DATA : lt_credit TYPE TABLE OF zc103sdt0016,
+         ls_credit TYPE zc103sdt0016.
+
+<font color ="#0000FF">*-- Get billing data</font>
+  SELECT billnum, bpid, billing_date, payment_date
+    FROM zc103sdt0004
+    WHERE gjahr EQ @sy-datum+0(4)
+      AND custid EQ ''
+      AND billing_status EQ 'Y'
+      AND mail_status EQ 'Y'
+      AND doc_flag EQ 'Y'
+      AND credit_status EQ 'N'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_bill.
+
+<font color ="#0000FF">*-- Get each bp's paymentterm</font>
+  SELECT bpid, paymentterm
+    FROM zc103sdt0001
+    INTO CORRESPONDING FIELDS OF TABLE @lt_payment_base.
+
+<font color ="#0000FF">*-- Get credit Base data</font>
+  SELECT grade, score, amt_limit
+    FROM zc103sdt0029
+    INTO CORRESPONDING FIELDS OF TABLE @lt_credit_base.
+
+<font color ="#0000FF">*-- Get Credit Data</font>
+  SELECT bpid, bpname, bptype, grade, current_score, last_eval_date,
+         acc_delay_days, blocked_flag, limit_amt_year, used_amt_year,
+         eval_year, currency, dunning_date, erdat, ernam, erzet,
+         aenam, aezet, aedat
+    FROM zc103sdt0016
+    INTO CORRESPONDING FIELDS OF TABLE @lt_credit.
+
+  IF ( lt_bill IS INITIAL ).
+    EXIT.
+  ELSE.
+<font color ="#0000FF">*-- Change Value FIELD</font>
+    LOOP AT lt_payment_base INTO DATA(ls_payment_base).
+      CLEAR : ls_payment.
+      ls_payment-bpid = ls_payment_base-bpid.
+
+      CASE ls_payment_base-paymentterm.
+        WHEN 'T001'.
+          ls_payment-paymentterm = 0.
+        WHEN 'T030'.
+          ls_payment-paymentterm = 30.
+        WHEN 'T060'.
+          ls_payment-paymentterm = 60.
+      ENDCASE.
+
+      APPEND ls_payment TO lt_payment.
+
+    ENDLOOP.
+
+<font color ="#0000FF">*-- Calculate Credit Score</font>
+    SORT : lt_payment BY bpid ASCENDING.
+
+    LOOP AT lt_bill INTO DATA(ls_bill).
+      READ TABLE lt_payment INTO ls_payment WITH KEY bpid = ls_bill-bpid
+                                            BINARY SEARCH.
+      lv_plus_date = ls_payment-paymentterm.
+
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+        EXPORTING
+          date      = ls_bill-billing_date
+          days      = lv_plus_date
+          months    = 0
+          years     = 0
+        IMPORTING
+          calc_date = lv_last_date.
+
+<font color ="#0000FF">*-- Check Delay day</font>
+      lv_delay_day = ls_bill-payment_date - lv_last_date.
+
+<font color ="#0000FF">*-- Delay</font>
+<font color ="#0000FF">*-- Calculate Penalty Score</font>
+      CLEAR : lv_penalty_score.
+      IF ( lv_delay_day &gt; 0 ).
+        IF ( lv_delay_day &gt; 0 AND lv_delay_day &lt;= 3 ).
+          lv_penalty_score = 0.
+        ELSEIF ( lv_delay_day &gt;= 4 AND lv_delay_day &lt;= 7 ).
+          lv_penalty_score = 5.
+        ELSEIF ( lv_delay_day &gt;= 8 AND lv_delay_day &lt;= 15 ).
+          lv_penalty_score = 10.
+        ELSEIF ( lv_delay_day &gt;= 16 ).
+          lv_penalty_score = 20.
+        ENDIF.
+      ELSE.
+        lv_penalty_score = 0.
+        lv_delay_day = 0.
+      ENDIF.
+
+<font color ="#0000FF">*-- Set sum ITab</font>
+      ls_psumb-bpid = ls_bill-bpid.
+      ls_psumb-penalty_score = lv_penalty_score.
+      ls_psumb-delay_day = lv_delay_day.
+
+      APPEND ls_psumb TO lt_psumb.
+
+<font color ="#0000FF">*-- Update Credit_status(Billing Table)</font>
+      UPDATE zc103sdt0004 SET credit_status = 'Y'
+                          WHERE billnum = ls_bill-billnum.
+    ENDLOOP.
+
+<font color ="#0000FF">*-- Group by bpid</font>
+    LOOP AT lt_psumb INTO ls_psumb.
+      COLLECT ls_psumb INTO lt_psum.
+    ENDLOOP.
+
+<font color ="#0000FF">*-- Update credit ITab</font>
+    DATA : lv_tabix TYPE sy-tabix.
+    SORT : lt_credit BY bpid ASCENDING.
+
+    LOOP AT lt_psum INTO ls_psum.
+      READ TABLE lt_credit INTO ls_credit WITH KEY bpid = ls_psum-bpid
+                                          BINARY SEARCH.
+      lv_tabix = sy-tabix.
+      ls_credit-acc_delay_days += ls_psum-delay_day.
+      ls_credit-current_score -= ls_psum-penalty_score.
+      MODIFY lt_credit FROM ls_credit INDEX lv_tabix TRANSPORTING acc_delay_days current_score.
+    ENDLOOP.
+
+    LOOP AT lt_credit ASSIGNING FIELD-SYMBOL(&lt;fs_cre&gt;).
+      IF ( &lt;fs_cre&gt;-current_score &gt;= 90 ). " VVIP
+        &lt;fs_cre&gt;-grade = 'VVIP'.
+        &lt;fs_cre&gt;-blocked_flag = 'Y'.
+      ELSEIF ( &lt;fs_cre&gt;-current_score &gt;= 75 ) AND " VIP
+             ( &lt;fs_cre&gt;-current_score &lt; 90 ).
+        &lt;fs_cre&gt;-grade = 'VIP'.
+        &lt;fs_cre&gt;-blocked_flag = 'Y'.
+      ELSEIF ( &lt;fs_cre&gt;-current_score &gt;= 60 ) AND " GOLD
+             ( &lt;fs_cre&gt;-current_score &lt; 75 ).
+        &lt;fs_cre&gt;-grade = 'GOLD'.
+        &lt;fs_cre&gt;-blocked_flag = 'Y'.
+      ELSEIF ( &lt;fs_cre&gt;-current_score &gt;= 40 ) AND " SILVER
+             ( &lt;fs_cre&gt;-current_score &lt; 60 ).
+        &lt;fs_cre&gt;-grade = 'SILVER'.
+        &lt;fs_cre&gt;-blocked_flag = 'Y'.
+      ELSEIF ( &lt;fs_cre&gt;-current_score &lt; 40 ) AND
+             ( &lt;fs_cre&gt;-current_score &gt;= 0 ). " BRONZE
+        &lt;fs_cre&gt;-grade = 'BRONZE'.
+        &lt;fs_cre&gt;-blocked_flag = 'N'.
+      ELSE.
+        &lt;fs_cre&gt;-grade = 'BRONZE'.
+        &lt;fs_cre&gt;-blocked_flag = 'N'.
+        &lt;fs_cre&gt;-current_score = 0.
+      ENDIF.
+
+<font color ="#0000FF">*-- Common Credit field</font>
+      &lt;fs_cre&gt;-last_eval_date = sy-datum.
+      READ TABLE lt_credit_base INTO ls_credit_base WITH KEY grade = &lt;fs_cre&gt;-grade.
+      &lt;fs_cre&gt;-limit_amt_year = ls_credit_base-amt_limit.
+      &lt;fs_cre&gt;-eval_year = sy-datum+0(4).
+      &lt;fs_cre&gt;-currency = 'KRW'.
+
+<font color ="#0000FF">*-- Set time Stamp</font>
+      IF ( &lt;fs_cre&gt;-erdat IS INITIAL ).
+        &lt;fs_cre&gt;-erdat = sy-datum.
+        &lt;fs_cre&gt;-erzet = sy-uzeit.
+        &lt;fs_cre&gt;-ernam = sy-uname.
+      ELSE.
+        &lt;fs_cre&gt;-aedat = sy-datum.
+        &lt;fs_cre&gt;-aezet = sy-uzeit.
+        &lt;fs_cre&gt;-aenam = sy-uname.
+      ENDIF.
+
+    ENDLOOP.
+
+    DATA(lv_count) = lines( lt_credit ).
+
+<font color ="#0000FF">*-- Update DB Table</font>
+    IF ( lv_count &gt; 0 ) AND
+       ( sy-subrc EQ 0 ).
+      MODIFY zc103sdt0016 FROM TABLE lt_credit.
+      COMMIT WORK.
+    ELSE.
+      ROLLBACK WORK.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

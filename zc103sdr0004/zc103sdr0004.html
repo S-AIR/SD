@@ -1,0 +1,48 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0004</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0004</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  [SD] 마일리지 배치 프로그램</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report ZC103SDR0004</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+include <a href ="zc103sdr0004top.html">zc103sdr0004top</a>.    " Global Data
+include <a href ="zc103sdr0004f01.html">zc103sdr0004f01</a>.  " FORM-Routines
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* INITIALIZATION</font>
+<font color ="#0000FF">**********************************************************************</font>
+INITIALIZATION.
+  PERFORM set_main_data.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Start of Selection</font>
+<font color ="#0000FF">**********************************************************************</font>
+START-OF-SELECTION.
+
+<font color ="#0000FF">*-- Refresh Mileage Status</font>
+  PERFORM set_mileage_status.
+  PERFORM set_mileage_data.
+  PERFORM set_cus_mileage_data.
+
+<font color ="#0000FF">*-- Exchage Rate</font>
+  PERFORM set_exchange_rate.
+
+<font color ="#0000FF">*-- Check Service end Status</font>
+  PERFORM set_srv_end_line_status.
+  PERFORM set_srv_end_head_status.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZC103SDR0007TOP</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZC103SDR0007TOP</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZC103SDR0007TOP</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include ZC103SDR0007TOP                          - Report ZC103SDR0007</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+REPORT zc103sdr0007 MESSAGE-ID zmsgc103.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* TABLES</font>
+<font color ="#0000FF">**********************************************************************</font>
+TABLES : zc103sdt0001, zc103sdt0002, zc103sdt0015.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Tab Strip Control</font>
+<font color ="#0000FF">**********************************************************************</font>
+CONTROLS : gc_tab TYPE TABSTRIP.
+
+DATA : gv_subscreen TYPE sy-dynnr.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Macro</font>
+<font color ="#0000FF">**********************************************************************</font>
+DEFINE _init.
+
+  REFRESH &1.
+  CLEAR &1.
+
+END-OF-DEFINITION.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Class Instance</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For 100 Screen Container</font>
+DATA : go_bright_container   TYPE REF TO cl_gui_custom_container,
+<font color ="#0000FF">*-- Split bright container</font>
+       go_brsplit_container  TYPE REF TO cl_gui_splitter_container,
+       go_brtop_container    TYPE REF TO cl_gui_container,
+       go_brbottom_container TYPE REF TO cl_gui_container,
+<font color ="#0000FF">*-- For 101 ~ 104 Screen Container</font>
+       go_101_container      TYPE REF TO cl_gui_custom_container,
+       go_102_container      TYPE REF TO cl_gui_custom_container,
+       go_103_container      TYPE REF TO cl_gui_custom_container,
+       go_104_container      TYPE REF TO cl_gui_custom_container.
+
+<font color ="#0000FF">*-- For 100 Screen ALV</font>
+DATA : go_brtop_alv_grid    TYPE REF TO cl_gui_alv_grid,
+       go_brbottom_alv_grid TYPE REF TO cl_gui_alv_grid,
+<font color ="#0000FF">*-- For 101 ~ 104 Screen ALV</font>
+       go_101_alv_grid      TYPE REF TO cl_gui_alv_grid,
+       go_102_alv_grid      TYPE REF TO cl_gui_alv_grid,
+       go_103_alv_grid      TYPE REF TO cl_gui_alv_grid,
+       go_104_alv_grid      TYPE REF TO cl_gui_alv_grid.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* ITab and WA</font>
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">*-- For Normal Customer(B2C)</font>
+DATA : BEGIN OF gs_cu,
+         order_possible  TYPE icon-id,
+         order_status    TYPE icon-id,
+         input_head      TYPE zc103_cds_idata-input_head,
+         input_line      TYPE zc103_cds_idata-input_line,
+         input_type      TYPE zc103_cds_idata-input_type,
+         custid          TYPE zc103_cds_idata-custid,
+         matid           TYPE zc103_cds_idata-matid,
+         countryfrom     TYPE zc103_cds_idata-countryfrom,
+         countryto       TYPE zc103_cds_idata-countryto,
+         flightid        TYPE zc103_cds_idata-flightid,
+         scheduleid      TYPE zc103_cds_idata-scheduleid,
+         conditionid     TYPE zc103_cds_idata-conditionid,
+         currency        TYPE zc103_cds_idata-currency,
+         unit_price      TYPE zc103_cds_idata-unit_price,
+         total_price     TYPE zc103_cds_idata-total_price,
+         input_date      TYPE zc103_cds_idata-input_date,
+         header_status   TYPE zc103_cds_idata-header_status,
+         orderid         TYPE zc103_cds_idata-orderid,
+         so_status       TYPE zc103_cds_idata-so_status,
+         class           TYPE zc103_cds_idata-class,
+         used_mileage    TYPE zc103_cds_idata-used_mileage,
+         ticket_quantity TYPE zc103_cds_idata-ticket_quantity,
+         ticket_unit     TYPE zc103_cds_idata-ticket_unit,
+         meal_type       TYPE zc103_cds_idata-meal_type,
+         souvenir_qty    TYPE zc103_cds_idata-souvenir_qty,
+         souvenir_unit   TYPE zc103_cds_idata-souvenir_unit.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_cu,
+gt_cu LIKE TABLE OF gs_cu.
+
+<font color ="#0000FF">*-- For Normal Customer(B2C) Display head</font>
+DATA : BEGIN OF gs_cudisplay,
+         order_possible    TYPE icon-id,
+         order_status      TYPE icon-id,
+         input_head        TYPE zc103_cds_idata-input_head,
+         input_type(20),
+         custid            TYPE zc103_cds_idata-custid,
+         countryfrom(20),
+         countryto(20),
+         flightid          TYPE zc103_cds_idata-flightid,
+         scheduleid        TYPE zc103_cds_idata-scheduleid,
+         conditionid       TYPE zc103_cds_idata-conditionid,
+         currency          TYPE zc103_cds_idata-currency,
+         total_price       TYPE zc103_cds_idata-total_price,
+         input_date        TYPE zc103_cds_idata-input_date,
+         header_status(20),
+         orderid           TYPE zc103_cds_idata-orderid,
+         so_status(20),
+         ticket_quantity   TYPE zc103_cds_idata-ticket_quantity,
+         ticket_unit       TYPE zc103_cds_idata-ticket_unit.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_cudisplay,
+gt_cudisplay LIKE TABLE OF gs_cudisplay.
+
+<font color ="#0000FF">*-- For Travel Agency(B2B)</font>
+DATA : BEGIN OF gs_ta,
+         order_possible  TYPE icon-id,
+         order_status    TYPE icon-id,
+         input_head      TYPE zc103_cds_idata-input_head,
+         input_line      TYPE zc103_cds_idata-input_line,
+         input_type      TYPE zc103_cds_idata-input_type,
+         bpid            TYPE zc103_cds_idata-bpid,
+         unrg_custname   TYPE zc103_cds_idata-unrg_custname,
+         unrg_custemail  TYPE zc103_cds_idata-unrg_custemail,
+         matid           TYPE zc103_cds_idata-matid,
+         countryfrom     TYPE zc103_cds_idata-countryfrom,
+         countryto       TYPE zc103_cds_idata-countryto,
+         flightid        TYPE zc103_cds_idata-flightid,
+         scheduleid      TYPE zc103_cds_idata-scheduleid,
+         conditionid     TYPE zc103_cds_idata-conditionid,
+         currency        TYPE zc103_cds_idata-currency,
+         unit_price      TYPE zc103_cds_idata-unit_price,
+         total_price     TYPE zc103_cds_idata-total_price,
+         input_date      TYPE zc103_cds_idata-input_date,
+         header_status   TYPE zc103_cds_idata-header_status,
+         orderid         TYPE zc103_cds_idata-orderid,
+         so_status       TYPE zc103_cds_idata-so_status,
+         class           TYPE zc103_cds_idata-class,
+         used_mileage    TYPE zc103_cds_idata-used_mileage,
+         ticket_quantity TYPE zc103_cds_idata-ticket_quantity,
+         ticket_unit     TYPE zc103_cds_idata-ticket_unit,
+         meal_type       TYPE zc103_cds_idata-meal_type,
+         souvenir_qty    TYPE zc103_cds_idata-souvenir_qty,
+         souvenir_unit   TYPE zc103_cds_idata-souvenir_unit.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_ta,
+gt_ta LIKE TABLE OF gs_ta.
+
+<font color ="#0000FF">*-- For Travel Agency(B2B) Display head</font>
+DATA : BEGIN OF gs_tadisplay,
+         order_possible    TYPE icon-id,
+         order_status      TYPE icon-id,
+         input_head        TYPE zc103_cds_idata-input_head,
+         input_type(20),
+         bpid              TYPE zc103_cds_idata-bpid,
+         countryfrom(20),
+         countryto(20),
+         flightid          TYPE zc103_cds_idata-flightid,
+         scheduleid        TYPE zc103_cds_idata-scheduleid,
+         conditionid       TYPE zc103_cds_idata-conditionid,
+         currency          TYPE zc103_cds_idata-currency,
+         total_price       TYPE zc103_cds_idata-total_price,
+         input_date        TYPE zc103_cds_idata-input_date,
+         header_status(20),
+         orderid           TYPE zc103_cds_idata-orderid,
+         so_status(20),
+         ticket_quantity   TYPE zc103_cds_idata-ticket_quantity,
+         ticket_unit       TYPE zc103_cds_idata-ticket_unit.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_tadisplay,
+gt_tadisplay LIKE TABLE OF gs_tadisplay.
+
+<font color ="#0000FF">*-- For Contracted Carrier(B2B)</font>
+DATA : BEGIN OF gs_cc,
+         order_possible TYPE icon-id,
+         order_status   TYPE icon-id,
+         input_head     TYPE zc103_cds_idata-input_head,
+         input_line     TYPE zc103_cds_idata-input_line,
+         input_type     TYPE zc103_cds_idata-input_type,
+         bpid           TYPE zc103_cds_idata-bpid,
+         matid          TYPE zc103_cds_idata-matid,
+         countryfrom    TYPE zc103_cds_idata-countryfrom,
+         countryto      TYPE zc103_cds_idata-countryto,
+         flightid       TYPE zc103_cds_idata-flightid,
+         scheduleid     TYPE zc103_cds_idata-scheduleid,
+         conditionid    TYPE zc103_cds_idata-conditionid,
+         currency       TYPE zc103_cds_idata-currency,
+         unit_price     TYPE zc103_cds_idata-unit_price,
+         total_price    TYPE zc103_cds_idata-total_price,
+         input_date     TYPE zc103_cds_idata-input_date,
+         header_status  TYPE zc103_cds_idata-header_status,
+         orderid        TYPE zc103_cds_idata-orderid,
+         so_status      TYPE zc103_cds_idata-so_status,
+         weight         TYPE zc103_cds_idata-weight,
+         weight_unit    TYPE zc103_cds_idata-weight_unit,
+         volume         TYPE zc103_cds_idata-volume.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_cc,
+gt_cc LIKE TABLE OF gs_cc.
+
+<font color ="#0000FF">*-- For Contracted Carrier(B2B) Display head</font>
+DATA : BEGIN OF gs_ccdisplay,
+         order_possible    TYPE icon-id,
+         order_status      TYPE icon-id,
+         input_head        TYPE zc103_cds_idata-input_head,
+         input_type(20),
+         bpid              TYPE zc103_cds_idata-bpid,
+         matid             TYPE zc103_cds_idata-matid,
+         countryfrom(20),
+         countryto(20),
+         flightid          TYPE zc103_cds_idata-flightid,
+         scheduleid        TYPE zc103_cds_idata-scheduleid,
+         conditionid       TYPE zc103_cds_idata-conditionid,
+         currency          TYPE zc103_cds_idata-currency,
+         total_price       TYPE zc103_cds_idata-total_price,
+         input_date        TYPE zc103_cds_idata-input_date,
+         header_status(20),
+         orderid           TYPE zc103_cds_idata-orderid,
+         so_status(20),
+         weight            TYPE zc103_cds_idata-weight,
+         weight_unit       TYPE zc103_cds_idata-weight_unit,
+         volume            TYPE zc103_cds_idata-volume.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_ccdisplay,
+gt_ccdisplay LIKE TABLE OF gs_ccdisplay.
+
+<font color ="#0000FF">*-- For Non-Contracted Carrier(B2B)</font>
+DATA : BEGIN OF gs_nc,
+         order_possible TYPE icon-id,
+         order_status   TYPE icon-id,
+         input_head     TYPE zc103_cds_idata-input_head,
+         input_line     TYPE zc103_cds_idata-input_line,
+         input_type     TYPE zc103_cds_idata-input_type,
+         unrg_bpname    TYPE zc103_cds_idata-unrg_bpname,
+         bpid           TYPE zc103_cds_idata-bpid,
+         unrg_bpemail   TYPE zc103_cds_idata-unrg_bpemail,
+         matid          TYPE zc103_cds_idata-matid,
+         countryfrom    TYPE zc103_cds_idata-countryfrom,
+         countryto      TYPE zc103_cds_idata-countryto,
+         flightid       TYPE zc103_cds_idata-flightid,
+         scheduleid     TYPE zc103_cds_idata-scheduleid,
+         conditionid    TYPE zc103_cds_idata-conditionid,
+         currency       TYPE zc103_cds_idata-currency,
+         unit_price     TYPE zc103_cds_idata-unit_price,
+         total_price    TYPE zc103_cds_idata-total_price,
+         input_date     TYPE zc103_cds_idata-input_date,
+         header_status  TYPE zc103_cds_idata-header_status,
+         orderid        TYPE zc103_cds_idata-orderid,
+         so_status      TYPE zc103_cds_idata-so_status,
+         weight         TYPE zc103_cds_idata-weight,
+         weight_unit    TYPE zc103_cds_idata-weight_unit,
+         volume         TYPE zc103_cds_idata-volume.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_nc,
+gt_nc LIKE TABLE OF gs_nc.
+
+<font color ="#0000FF">*-- For Non-Contracted Carrier(B2B) Display head</font>
+DATA : BEGIN OF gs_ncdisplay,
+         order_possible    TYPE icon-id,
+         order_status      TYPE icon-id,
+         input_head        TYPE zc103_cds_idata-input_head,
+         input_type(20),
+         bpid              TYPE zc103_cds_idata-bpid,
+         unrg_bpname       TYPE zc103_cds_idata-unrg_bpname,
+         unrg_bpemail      TYPE zc103_cds_idata-unrg_bpemail,
+         matid             TYPE zc103_cds_idata-matid,
+         countryfrom(20),
+         countryto(20),
+         flightid          TYPE zc103_cds_idata-flightid,
+         scheduleid        TYPE zc103_cds_idata-scheduleid,
+         conditionid       TYPE zc103_cds_idata-conditionid,
+         currency          TYPE zc103_cds_idata-currency,
+         unit_price        TYPE zc103_cds_idata-unit_price,
+         total_price       TYPE zc103_cds_idata-total_price,
+         input_date        TYPE zc103_cds_idata-input_date,
+         header_status(20),
+         orderid           TYPE zc103_cds_idata-orderid,
+         so_status(20),
+         weight            TYPE zc103_cds_idata-weight,
+         weight_unit       TYPE zc103_cds_idata-weight_unit,
+         volume            TYPE zc103_cds_idata-volume.
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_ncdisplay,
+gt_ncdisplay LIKE TABLE OF gs_ncdisplay.
+
+<font color ="#0000FF">*-- For Check Sales Status</font>
+DATA : BEGIN OF gs_soc,
+         input_head TYPE zc103sdt0015-input_head,
+         input_line TYPE zc103sdt0015-input_line,
+         so_status  TYPE zc103sdt0015-so_status,
+       END OF gs_soc,
+       gt_soc LIKE TABLE OF gs_soc.
+
+<font color ="#0000FF">*-- For SO</font>
+DATA : gs_hso TYPE zc103sdt0006,
+       gt_hso LIKE TABLE OF gs_hso,
+       gs_lso TYPE zc103sdt0007,
+       gt_lso LIKE TABLE OF gs_lso.
+
+<font color ="#0000FF">*-- For SO Header Display</font>
+DATA : BEGIN OF gs_hdisplay,
+         orderid            TYPE zc103sdt0006-orderid,
+         bpid               TYPE zc103sdt0006-bpid,
+         custid             TYPE zc103sdt0006-custid,
+         conditionid        TYPE zc103sdt0006-conditionid,
+         order_date         TYPE zc103sdt0006-order_date,
+         cancel_deadline    TYPE zc103sdt0006-cancel_deadline,
+         order_type(20),
+         total_amount       TYPE zc103sdt0006-total_amount,
+         currency           TYPE zc103sdt0006-currency,
+         cancel_reason      TYPE zc103sdt0006-cancel_reason,
+         order_status(20),
+         billing_status(20),
+         srv_end_status(20).
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_hdisplay,
+gt_hdisplay LIKE TABLE OF gs_hdisplay.
+
+<font color ="#0000FF">*-- For SO Line display</font>
+DATA : BEGIN OF gs_ldisplay,
+         orderid            TYPE zc103sdt0007-orderid,
+         orderitemno        TYPE zc103sdt0007-orderitemno,
+         bookingid          TYPE zc103sdt0007-bookingid,
+         transportid        TYPE zc103sdt0007-transportid,
+         charged_item(20),
+         description        TYPE zc103sdt0007-description,
+         ticket_quantity    TYPE zc103sdt0007-ticket_quantity,
+         ticket_unit        TYPE zc103sdt0007-ticket_unit,
+         cargo_weight       TYPE zc103sdt0007-cargo_weight,
+         cargo_unit         TYPE zc103sdt0007-cargo_unit,
+         unit_price         TYPE zc103sdt0007-unit_price,
+         tax_amount         TYPE zc103sdt0007-tax_amount,
+         discount           TYPE zc103sdt0007-discount,
+         currency           TYPE zc103sdt0007-currency,
+         used_mileage       TYPE zc103sdt0007-used_mileage,
+         order_status(20),
+         srv_end_status(20).
+         include structure <a href ="zc103pps01/dictionary-zc103pps01.html">zc103pps01</a>.
+DATA : END OF gs_ldisplay,
+gt_ldisplay LIKE TABLE OF gs_ldisplay.
+
+<font color ="#0000FF">*-- Get Credit</font>
+DATA : gt_credit TYPE TABLE OF zc103sdt0016,
+       gs_credit TYPE zc103sdt0016.
+
+<font color ="#0000FF">*-- Get Sales Order</font>
+DATA : gt_so TYPE TABLE OF zc103sdt0006,
+       gs_so TYPE zc103sdt0006.
+
+<font color ="#0000FF">*-- For Excluding</font>
+DATA : gt_ui_functions TYPE ui_functions.
+
+<font color ="#0000FF">*-- For ALV</font>
+<font color ="#0000FF">*-- Field Catalog : Bottom Right Top grid</font>
+DATA : gt_brtfcat    TYPE lvc_t_fcat,
+       gs_brtfcat    TYPE lvc_s_fcat,
+       gs_brtvariant TYPE disvariant,
+       gs_brtlayout  TYPE lvc_s_layo.
+
+<font color ="#0000FF">*-- Field Catalog : Bottom Right Bottom grid</font>
+DATA : gt_brbfcat    TYPE lvc_t_fcat,
+       gs_brbfcat    TYPE lvc_s_fcat,
+       gs_brbvariant TYPE disvariant,
+       gs_brblayout  TYPE lvc_s_layo.
+
+<font color ="#0000FF">*-- Field Catalog : 101 Screen</font>
+DATA : gt_101_fcat    TYPE lvc_t_fcat,
+       gs_101_fcat    TYPE lvc_s_fcat,
+       gs_101_variant TYPE disvariant,
+       gs_101_layout  TYPE lvc_s_layo.
+
+<font color ="#0000FF">*-- Field Catalog : 102 Screen</font>
+DATA : gt_102_fcat    TYPE lvc_t_fcat,
+       gs_102_fcat    TYPE lvc_s_fcat,
+       gs_102_variant TYPE disvariant,
+       gs_102_layout  TYPE lvc_s_layo.
+
+<font color ="#0000FF">*-- Field Catalog : 103 Screen</font>
+DATA : gt_103_fcat    TYPE lvc_t_fcat,
+       gs_103_fcat    TYPE lvc_s_fcat,
+       gs_103_variant TYPE disvariant,
+       gs_103_layout  TYPE lvc_s_layo.
+
+<font color ="#0000FF">*-- Field Catalog : 104 Screen</font>
+DATA : gt_104_fcat    TYPE lvc_t_fcat,
+       gs_104_fcat    TYPE lvc_s_fcat,
+       gs_104_variant TYPE disvariant,
+       gs_104_layout  TYPE lvc_s_layo.
+
+<font color ="#0000FF">**********************************************************************</font>
+<font color ="#0000FF">* Normal Variable</font>
+<font color ="#0000FF">**********************************************************************</font>
+DATA : gv_okcode TYPE sy-ucomm.
+
+<font color ="#0000FF">*-- For Screen Field</font>
+DATA : gv_csoy TYPE i, " 판매오더 전환 완료 건수
+       gv_cson TYPE i, " 판매오더 미전환 건수
+       gv_csof TYPE i. " 유효성 검사 실패 건수
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
+</font>
+</body>
+</html>
