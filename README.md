@@ -2,7 +2,6 @@
 SD모듈
 
 [1] 고객 마스터 & 마일리지 관리 프로그램 - SAPMZC103SD0001
-![고객 마스터 & 마일리지 관리](./image/customer-mileage-1.png)
 
 [2] 판매 오더 관리 프로그램 - SAPMZC103SD0002
 
