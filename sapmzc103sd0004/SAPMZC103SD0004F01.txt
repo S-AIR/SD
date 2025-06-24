@@ -1,0 +1,1980 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0004F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_body_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_body_data .
+
+  " 프로그램을 처음 시작할 때 데이터 조회
+  IF gv_init EQ abap_true.
+
+    SELECT a~ticketid, bookingid, a~flightid, a~scheduleid,
+           a~passengerid, passengername, passengermail,
+           a~countryfrom, a~countryto,
+           ticket_status, class, a~seatcode, c~mealtype,
+           departdate, departtime, arrivedate, arrivetime
+      FROM zc103sdt0014 AS a INNER JOIN zc103sdt0008 AS b
+                             ON a~scheduleid = b~scheduleid
+                             LEFT JOIN zc103sdt0013 AS c
+                             ON a~ticketid = c~ticketid
+      WHERE departdate BETWEEN @gv_fr_date AND @gv_to_date
+      ORDER BY a~ticketid ASCENDING
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+
+    IF gt_body IS INITIAL.
+      MESSAGE s003 DISPLAY LIKE 'E'.
+      EXIT.
+    ELSE.
+      MESSAGE s008 WITH sy-dbcnt.
+    ENDIF.
+
+    PERFORM parse_data. " 도메인 값 등 parsing
+    gv_init = abap_false.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_100_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_100_screen .
+
+  IF go_container IS NOT BOUND.
+
+    CLEAR : gt_fcat, gs_fcat.
+
+    " Set Field Catalog              Key Fieldname  Ref_tab  Just Emphasize
+    PERFORM set_field_catalog USING : 'X' 'TICKETID' 'ZC103SDT0014' 'C' ' ',
+                                      ' ' 'PASSENGERID' 'ZC103SDT0014' 'C' ' ',
+                                      ' ' 'PASSENGERNAME' 'ZC103SDT0014' ' ' 'X',
+                                      ' ' 'COUNTRYFROM' 'ZC103SDT0014' ' ' 'X',
+                                      ' ' 'COUNTRYFR_TEXT' ' ' ' ' 'X',
+                                      ' ' 'COUNTRYTO' 'ZC103SDT0014' ' ' 'X',
+                                      ' ' 'COUNTRYTO_TEXT' ' ' ' ' 'X',
+                                      ' ' 'DEPART_DATETIME' ' ' ' ' ' ',
+                                      ' ' 'SEATCODE' 'ZC103SDT0014' ' ' ' ',
+                                      ' ' 'STATUS_TEXT' ' ' ' ' ' '.
+
+    PERFORM set_layout.    " Set Layout & Variant
+    PERFORM exclude_toolbar. " Exclude unnecessary toolbar
+    PERFORM create_object. " Set Object [container, alv_grid]
+
+    " Set Handler FOR alv
+    SET HANDLER : lcl_event_handler=>hotspot_click FOR go_left_grid,
+                  lcl_event_handler=>double_click FOR go_left_grid,
+                  lcl_event_handler=>modify_value FOR go_left_grid,
+                  lcl_event_handler=>edit_toolbar FOR go_left_grid,
+                  lcl_event_handler=>user_command FOR go_left_grid.
+
+    CALL METHOD go_left_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_body
+        it_fieldcatalog      = gt_fcat.
+
+  ENDIF.
+
+  PERFORM refresh_alv.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  " Set Field Catalog
+  gs_fcat-key = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-ref_table = pv_table.
+  gs_fcat-just = pv_just.
+  gs_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'TICKETID'.
+      gs_fcat-hotspot = abap_true.
+    WHEN 'COUNTRYFROM'.
+      gs_fcat-no_out = abap_true.
+    WHEN 'COUNTRYFR_TEXT'.
+      gs_fcat-coltext = '출발지'.
+    WHEN 'COUNTRYTO'.
+      gs_fcat-no_out = abap_true.
+    WHEN 'COUNTRYTO_TEXT'.
+      gs_fcat-coltext = '도착지'.
+    WHEN 'STATUS_TEXT'.
+      gs_fcat-coltext = '탑승권 상태'.
+    WHEN 'DEPART_DATETIME'.
+      gs_fcat-coltext = '출발일시'.
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR : gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_layout .
+
+*-- SET layout
+  gs_layout-zebra = abap_true.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode = 'D'.
+  gs_layout-stylefname = 'STYLE'.
+
+*-- Set Variant
+  gs_variant-report = sy-repid.
+  gs_variant-handle = 'ALV1'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+*-- 1. Main Container
+  CREATE OBJECT go_container
+    EXPORTING
+      container_name = 'MAIN_CONT'.
+
+*-- 2. 화면 좌우 Split Container
+  CREATE OBJECT go_split_main
+    EXPORTING
+      parent  = go_container
+      rows    = 1
+      columns = 2.
+
+*-- 3. Patch container
+  CALL METHOD go_split_main->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_left_cont.
+
+  CALL METHOD go_split_main->get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = go_html_cont.
+
+  CALL METHOD go_split_main->set_column_width
+    EXPORTING
+      id    = 1
+      width = 40.
+
+  CALL METHOD go_split_main->set_column_width
+    EXPORTING
+      id    = 2
+      width = 60.
+
+*-- 4. Patch ALV
+  CREATE OBJECT go_left_grid
+    EXPORTING
+      i_parent = go_left_cont.
+
+  " HTML Viewer 생성
+  CREATE OBJECT go_html_view
+    EXPORTING
+      parent = go_html_cont.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form parse_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM parse_data .
+**********************************************************************
+* 목적
+*  1. date, time ->  datetime
+*  2. domain code를  domain value로 파싱
+**********************************************************************
+  DATA : lv_dt  TYPE dats,
+         lv_tm  TYPE tims,
+         lv_adt TYPE dats,
+         lv_atm TYPE tims.
+
+*-- GET Domain Value
+  SELECT
+  FROM dd07v
+  FIELDS domvalue_l, ddtext
+  WHERE domname = 'ZC103D_FI_LAND'
+    OR domname = 'ZC103D_SD_TICKET_STATUS'
+    OR domname = 'ZC103D_SD_MEALTYPE'
+    OR domname = 'ZC103ED_SD_SOUVENIRTP'
+  INTO CORRESPONDING FIELDS OF TABLE @gt_dd07v.
+
+  LOOP AT gt_body ASSIGNING FIELD-SYMBOL(<fs>).
+
+    " datetime
+    CLEAR : lv_dt, lv_tm, lv_adt, lv_atm.
+    lv_dt = <fs>-departdate.
+    lv_tm = <fs>-departtime.
+    <fs>-depart_datetime = |{ lv_dt+0(4) }.{ lv_dt+4(2) }.{ lv_dt+6(2) } { lv_tm+0(2) }:{ lv_tm+2(2) }|.
+
+    lv_adt = <fs>-arrivedate.
+    lv_atm = <fs>-arrivetime.
+    <fs>-arrive_datetime = |{ lv_adt+0(4) }.{ lv_adt+4(2) }.{ lv_adt+6(2) } { lv_atm+0(2) }:{ lv_atm+2(2) }|.
+
+    " country domain text
+    <fs>-countryfr_text = gt_dd07v[ KEY key domvalue_l = <fs>-countryfrom ]-ddtext.
+    <fs>-countryto_text = gt_dd07v[ KEY key domvalue_l = <fs>-countryto ]-ddtext.
+
+    " ticket status domain text
+    <fs>-status_text = gt_dd07v[ KEY key domvalue_l = <fs>-ticket_status ]-ddtext.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form search_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM search_data .
+
+  IF gv_ch1 IS INITIAL AND gv_ch2 IS INITIAL.
+    MESSAGE s000 WITH '고객 구분을 선택하세요.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CLEAR : gt_body.
+  SELECT a~ticketid, a~bookingid, a~flightid, a~scheduleid,
+         a~passengerid, passengername, passengermail,
+         ticket_status, class, seatcode, d~mealtype,
+         a~countryfrom, a~countryto,
+         departdate, departtime, arrivedate, arrivetime
+    FROM zc103sdt0014 AS a INNER JOIN zc103sdt0008 AS b
+                           ON a~scheduleid = b~scheduleid
+                           INNER JOIN zc103sdt0011 AS c
+                           ON a~bookingid = c~bookingid
+                           LEFT JOIN zc103sdt0013 AS d
+                           ON a~ticketid = d~ticketid
+   WHERE ( departdate >= @gv_fr_date OR @gv_fr_date IS INITIAL )
+     AND ( departdate <= @gv_to_date OR @gv_to_date IS INITIAL )
+     AND ( a~scheduleid = @gv_schid  OR @gv_schid IS INITIAL )
+     AND ( a~bookingid  = @gv_boid   OR @gv_boid IS INITIAL )
+     AND (
+          ( @gv_ch1 = 'X' AND c~custid IS NOT INITIAL ) OR
+          ( @gv_ch2 = 'X' AND c~bpid IS NOT INITIAL )
+         )
+    ORDER BY a~ticketid DESCENDING
+    INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+
+  IF gt_body IS INITIAL.
+    MESSAGE s003 DISPLAY LIKE 'E'.
+    EXIT.
+  ELSE.
+    MESSAGE s008 WITH sy-dbcnt.
+  ENDIF.
+
+  PERFORM parse_data.
+  PERFORM refresh_alv.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_alv .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  IF go_left_grid IS BOUND.
+    CALL METHOD go_left_grid->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_search_result
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_search_result .
+
+  PERFORM set_init_date.
+
+  " calendar 다시
+  go_to_cal->free( ).
+  go_to_con->free( ).
+  go_fr_cal->free( ).
+  go_fr_con->free( ).
+  FREE : go_to_cal, go_to_con, go_fr_cal, go_fr_con.
+
+  CLEAR : gt_body, gs_body, gv_schid, gv_boid.
+  gv_ch1 = abap_true.
+  gv_ch2 = abap_true.
+  gv_init = abap_true.
+
+  " SAP 메모리에서 삭제
+  SET PARAMETER ID 'BOOKINGID' FIELD ''.
+  SET PARAMETER ID 'SCHEDULEID' FIELD ''.
+
+  " search bar 부분 초기화
+  gv_ext_search = abap_false.
+  gv_email = abap_false.
+  PERFORM set_100_screen.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_calendar_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_calendar_object .
+
+*-- 켈린더 오브젝트 생성 화면
+  DATA : r3_today TYPE cnca_utc_date.
+
+*-- From 인스턴스 생성
+  CREATE OBJECT go_fr_con
+    EXPORTING
+      container_name = 'C_PICKER_FR'.
+
+*-- To 인스턴스 생성
+  CREATE OBJECT go_to_con
+    EXPORTING
+      container_name = 'C_PICKER_TO'.
+
+*-- 달력 모양 + 날짜 선택 화면
+  gv_calendar_style = cnca_style_v_navigator +
+                       cnca_style_dtpicker.
+
+*-- 하루씩 선택
+  gv_selection_style = cnca_sel_day .
+
+*-- 설정한 날짜를 focus date로 설정
+  r3_today = gv_fr_date.
+  CREATE OBJECT go_fr_cal
+    EXPORTING
+      parent          = go_fr_con
+      view_style      = gv_calendar_style
+      selection_style = gv_selection_style
+      focus_date      = r3_today.
+
+  r3_today = gv_to_date.
+  CREATE OBJECT go_to_cal
+    EXPORTING
+      parent          = go_to_con
+      view_style      = gv_calendar_style
+      selection_style = gv_selection_style
+      focus_date      = r3_today.
+
+*-- 여러개 선택할 수 있는 옵션
+*  + cnca_sel_week +  cnca_sel_month + cnca_sel_interval.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_calendar_event
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_calendar_event .
+
+*-- 켈린더에 이벤트 설정
+  SET HANDLER : lcl_event_handler=>on_date_selected FOR go_fr_cal,
+                lcl_event_handler=>on_date_selected FOR go_to_cal.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form register_calendar_event
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM register_calendar_event .
+
+*-- 켈린더 인스턴스에 이벤트 설정
+*   [FROM] handling as system event
+  myevent-appl_event = ' '.
+  myevent-eventid = go_fr_cal->m_id_date_selected.
+  APPEND myevent TO myevent_tab.
+
+  myevent-appl_event = 'X'.
+  myevent-eventid = go_fr_cal->m_id_pre_selection.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_fr_cal->m_id_info_request.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_fr_cal->m_id_ctxmenu_request.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_fr_cal->m_id_ctxmenu_selected.
+  APPEND myevent TO myevent_tab.
+
+  CALL METHOD go_fr_cal->set_registered_events
+    EXPORTING
+      events = myevent_tab.
+
+*   [TO] handling as system event
+  myevent-appl_event = ' '.
+  myevent-eventid = go_to_cal->m_id_date_selected.
+  APPEND myevent TO myevent_tab.
+
+  myevent-appl_event = 'X'.
+  myevent-eventid = go_to_cal->m_id_pre_selection.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_to_cal->m_id_info_request.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_to_cal->m_id_ctxmenu_request.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_to_cal->m_id_ctxmenu_selected.
+  APPEND myevent TO myevent_tab.
+
+  CALL METHOD go_to_cal->set_registered_events
+    EXPORTING
+      events = myevent_tab.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form on_date_selected
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> DATE_BEGIN
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+FORM on_date_selected  USING   pv_date
+                               po_sender TYPE REF TO cl_gui_calendar.
+
+*-- 초기 켈린더에 찍힐 날짜
+  DATA : r3_today TYPE cnca_utc_date.
+
+  CASE po_sender.
+
+    WHEN go_fr_cal.
+
+**-- From 날짜에 받은 날짜 입력
+*      gv_fr_date = pv_date.
+
+*-- From 날짜가 To 날짜보다 작거나 같다면 정상 작동
+      IF  pv_date <= gv_to_date.
+
+        gv_fr_date = pv_date.
+
+*-- From 날짜가 To 날짜 이후일 때 동작
+      ELSEIF pv_date > gv_to_date.
+
+*-- To 날짜를 From 날짜로 변경
+        gv_fr_date = gv_to_date.
+        MESSAGE '잘못된 날짜 입력' TYPE 'S' DISPLAY LIKE 'E'.
+
+*-- 켈린더에 Refresh가 없으므로 삭제 후 다시 생성
+        go_fr_cal->free( ).
+
+        FREE : go_fr_cal.
+
+*-- 변경할 날짜 입력
+        r3_today = gv_fr_date.
+
+*-- 변경된 From 날짜를 기준으로 From 켈린더 다시 생성
+        CREATE OBJECT go_fr_cal
+          EXPORTING
+            parent          = go_fr_con
+            view_style      = gv_calendar_style
+            selection_style = gv_selection_style
+            focus_date      = r3_today.
+
+*-- 이벤트도 다시 설치
+        SET HANDLER lcl_event_handler=>on_date_selected  FOR go_fr_cal.
+
+
+*-- 켈린더에 여러 이벤트들 다시 설치
+        myevent-appl_event = ' '.
+        myevent-eventid = go_to_cal->m_id_date_selected.
+        APPEND myevent TO myevent_tab.
+
+        myevent-appl_event = 'X'.
+        myevent-eventid = go_to_cal->m_id_pre_selection.
+        APPEND myevent TO myevent_tab.
+
+        myevent-eventid = go_to_cal->m_id_info_request.
+        APPEND myevent TO myevent_tab.
+
+        myevent-eventid = go_to_cal->m_id_ctxmenu_request.
+        APPEND myevent TO myevent_tab.
+
+        myevent-eventid = go_to_cal->m_id_ctxmenu_selected.
+        APPEND myevent TO myevent_tab.
+
+        CALL METHOD go_fr_cal->set_registered_events
+          EXPORTING
+            events = myevent_tab.
+
+      ENDIF.
+
+    WHEN go_to_cal.
+
+*-- To 날짜가 From 날짜보다 크거나 같다면 정상 작동
+      IF  pv_date >= gv_fr_date.
+
+        gv_to_date = pv_date.
+
+*-- To 날짜가 From 날짜 이전일 때 동작
+      ELSEIF pv_date < gv_fr_date.
+
+*-- To 날짜를 From 날짜로 변경
+        gv_to_date = gv_fr_date.
+        MESSAGE '잘못된 날짜 입력' TYPE 'S' DISPLAY LIKE 'E'.
+
+*-- 켈린더에 Refresh가 없으므로 삭제 후 다시 생성
+        go_to_cal->free( ).
+
+        FREE : go_to_cal.
+
+*-- 변경할 날짜 입력
+        r3_today = gv_to_date.
+
+*-- 변경된 To 날짜를 기준으로 To 켈린더 다시 생성
+        CREATE OBJECT go_to_cal
+          EXPORTING
+            parent          = go_to_con
+            view_style      = gv_calendar_style
+            selection_style = gv_selection_style
+            focus_date      = r3_today.
+
+*-- 이벤트도 다시 설치
+        SET HANDLER lcl_event_handler=>on_date_selected  FOR go_to_cal.
+
+
+*-- 켈린더에 여러 이벤트들 다시 설치
+        myevent-appl_event = ' '.
+        myevent-eventid = go_to_cal->m_id_date_selected.
+        APPEND myevent TO myevent_tab.
+
+        myevent-appl_event = 'X'.
+        myevent-eventid = go_to_cal->m_id_pre_selection.
+        APPEND myevent TO myevent_tab.
+
+        myevent-eventid = go_to_cal->m_id_info_request.
+        APPEND myevent TO myevent_tab.
+
+        myevent-eventid = go_to_cal->m_id_ctxmenu_request.
+        APPEND myevent TO myevent_tab.
+
+        myevent-eventid = go_to_cal->m_id_ctxmenu_selected.
+        APPEND myevent TO myevent_tab.
+
+        CALL METHOD go_to_cal->set_registered_events
+          EXPORTING
+            events = myevent_tab.
+
+      ENDIF.
+
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_init_date
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_init_date .
+
+  gv_fr_date = sy-datum.
+
+  " 시스템 일자로부터 3개월 간 데이터 조회
+  CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+    EXPORTING
+      date      = sy-datum
+      days      = 00
+      months    = 03
+      signum    = '+'
+      years     = 00
+    IMPORTING
+      calc_date = gv_to_date.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_MODIFIED
+*&      --> ET_GOOD_CELLS
+*&---------------------------------------------------------------------*
+FORM modify_value  USING   pv_modified
+                            pt_good_cells TYPE lvc_t_modi.
+  " pt_good_cells는 데이터 변경이 일어난 셀의 row_id, fieldname, value 등 포함
+
+  DATA : ls_good_cells TYPE lvc_s_modi.
+
+  " ALV에서 실제 DATA 변경이 일어났는지 확인 (변경 없으면 exit)
+  CHECK pv_modified IS NOT INITIAL.
+
+  LOOP AT pt_good_cells INTO ls_good_cells.
+
+    gs_body-modi_yn = abap_true.
+
+    MODIFY gt_body FROM gs_body INDEX ls_good_cells-row_id
+                                TRANSPORTING modi_yn.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form edit_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&      --> E_INTERACTIVE
+*&---------------------------------------------------------------------*
+FORM edit_toolbar  USING   po_object TYPE REF TO cl_alv_event_toolbar_set
+                           pv_interactive.
+
+  DATA : ls_button   TYPE stb_button,
+         lv_disabled VALUE abap_true.
+
+  " 여행사가 true일 때 disabled가 false
+  IF gv_ext_search EQ abap_true.
+    lv_disabled = abap_false.
+  ENDIF.
+
+  CLEAR ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  " todo : 여행사 통해서 올때만 생성 가능하게 수정
+  CLEAR ls_button.
+  ls_button-function  = 'IROW'.
+  ls_button-icon      = icon_create.
+  ls_button-text      = '생성'.
+  ls_button-quickinfo = '항공권 생성'.
+  ls_button-disabled  = lv_disabled.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR ls_button.
+  ls_button-function  = 'DROW'.
+  ls_button-icon      = icon_delete_row.
+  ls_button-text      = '삭제'.
+  ls_button-quickinfo = '항공권 삭제'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR ls_button.
+  ls_button-function  = 'SAVE'.
+  ls_button-icon      = icon_system_save.
+  ls_button-text      = '저장'.
+  ls_button-quickinfo = '저장'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM user_command  USING    pv_ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'IROW'.
+      PERFORM insert_row.
+    WHEN 'DROW'.
+      PERFORM delete_row.
+    WHEN 'SAVE'.
+      PERFORM save_data.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM hotspot_click  USING   pv_row_id
+                            pv_column_id.
+  CLEAR : gs_body.
+  READ TABLE gt_body INTO gs_body INDEX pv_row_id.
+
+  CASE pv_column_id.
+    WHEN 'TICKETID'.
+      gs_detail_pop = CORRESPONDING #( gs_body ).
+      TRANSLATE gs_detail_pop-passengermail TO LOWER CASE.
+      CALL SCREEN 110 STARTING AT 5 5.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_COLUMN
+*&      --> E_ROW
+*&---------------------------------------------------------------------*
+FORM double_click  USING   pv_column
+                           pv_row.
+
+  DATA : lt_html      TYPE STANDARD TABLE OF string, " html 파일 내용
+         lv_url       TYPE c LENGTH 255,             " ALV에서 보일 때 쓰는 파일 경로
+         lv_file_path TYPE string.                   " 실제 파일 저장 경로
+
+  CLEAR : gs_body.
+  READ TABLE gt_body INTO gs_body INDEX pv_row.
+
+  PERFORM create_ticket_html CHANGING lt_html.
+
+  " 0. 파일명, 경로 등 세팅 (C:\Users\USER\Desktop\tickets, C:/Users/soldesk/Desktop/tickets/)
+  lv_file_path = |C:/Users/USER/Desktop/tickets/E-ticket_{ gs_body-ticketid }_{ sy-datum }.html|.
+  lv_url   = |file:///C:/Users/USER/Desktop/tickets/E-ticket_{ gs_body-ticketid }_{ sy-datum }.html|.
+
+  " 1. HTML 파일 저장
+  CALL METHOD cl_gui_frontend_services=>gui_download
+    EXPORTING
+      filename         = lv_file_path
+      filetype         = 'ASC'
+    CHANGING
+      data_tab         = lt_html
+    EXCEPTIONS
+      access_denied    = 1
+      file_write_error = 2
+      OTHERS           = 3.
+
+  IF sy-subrc <> 0.
+    MESSAGE '파일 저장 실패: 권한 또는 경로 오류' TYPE 'E'.
+    EXIT.
+  ENDIF.
+
+  " 2. 파일 경로를 URL 형식으로 변환 후 로드
+  CALL METHOD go_html_view->show_url
+    EXPORTING
+      url = lv_url.
+
+  gv_email = abap_true.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form edit_ticket_detail
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM edit_ticket_detail .
+
+  SET SCREEN 110.
+
+  LEAVE SCREEN.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM modify_screen .
+
+  LOOP AT SCREEN.
+
+    " 기내 유료상품 조회 버튼 = BTN1
+    IF ( gv_souvenir_yn EQ abap_true ) AND ( screen-name EQ 'BTN1' ).
+      screen-input = 1. " 조회버튼 활성화
+    ELSE.
+      screen-input = 0.
+    ENDIF.
+
+    IF gv_editmode EQ abap_true.
+
+      " 수정 가능한 필드들 그룹 : GR1 (passengerid, name, mealtype)
+      IF screen-group1 EQ 'GR1'.
+        screen-input = 1.
+      ENDIF.
+
+    ENDIF.
+
+    MODIFY SCREEN.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_ticket_detail
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_ticket_detail .
+
+  DATA : lv_answer,
+         ls_mealtype_save TYPE zc103sdt0013.
+
+*-- 변경사항 있는지 확인
+  IF gs_body EQ gs_detail_pop.
+    MESSAGE i027 DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+*  gs_body = CORRESPONDING #( gs_detail_pop ).
+  READ TABLE gt_body INTO DATA(ls_body)
+                     WITH KEY ticketid = gs_body-ticketid.
+  IF sy-subrc = 0.
+    MODIFY gt_body FROM gs_detail_pop INDEX sy-tabix.
+  ENDIF.
+
+  IF gs_detail_pop-passengername IS INITIAL.
+    MESSAGE s000 WITH '탑승객명은 필수 입력입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 이메일 유효성 검사
+  CONDENSE gs_detail_pop-passengermail NO-GAPS. " 공백 제거
+  IF gs_detail_pop-passengermail CP '*@*.*'.
+    " 정상처리
+  ELSE.
+    MESSAGE s000 WITH '이메일 형식이 잘못되었습니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " Seatcode update 로직
+  SELECT SINGLE seatcode, ticketid
+    FROM zc103sdt0014
+    WHERE scheduleid = @gs_detail_pop-scheduleid
+      AND seatcode   = @gs_detail_pop-seatcode
+    INTO @DATA(ls_exist).
+  IF sy-subrc = 0 AND ls_exist-ticketid <> gs_body-ticketid.
+    MESSAGE i000 WITH '이미 배정된 좌석입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " Mealtype update 로직
+  IF gs_body-mealtype NE gs_detail_pop-mealtype.
+
+    " 이코노미 일 때 프레스티지 기내식 선택 못하도록
+    IF gs_detail_pop-class EQ 'E'
+      AND ( gs_detail_pop-mealtype NE 'A' )
+      AND ( gs_detail_pop-mealtype NE 'B' ).
+      MESSAGE s000 WITH '이코노미 기내식을 선택하세요.' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+
+    " 기내식 라인아이템 테이블 업데이트
+    ls_mealtype_save = CORRESPONDING #( gs_detail_pop ).
+    MODIFY zc103sdt0013 FROM ls_mealtype_save.
+
+  ENDIF.
+
+*-- 데이터 저장 전 사용자에게 확인(Confirm)을 받은 후 처리 - FUNCTION module 사용
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '저장'
+    IMPORTING
+      ev_answer = lv_answer.
+
+  IF lv_answer = '2'.  " No를 선택하면 종료
+    RETURN.
+  ENDIF.
+
+  " UPDATE TIMESTAMP
+  IF gs_detail_pop-erdat IS INITIAL.
+    gs_detail_pop-erdat = sy-datum.
+    gs_detail_pop-erzet = sy-uzeit.
+    gs_detail_pop-ernam = sy-uname.
+  ELSE.
+    gs_detail_pop-aedat = sy-datum.
+    gs_detail_pop-aezet = sy-uzeit.
+    gs_detail_pop-aenam = sy-uname.
+  ENDIF.
+
+  " SAVE TRANSACTION
+  gs_save = CORRESPONDING #( gs_detail_pop ).
+  MODIFY zc103sdt0014 FROM gs_save.
+  IF sy-subrc EQ 0.
+    COMMIT WORK AND WAIT.
+    MESSAGE i022 DISPLAY LIKE 'S'.
+
+    gv_editmode = abap_false.
+    PERFORM refresh_alv.
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE i023 DISPLAY LIKE 'E'.
+  ENDIF.
+
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_100_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_100_screen .
+
+  DATA : lv_input TYPE i.
+
+  IF gv_ext_search = abap_true.
+    lv_input = 0.
+  ELSE.
+    lv_input = 1.
+  ENDIF.
+
+  LOOP AT SCREEN.
+    IF screen-name = 'GV_BOID' OR screen-name = 'GV_SCHID'.
+      screen-input = lv_input.
+    ENDIF.
+    MODIFY SCREEN.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_ticket_html
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_ticket_html CHANGING pt_html TYPE STANDARD TABLE.
+
+  DATA : lv_logo_b64 TYPE string.
+
+  PERFORM get_image CHANGING lv_logo_b64.
+
+  APPEND '<!DOCTYPE html>' TO pt_html.
+  APPEND '<html lang="ko">' TO pt_html.
+  APPEND '<head>' TO pt_html.
+  APPEND '<meta charset="UTF-8">' TO pt_html.
+  APPEND '<style>' TO pt_html.
+
+  APPEND '.ticket { border: 2px solid #007BFF; border-radius: 10px; background: #fff; padding: 15px; width: 480px; margin: 0 auto; box-sizing: border-box; }' TO pt_html.
+  APPEND '.title { font-size: 22px; font-weight: bold; color: #007BFF; margin-bottom: 15px; }' TO pt_html.
+  APPEND 'body { font-family: Arial; background-color: #f5f7fa; padding: 10px; margin: 0; }' TO pt_html.
+  APPEND 'table { width: 100%; font-size: 15px; border-collapse: collapse; }' TO pt_html.
+  APPEND 'td { padding: 8px; border-bottom: 1px solid #ddd; }' TO pt_html.
+  APPEND '.label { font-weight: bold; width: 35%; }' TO pt_html.
+  APPEND '.header { text-align: center; margin-bottom: 10px; }' TO pt_html.
+  APPEND '.logo { height: 50px; margin-bottom: 5px; }' TO pt_html.
+  APPEND '.footer { text-align: right; font-size: 12px; color: #555; margin-top: 10px; }' TO pt_html.
+
+  APPEND '</style>' TO pt_html.
+  APPEND '</head>' TO pt_html.
+  APPEND '<body>' TO pt_html.
+
+  APPEND '<div class="ticket">' TO pt_html.
+  APPEND '<div class="header">' TO pt_html.
+  APPEND |<img src="data:image/png;base64,{ lv_logo_b64 }" alt="S-AIR" class="logo">| TO pt_html.
+  APPEND '<div class="title">✈ 항공권 티켓</div>' TO pt_html.
+  APPEND '</div>' TO pt_html.
+
+  APPEND '<table>' TO pt_html.
+  APPEND |<tr><td><strong>탑승객명</strong></td><td>{ gs_body-passengername }</td></tr>| TO pt_html.
+  APPEND |<tr><td><strong>티켓 ID</strong></td><td>{ gs_body-ticketid }</td></tr>| TO pt_html.
+  APPEND |<tr><td><strong>항공편 ID</strong></td><td>{ gs_body-scheduleid }</td></tr>| TO pt_html.
+  APPEND |<tr><td><strong>출발지</strong></td><td>{ gs_body-countryfr_text }</td></tr>| TO pt_html.
+  APPEND |<tr><td><strong>도착지</strong></td><td>{ gs_body-countryto_text }</td></tr>| TO pt_html.
+  APPEND |<tr><td><strong>출발일시</strong></td><td>{ gs_body-depart_datetime }</td></tr>| TO pt_html.
+  APPEND |<tr><td><strong>좌석번호</strong></td><td>{ gs_body-seatcode }</td></tr>| TO pt_html.
+  APPEND '</table>' TO pt_html.
+  APPEND |<p style="text-align:right; font-size:12px;">발급일자: { sy-datum }</p>| TO pt_html.
+  APPEND '</div>' TO pt_html.
+  APPEND '</body>' TO pt_html.
+  APPEND '</html>' TO pt_html.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form show_addon
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM show_addon .
+
+  CALL SCREEN 120 STARTING AT 50 5.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_120_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_120_screen .
+
+  IF go_pop_cont IS INITIAL.
+
+    CLEAR : gt_pfcat, gs_pfcat.
+    PERFORM set_pop_field_catalog USING : 'X' 'SOUVENIRID' 'ZC103SDT0012' ' ' ' ' ,
+                                          ' ' 'SOUVENIR_TEXT' ' ' ' ' ' ' ,
+                                          ' ' 'QTY' 'ZC103SDT0012' ' ' ' ' ,
+                                          ' ' 'UNIT' 'ZC103SDT0012' ' ' ' ' .
+    PERFORM create_popup_object.
+
+    CALL METHOD go_pop_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_souvenir
+        it_fieldcatalog      = gt_pfcat.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_popup_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_popup_object .
+
+  CREATE OBJECT go_pop_cont
+    EXPORTING
+      container_name = 'POP_CONT'.
+
+  CREATE OBJECT go_pop_grid
+    EXPORTING
+      i_parent = go_pop_cont.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_pop_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_pop_field_catalog USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_pfcat-key       = pv_key.
+  gs_pfcat-fieldname = pv_field.
+  gs_pfcat-ref_table = pv_table.
+  gs_pfcat-just      = pv_just.
+  gs_pfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'SOUVENIR_TEXT'.
+      gs_pfcat-coltext = '유료상품 유형'.
+    WHEN 'QTY'.
+      gs_pfcat-qfieldname = 'UNIT'.
+  ENDCASE.
+
+  APPEND gs_pfcat TO gt_pfcat.
+  CLEAR : gs_pfcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_110_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_110_screen .
+
+  " 기내 유료상품 주문 건 조회
+  SELECT ticketid, souvenirid, souvenir_type, qty, unit
+    FROM zc103sdt0012
+    WHERE ticketid EQ @gs_body-ticketid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_souvenir.
+
+  IF gt_souvenir IS INITIAL.
+    gv_souvenir_yn = abap_false.
+*    EXIT.
+  ELSE.
+
+    LOOP AT gt_souvenir ASSIGNING FIELD-SYMBOL(<fs>).
+
+      " ticket status domain text
+      <fs>-souvenir_text = gt_dd07v[ KEY key domvalue_l = <fs>-souvenir_type ]-ddtext.
+
+    ENDLOOP.
+    gv_souvenir_yn = abap_true.
+  ENDIF.
+
+  " set for screen
+  gv_pop_ticketid = gs_body-ticketid.
+  gv_pop_passengerid = gs_body-passengerid.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form send_email
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM send_email .
+
+  DATA: lv_subject      TYPE so_obj_des,
+        lv_body_text    TYPE bcsy_text,
+        lv_receiver     TYPE ad_smtpadr,
+        lv_sender       TYPE REF TO cl_sapuser_bcs,
+        lo_send_request TYPE REF TO cl_bcs,
+        lo_document     TYPE REF TO cl_document_bcs,
+        lo_recipient    TYPE REF TO if_recipient_bcs,
+        lt_attachment   TYPE solix_tab,
+        lv_size         TYPE i,
+        lv_file_name    TYPE so_obj_des,    " 파일 이름
+        lv_html_path    TYPE string,        " html파일 경로
+        lv_pdf_path     TYPE string,        " pdf 파일 경로
+        lv_cmd          TYPE string,
+        lv_answer.
+
+  IF gv_email EQ abap_false.
+    MESSAGE s000 WITH '항공권 미리보기가 필요합니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+*-- 이메일 보내기 전 사용자에게 확인(Confirm)을 받은 후 처리 - FUNCTION module 사용
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '메일 발송'
+    IMPORTING
+      ev_answer = lv_answer.
+
+  IF lv_answer = '2'.  " No를 선택하면 종료
+    RETURN.
+  ENDIF.
+
+  " 0. 파일명, 경로 등 세팅
+  lv_file_name = |E-Ticket_{ gs_body-ticketid }_{ sy-datum }|.
+  lv_html_path = |C:/Users/USER/Desktop/tickets/E-ticket_{ gs_body-ticketid }_{ sy-datum }.html|.
+  lv_pdf_path = |C:/Users/USER/Desktop/tickets/E-ticket_{ gs_body-ticketid }_{ sy-datum }.html.pdf|.
+
+  " 1. 파일을 바이너리로 불러오기
+  CALL METHOD cl_gui_frontend_services=>gui_upload
+    EXPORTING
+      filename                = lv_html_path
+      filetype                = 'BIN'
+    IMPORTING
+      filelength              = lv_size
+    CHANGING
+      data_tab                = lt_attachment
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      no_batch                = 3
+      gui_refuse_filetransfer = 4
+      invalid_type            = 5
+      no_authority            = 6
+      unknown_error           = 7
+      OTHERS                  = 8.
+
+  CASE sy-subrc.
+    WHEN 0.
+      " 정상 처리
+    WHEN OTHERS.
+      MESSAGE |📛 파일 업로드 실패! 경로 확인: { lv_html_path }| TYPE 'E'.
+      EXIT.
+  ENDCASE.
+
+* 2. 메일 객체 생성
+  lo_send_request = cl_bcs=>create_persistent( ).
+
+* 3. 본문 작성
+  lv_subject = |[SAIR] { gs_body-passengername }님의 삼만리항공 e-티켓 확인증|.
+  APPEND '안녕하세요, 첨부파일 확인 바랍니다.' TO lv_body_text.
+  lo_document = cl_document_bcs=>create_document(
+    i_type    = 'RAW'
+    i_text    = lv_body_text
+    i_subject = lv_subject ).
+
+* 4. 첨부 추가
+  CALL METHOD lo_document->add_attachment
+    EXPORTING
+      i_attachment_type    = 'HTM'
+      i_attachment_subject = lv_file_name
+      i_att_content_hex    = lt_attachment.
+
+* 5. 문서 첨부
+  CALL METHOD lo_send_request->set_document( lo_document ).
+
+* 6. 수신자 지정
+  lv_receiver = |{ gs_body-passengermail }|.
+  lo_recipient = cl_cam_address_bcs=>create_internet_address( lv_receiver ).
+  CALL METHOD lo_send_request->add_recipient
+    EXPORTING
+      i_recipient = lo_recipient
+      i_express   = 'X'.
+
+* 7. 보내기
+  CALL METHOD lo_send_request->send(
+    EXPORTING
+      i_with_error_screen = 'X'
+    RECEIVING
+      result              = DATA(lv_result) ).
+
+  COMMIT WORK.
+
+  IF lv_result = 'X'.
+    MESSAGE s000 WITH '메일 전송을 성공했습니다.' DISPLAY LIKE 'S'.
+  ELSE.
+    MESSAGE s000 WITH '메일 전송을 실패했습니다.' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form toggle_mode
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM toggle_mode .
+
+  CASE gv_mode.
+    WHEN 1.
+      gv_mode = 0. " read-only
+    WHEN 0.
+      gv_mode = 1. " edit
+  ENDCASE.
+
+  CALL METHOD go_left_grid->set_ready_for_input
+    EXPORTING
+      i_ready_for_input = gv_mode.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form insert_row
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM insert_row .
+
+  " 팝업으로 생성
+  CLEAR : gs_body.
+  CALL SCREEN 130 STARTING AT 5 5.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form delete_row
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM delete_row .
+
+  DATA : lt_roid TYPE lvc_t_roid,
+         ls_roid TYPE lvc_s_roid.
+
+  " GET SELECTED ROWS
+  CALL METHOD go_left_grid->get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  " 행 선택없이 DELETE ROW 인 경우 오류
+  IF lt_roid IS INITIAL.
+    MESSAGE s000 WITH '삭제할 항공권 선택이 필요합니다.'  DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  " ORDER BY DESC
+  SORT lt_roid BY row_id DESCENDING.
+
+  " DELETE ROW
+  LOOP AT lt_roid INTO ls_roid.
+
+    " SET FOR DB DELETE
+    READ TABLE gt_body INTO gs_body INDEX ls_roid-row_id.
+    gs_delete = CORRESPONDING #( gs_body ).
+    APPEND gs_delete TO gt_delete.
+    CLEAR gs_delete.
+
+    " DELETE AT ALV
+    DELETE gt_body INDEX ls_roid-row_id.
+
+  ENDLOOP.
+
+  PERFORM refresh_alv.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_data .
+
+  DATA : lv_answer,
+         lv_tabix  TYPE sy-tabix.
+
+*-- alv 상에서 변경된 데이터가 있는지 체크 후 Internal table에 반영
+  CALL METHOD go_left_grid->check_changed_data.
+
+*-- 변경사항이 있는지 확인
+  IF gt_delete IS INITIAL.
+    MESSAGE i000 WITH '변경된 데이터가 없습니다.' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+*-- 데이터 저장 전 사용자에게 확인(Confirm)을 받은 후 처리 - function module 사용
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '저장'
+    IMPORTING
+      ev_answer = lv_answer.
+
+  IF lv_answer = '2'.  " No를 선택하면 종료
+    RETURN.
+  ENDIF.
+
+*-- DELETE DATA
+  IF gt_delete IS NOT INITIAL.
+    DELETE zc103sdt0014 FROM TABLE gt_delete.
+    COMMIT WORK AND WAIT.
+    MESSAGE i022 DISPLAY LIKE 'S'.
+  ENDIF.
+  CLEAR : gt_delete, gs_delete.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form exclude_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM exclude_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_new_ticket
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_new_ticket .
+
+  DATA : lt_save          TYPE TABLE OF zc103sdt0014,
+         ls_save          TYPE zc103sdt0014,
+         ls_mealtype_save TYPE zc103sdt0013,
+         lv_answer,
+         lv_tkt_number    TYPE n LENGTH 5,
+         lv_psg_number    TYPE n LENGTH 5,
+         lv_dt            TYPE dats,
+         lv_tm            TYPE tims,
+         lv_adt           TYPE dats,
+         lv_atm           TYPE tims,
+         lv_exists        TYPE c.
+
+**********************************************************************
+*-- 유효성 체크 로직
+**********************************************************************
+*-- 예약 ID 필수 체크 및 존재여부 확인
+  CONDENSE gs_body-bookingid NO-GAPS. " 공백 제거
+  IF gs_body-bookingid IS INITIAL.
+    MESSAGE s000 WITH '예약 ID는 필수 입력입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE bookingid
+    FROM zc103sdt0011
+    WHERE bookingid = @gs_body-bookingid
+    INTO @lv_exists.
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '존재하지 않는 예약 ID입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+*-- 탑승객 이름 필수 및 길이 제한
+  CONDENSE gs_body-passengername NO-GAPS. " 공백 제거
+  IF gs_body-passengername IS INITIAL.
+    MESSAGE s000 WITH '탑승객 이름은 필수 입력입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF strlen( gs_body-passengername ) > 20.
+    MESSAGE s000 WITH '탑승객 이름은 20자 이내로 입력하세요.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+*-- 이메일 형식 및 필수
+  CONDENSE gs_body-passengermail NO-GAPS. " 공백 제거
+  IF gs_body-passengermail IS INITIAL.
+    MESSAGE s000 WITH '이메일은 필수 입력입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ELSEIF gs_body-passengermail CP '*@*.*'.
+    " 정상처리
+  ELSE.
+    MESSAGE s000 WITH '이메일 형식이 잘못되었습니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+*-- 스케줄 존재 여부 확인
+  CONDENSE gs_body-scheduleid NO-GAPS. " 공백 제거
+  IF gs_body-scheduleid IS INITIAL.
+    MESSAGE s000 WITH '스케줄 ID는 필수 입력입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CLEAR lv_exists.
+  SELECT SINGLE scheduleid
+    FROM zc103sdt0008
+    WHERE scheduleid = @gs_body-scheduleid
+    INTO @lv_exists.
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '존재하지 않는 스케줄 ID입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+*-- 기내식 필수 및 등급 제한
+  CONDENSE gs_body-mealtype NO-GAPS. " 공백 제거
+  IF gs_body-mealtype IS INITIAL.
+    MESSAGE s000 WITH '기내식은 필수 선택 항목입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  IF gs_body-class = 'E'
+    AND ( gs_body-mealtype = 'C' OR gs_body-mealtype = 'D'
+       OR gs_body-mealtype = 'E' OR gs_body-mealtype = 'F').
+    MESSAGE s000 WITH '이코노미에서는 해당 기내식을 선택할 수 없습니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+*-- 좌석코드 필수 및 중복 체크
+  IF gs_body-seatcode IS INITIAL.
+    MESSAGE s000 WITH '좌석코드는 필수 입력입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CLEAR lv_exists.
+  SELECT SINGLE ticketid
+    FROM zc103sdt0014
+    WHERE scheduleid = @gs_body-scheduleid
+      AND seatcode   = @gs_body-seatcode
+    INTO @lv_exists.
+  IF sy-subrc = 0.
+    MESSAGE s000 WITH '이미 배정된 좌석입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 데이터 저장 전 사용자에게 확인(Confirm)을 받은 후 처리하는 로직
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '저장'
+    IMPORTING
+      ev_answer = lv_answer.
+
+  IF lv_answer = '2'.  " No를 선택하면 종료
+    RETURN.
+  ENDIF.
+
+**********************************************************************
+*-- 데이터 저장 전 필드값 자동 채우는 로직
+**********************************************************************
+  " 1. 예약 상태
+  gs_body-ticket_status = 'N'.
+
+  " 2. scheduleid -> countryfrom, countryto
+  SELECT SINGLE countryfrom countryto flightid
+                departdate departtime arrivedate arrivetime
+    INTO CORRESPONDING FIELDS OF gs_body
+    FROM zc103sdt0008
+    WHERE scheduleid EQ gs_body-scheduleid.
+
+  " 3. ticketid : CONCATENATE TKT + TICKET number
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZTICKETID'
+    IMPORTING
+      number      = lv_tkt_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc = 0.
+    CONCATENATE 'TKT' lv_tkt_number INTO gs_body-ticketid.
+  ELSE.
+    MESSAGE i001 WITH 'TICKETID 채번에 실패했습니다.' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  " 4. passengerid : PSG + PSG number
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZPASSENGER'
+    IMPORTING
+      number      = lv_psg_number
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc = 0.
+    CONCATENATE 'PSG' lv_psg_number INTO gs_body-passengerid.
+  ELSE.
+    MESSAGE i001 WITH 'PASSENGERID 채번에 실패했습니다.' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  " 5. TIMESTAMP
+  gs_body-erdat = sy-datum.
+  gs_body-erzet = sy-uzeit.
+  gs_body-ernam = sy-uname.
+
+*-- parsing
+  " datetime
+  lv_dt = gs_body-departdate.
+  lv_tm = gs_body-departtime.
+  gs_body-depart_datetime = |{ lv_dt+0(4) }.{ lv_dt+4(2) }.{ lv_dt+6(2) } { lv_tm+0(2) }:{ lv_tm+2(2) }|.
+
+  lv_adt = gs_body-arrivedate.
+  lv_atm = gs_body-arrivetime.
+  gs_body-arrive_datetime = |{ lv_adt+0(4) }.{ lv_adt+4(2) }.{ lv_adt+6(2) } { lv_atm+0(2) }:{ lv_atm+2(2) }|.
+
+  " country domain text
+  gs_body-countryfr_text = gt_dd07v[ KEY key domvalue_l = gs_body-countryfrom ]-ddtext.
+  gs_body-countryto_text = gt_dd07v[ KEY key domvalue_l = gs_body-countryto ]-ddtext.
+
+  " ticket status domain text
+  gs_body-status_text = gt_dd07v[ KEY key domvalue_l = gs_body-ticket_status ]-ddtext.
+
+  APPEND gs_body TO gt_body.
+
+  " 기내식 라인아이템 테이블 업데이트
+  ls_mealtype_save = CORRESPONDING #( gs_body ).
+  MODIFY zc103sdt0013 FROM ls_mealtype_save.
+
+  " SAVE DATA
+  ls_save = CORRESPONDING #( gs_body ).
+  MODIFY zc103sdt0014 FROM ls_save.
+  IF sy-subrc EQ 0.
+    COMMIT WORK AND WAIT.
+    MESSAGE i022 DISPLAY LIKE 'S'.
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE i023 DISPLAY LIKE 'E'.
+  ENDIF.
+
+  PERFORM refresh_alv.
+
+  " 팝업 닫기
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_image
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_image CHANGING  pv_logo_b64 TYPE string.
+
+  DATA: lt_data    TYPE STANDARD TABLE OF w3mime,
+        lv_size    TYPE i,
+        lv_xstring TYPE xstring.
+
+  " 로고 이미지 HTML에 넣기 위해 인코딩
+  CONCATENATE
+
+  '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'
+  INTO  pv_logo_b64.
+
+*  DATA: lt_wwwtab LIKE wwwparams OCCURS 0 WITH HEADER LINE,
+*        lv_url    TYPE cndp_url.
+*
+*  " SMW0 메타데이터 조회
+*  CLEAR : lt_wwwtab.
+*  SELECT SINGLE *
+*    INTO lt_wwwtab
+*    FROM wwwparams
+*   WHERE relid  =  'MI'
+*     AND objid  =  'ZLOGO_IMG'. "SMW0에 등록한 Obj File 이름
+*
+*  IF sy-subrc = 0.
+*
+*    " URL 생성
+*    CALL FUNCTION 'DP_PUBLISH_WWW_URL'
+*      EXPORTING
+*        objid    = lt_wwwtab-objid
+*        lifetime = 'T'   " 'T'emporary: 세션 동안 유지
+*      IMPORTING
+*        url      = lv_url
+*      EXCEPTIONS
+*        OTHERS   = 1.
+*
+*    IF sy-subrc <> 0.
+*      MESSAGE 'URL 생성 실패' TYPE 'E'.
+*    ENDIF.
+*
+*  ELSE.
+*    MESSAGE 'wwwparams에서 objid를 찾을 수 없습니다.' TYPE 'E'.
+*    CLEAR lt_wwwtab.  " ← 이거 안 하면 이전 objid 계속 남음
+*  ENDIF.
+
+**********************************************************************
+*  " 1. SMW0 이미지 로드
+*  CALL FUNCTION 'WWW_GET_MIME_OBJECT'
+*    EXPORTING
+*      relid  = 'MI'
+*      objid  = 'ZLOGO_IMG'             " 반드시 대문자, SMW0 오브젝트명
+*    IMPORTING
+*      size   = lv_size
+*    TABLES
+*      data   = lt_data
+*    EXCEPTIONS
+*      OTHERS = 1.
+*
+*  IF sy-subrc <> 0.
+*    MESSAGE '이미지 불러오기 실패' TYPE 'E'.
+*    EXIT.
+*  ENDIF.
+*
+*  " 2. 바이너리 → XSTRING 변환
+*  CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
+*    EXPORTING
+*      input_length = lv_size
+*    IMPORTING
+*      buffer       = lv_xstring
+*    TABLES
+*      binary_tab   = lt_data.
+*
+*  " 3. XSTRING → Base64 인코딩 (HTML 삽입용)
+*  CALL FUNCTION 'SCMS_BASE64_ENCODE_STR'
+*    EXPORTING
+*      input  = lv_xstring
+*    IMPORTING
+*      output = pv_logo_b64.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_130_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_130_screen .
+
+  DATA : lv_input TYPE i.
+
+  IF gv_ext_search = abap_true.
+    lv_input = 0.
+  ELSE.
+    lv_input = 1.
+  ENDIF.
+
+  LOOP AT SCREEN.
+    IF screen-name = 'GS_BODY-BOOKINGID'
+    OR screen-name = 'GS_BODY-SCHEDULEID'.
+      screen-input = lv_input.
+    ENDIF.
+    MODIFY SCREEN.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form before_130_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM before_130_screen .
+
+  " 여행사 로직일 때 bookingid, scheduleid 이미 정해져있는거 자동 세팅
+  IF gv_ext_search = abap_true.
+    gs_body-bookingid = gv_boid.
+    gs_body-scheduleid = gv_schid.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form show_seat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM show_seat .
+
+  DATA: lv_url TYPE string.
+
+  lv_url = 'http://bgissap1.bgissap.co.kr:8000/sap/bc/ui5_ui5/sap/zc103sdcds_r_01?sap-client=100'.
+
+  CALL METHOD cl_gui_frontend_services=>execute
+    EXPORTING
+      application = lv_url
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc <> 0.
+    MESSAGE '웹 브라우저 실행 실패' TYPE 'E'.
+  ENDIF.
+
+ENDFORM.

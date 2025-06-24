@@ -1,0 +1,222 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZC103SD0006TOP                       - Module Pool      SAPMZC103SD0006
+*&---------------------------------------------------------------------*
+
+PROGRAM sapmzc103sd0006.
+
+* 타입 풀 선언 (아이콘, 캘린더, ALV 등에서 사용)
+TYPE-POOLS: icon, cnca, cncac, sgec, lvc.
+
+* 스케줄 정보 구조 및 내부 테이블
+DATA: BEGIN OF gs_schedule,
+        scheduleid               TYPE zc103sdt0026-scheduleid,         " 스케줄 ID
+        flightid                 TYPE zc103sdt0026-flightid,           " 항공편 ID
+        countryfrom              TYPE string,                          " 출발 국가
+        countryto                TYPE string,                          " 도착 국가
+        departdate               TYPE dats,                            " 출발 날짜
+        departtime               TYPE tims,                            " 출발 시간
+        arrivedate               TYPE dats,                            " 도착 날짜
+        arrivetime               TYPE tims,                            " 도착 시간
+        flighttime               TYPE zc103sdt0026-flighttime,         " 비행 시간
+        weight_avail             TYPE zc103sdt0026-weight_avail,       " 사용 가능한 적재 중량
+        weight_unit              TYPE zc103sdt0026-weight_unit,        " 중량 단위
+        total_loaded_count       TYPE zc103sdt0026-total_loaded_count, " 총 탑재 건수
+        current_loaded_count_int TYPE zc103sdt0026-current_loaded_count_int, " 현재 탑재 건수
+      END OF gs_schedule.
+
+DATA: gt_schedule LIKE TABLE OF gs_schedule.   " 스케줄 정보 테이블
+
+* 도메인 값 텍스트 매핑용 구조 및 테이블 (DD07V 유사)
+DATA : BEGIN OF gs_dd07v,
+         domvalue_l TYPE domvalue_l, " 도메인 값
+         ddtext     TYPE val_text,   " 도메인 텍스트
+       END OF gs_dd07v,
+       gt_dd07v LIKE TABLE OF gs_dd07v WITH NON-UNIQUE SORTED KEY key COMPONENTS domvalue_l.
+
+* ALV 출력용 디스플레이용 구조 및 테이블
+DATA : gs_disp_sch LIKE gs_schedule,
+       gt_disp_sch LIKE TABLE OF gs_disp_sch.
+
+*---------------------------------------------------------------------*
+* ALV #2 - 우하단: 항공편 요청 화물 (ZC103SDT0025)
+*---------------------------------------------------------------------*
+DATA: BEGIN OF  GS_cargo,
+        cargo_id       TYPE zc103sdt0025-cargo_id,        " 화물 ID
+        bp_id          TYPE zc103sdt0025-bp_id,           " 거래처 ID
+        weight         TYPE zc103sdt0025-weight,          " 화물 중량
+        request_flight TYPE zc103sdt0025-request_flight,  " 요청 항공편
+        price          TYPE zc103sdt0025-price,           " 가격
+        currency       TYPE zc103sdt0025-currency,        " 통화
+        create_date    TYPE zc103sdt0025-create_date,     " 생성일
+        status         TYPE zc103sdt0025-status,          " 상태
+      END OF GS_cargo.
+
+DATA: gt_cargo LIKE TABLE OF GS_cargo.    " 요청 화물 테이블
+
+*---------------------------------------------------------------------*
+* ALV #3 - 우상단: 탑재 가능한 팔레트 (ZC103SDT0023)
+*---------------------------------------------------------------------*
+DATA: BEGIN OF GS_pallet,
+        pallet_id    TYPE zc103sdt0023-pallet_id,     " 팔레트 ID
+        plnid        TYPE zc103sdt0023-plnid,         " 계획 ID
+        strid        TYPE zc103sdt0023-strid,         " 창고 위치 ID
+        matid        TYPE zc103sdt0023-matid,         " 자재 번호
+        matname      TYPE zc103sdt0023-matname,       " 자재명
+        status       TYPE zc103sdt0023-status,        " 상태
+        weight       TYPE zc103sdt0023-weight,        " 중량
+        weight_AVAIL TYPE zc103sdt0023-weight_AVAIL,  " 가용 중량
+        weight_unit  TYPE zc103sdt0023-weight_UNIT,   " 중량 단위
+        icon_status  TYPE icon_d,                     " 상태 아이콘
+      END OF GS_pallet.
+
+DATA: gt_pallet LIKE TABLE OF gs_pallet.  " 팔레트 테이블
+
+*---------------------------------------------------------------------*
+* 타입 풀 및 클래스 선언 (캘린더 객체용)
+*---------------------------------------------------------------------*
+CLASS cl_gui_calendar DEFINITION LOAD.
+
+*---------------------------------------------------------------------*
+* 캘린더 이벤트 변수
+*---------------------------------------------------------------------*
+DATA: myevent     TYPE cntl_simple_event,   " 단일 이벤트
+      myevent_tab TYPE cntl_simple_events.  " 이벤트 테이블
+
+*---------------------------------------------------------------------*
+* ALV 관련 객체 및 설정 정보
+*---------------------------------------------------------------------*
+DATA: go_container  TYPE REF TO cl_gui_custom_container,     " ALV 전체 컨테이너
+      go_split_main TYPE REF TO cl_gui_splitter_container,   " 좌우 분할 컨테이너
+      go_left_cont  TYPE REF TO cl_gui_container,            " 왼쪽 컨테이너
+      go_right_cont TYPE REF TO cl_gui_container,            " 오른쪽 컨테이너
+      go_left_grid  TYPE REF TO cl_gui_alv_grid,             " 왼쪽 ALV Grid
+      go_right_grid TYPE REF TO cl_gui_alv_grid,             " 오른쪽 ALV Grid
+      gt_fcat       TYPE lvc_t_fcat,                         " 필드 카탈로그 테이블
+      gs_fcat       TYPE lvc_s_fcat,                         " 필드 카탈로그 구조
+      gs_layout1    TYPE lvc_s_layo,                         " ALV Layout 1
+      gs_layout2    TYPE lvc_s_layo,                         " ALV Layout 2
+      gs_variant    TYPE disvariant.                         " ALV Variant
+
+*---------------------------------------------------------------------*
+* 달력/날짜 관련 변수
+*---------------------------------------------------------------------*
+DATA: go_fr_con          TYPE REF TO cl_gui_custom_container,  " 출발일 캘린더 컨테이너
+      go_to_con          TYPE REF TO cl_gui_custom_container,  " 도착일 캘린더 컨테이너
+      go_fr_cal          TYPE REF TO cl_gui_calendar,          " 출발일 캘린더
+      go_to_cal          TYPE REF TO cl_gui_calendar,          " 도착일 캘린더
+      gv_fr_date         TYPE sy-datum,                        " 선택된 출발일
+      gv_to_date         TYPE sy-datum,                        " 선택된 도착일
+      gv_calendar_style  TYPE i,                               " 캘린더 스타일
+      gv_selection_style TYPE i.                               " 선택 스타일
+
+*---------------------------------------------------------------------*
+* 선택/입력용 변수
+*---------------------------------------------------------------------*
+DATA: gv_conid  TYPE zc103sdt0003-conditionid, " 조건 ID
+      gv_okcode TYPE sy-ucomm.                 " 사용자 커맨드
+
+*---------------------------------------------------------------------*
+* 날짜 범위용 타입 선언
+*---------------------------------------------------------------------*
+DATA: BEGIN OF gs_cal_range,
+        date TYPE cnca_utc_date, " 날짜 (UTC 기준)
+      END OF gs_cal_range.
+
+DATA: gs_cal_range_tab LIKE STANDARD TABLE OF gs_cal_range WITH DEFAULT KEY.
+
+*---------------------------------------------------------------------*
+* ALV/Tree 컨테이너 구성용 변수
+*---------------------------------------------------------------------*
+DATA: go_main_cont     TYPE REF TO cl_gui_custom_container,     " 메인 컨테이너
+      go_splitter_main TYPE REF TO cl_gui_splitter_container,   " 메인 분할기
+      go_splitter_bot  TYPE REF TO cl_gui_splitter_container,   " 하단 분할기
+      go_tree_cont     TYPE REF TO cl_gui_docking_container,    " 트리용 컨테이너
+      go_alv_cont1     TYPE REF TO cl_gui_docking_container,    " ALV1 컨테이너
+      go_alv_cont2     TYPE REF TO cl_gui_docking_container,    " ALV2 컨테이너
+      go_alv_cont3     TYPE REF TO cl_gui_docking_container.    " ALV3 컨테이너
+
+*---------------------------------------------------------------------*
+* 조건 ALV 구성 변수
+*---------------------------------------------------------------------*
+DATA: go_container2 TYPE REF TO cl_gui_custom_container,    " 조건용 컨테이너
+      go_alv_grid2  TYPE REF TO cl_gui_alv_grid.            " 조건용 ALV
+
+DATA: gt_fcat2    TYPE lvc_t_fcat,       " ALV 필드카탈로그2
+      gs_fcat2    TYPE lvc_s_fcat,
+      gs_layout02 TYPE lvc_s_layo,       " ALV Layout2
+      gs_variant2 TYPE disvariant.
+
+DATA: gt_fcat3 TYPE lvc_t_fcat,          " 세 번째 ALV 필드 카탈로그
+      gs_fcat3 TYPE lvc_s_fcat.
+
+* 신규 화물 주문 구조 및 테이블
+DATA: BEGIN OF gs_cargo_order,
+        transportid       TYPE zc103e_sd_transportid,     " 자동 채번된 수송 ID
+        bpid              TYPE zc103e_sd_bpid,            " 거래처 ID
+        matid             TYPE zc103e_mm_matnr,           " 자재 번호
+        countryfrom       TYPE string,                    " 출발 국가
+        countryto         TYPE string,                    " 도착 국가
+        tdate             TYPE zc103e_sd_tdate,           " 요청일
+        flightid          TYPE zc103e_pm_acft_id,         " 항공기 ID
+        scheduleid        TYPE zc103e_sd_scheduleid,      " 스케줄 ID
+        weight            TYPE zc103e_sd_kg,              " 중량
+        weight_unit       TYPE zc103e_sd_unit,            " 단위
+        uld_type          TYPE string,                    " ULD 타입
+        cc_checked        TYPE string,                    " 체크박스 상태
+        is_confirmed      TYPE string,                    " 확인 여부
+        price             TYPE zc103e_sd_price,           " 가격
+        currency          TYPE zc103e_sd_currency,        " 통화
+        btn_assign_pallet TYPE char20,                    " 팔레트 할당 버튼
+        assigned_pallet   TYPE zc103sdt0023-pallet_id,    " 할당된 팔레트 ID
+      END OF gs_cargo_order,
+      gt_cargo_order LIKE TABLE OF gs_cargo_order.
+
+* 도메인 텍스트 테이블 (예: 상태값 등)
+DATA : BEGIN OF gs_tt07v,
+         domvalue_l TYPE domvalue_l,
+         ddtext     TYPE val_text,
+       END OF gs_tt07v,
+       gt_tt07v LIKE TABLE OF gs_tt07v WITH NON-UNIQUE SORTED KEY key COMPONENTS domvalue_l.
+
+* TISP용 구조 및 테이블
+DATA : gs_tisp_ord LIKE gs_cargo_order,
+       gt_tisp_ord LIKE TABLE OF gs_tisp_ord.
+
+*---------------------------------------------------------------------*
+* 상태 제어용 플래그 및 변수
+*---------------------------------------------------------------------*
+DATA: hide_cust_flag TYPE abap_bool VALUE abap_false,  " 고객 필드 숨김 여부
+      hide_bpid_flag TYPE abap_bool VALUE abap_false,  " BPID 필드 숨김 여부
+      gv_first_entry TYPE abap_bool VALUE abap_true.   " 첫 진입 여부
+
+DATA: gv_min_date TYPE sy-datum,    " 최소 날짜 (달력 범위용)
+      gv_max_date TYPE sy-datum.    " 최대 날짜 (달력 범위용)
+
+*---------------------------------------------------------------------*
+* ALV 선택 행 ID
+*---------------------------------------------------------------------*
+DATA: gv_row_id TYPE lvc_s_roid.    " ALV 선택 행 ID 구조
+
+*---------------------------------------------------------------------*
+* BP (거래처) 정보 구조
+*---------------------------------------------------------------------*
+DATA : BEGIN OF gs_bpinfo,
+         bpid        TYPE zc103sdt0001-bpid,          " BP ID
+         bpname      TYPE zc103sdt0001-bpname,        " BP 이름
+         brnum       TYPE zc103sdt0001-brnum,         " 사업자 등록번호
+         paymentterm TYPE zc103sdt0001-paymentterm,   " 지급 조건
+         email       TYPE zc103sdt0001-email,         " 이메일
+       END OF gs_bpinfo.
+
+* 스케줄 요약 정보 구조
+DATA : BEGIN OF gs_sched,
+         scheduleid     TYPE zc103sdt0026-scheduleid,   " 스케줄 ID
+         weight_avail   TYPE zc103sdt0026-weight_avail, " 사용 가능한 중량
+         flightid       TYPE zc103sdt0026-flightid,     " 항공기 ID
+         departure_date TYPE zc103sdt0026-departdate,   " 출발 날짜
+         countryfrom    TYPE zc103sdt0026-countryfrom,  " 출발 국가
+         countryto      TYPE zc103sdt0026-countryto,    " 도착 국가
+       END OF gs_sched.
+
+* 제외할 UI 기능 목록
+DATA : gt_ui_functions TYPE ui_functions.  " 제외할 UI 기능들

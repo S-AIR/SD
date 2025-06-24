@@ -1,0 +1,1419 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0005F01
+*&---------------------------------------------------------------------*
+**********************************************************************
+* Form modify_value
+*  – ALV 그리드 수정된 셀을 감지하여
+*    내부 테이블의 modi_yn 필드를 설정
+*---------------*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0005F01
+*&---------------------------------------------------------------------*
+**********************************************************************
+* Form modify_value
+*  – ALV 그리드 수정된 셀을 감지하여
+*    내부 테이블의 modi_yn 필드를 설정
+*--------------------------------------------------------------*---
+* --> p_e_modified     TYPE lvc_t_modi  " 변경 이벤트 정보 (전체)
+* --> p_et_good_cells  TYPE lvc_t_modi  " 유효 변경 셀 정보
+**********************************************************************
+FORM modify_value
+  USING
+    p_e_modified
+    p_et_good_cells.
+
+  DATA: ls_good_cell TYPE lvc_s_modi.
+
+  " 1) 변경된 셀이 없으면 바로 종료
+  CHECK p_e_modified IS NOT INITIAL.
+
+  " 2) 실제 변경된 셀(row/col)에 대해 modi_yn 플래그 설정
+  LOOP AT p_et_good_cells INTO ls_good_cell.
+    READ TABLE gt_body INDEX ls_good_cell-row_id
+      ASSIGNING FIELD-SYMBOL(<fs_body>).
+    IF sy-subrc = 0.
+      <fs_body>-modi_yn = 'X'.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.  " modify_value
+
+
+**********************************************************************
+* Form edit_toolbar
+*  – ALV 그리드 툴바 커스터마이징 처리
+*--------------------------------------------------------------*------
+* --> p_e_object       TYPE REF TO cl_alv_event_toolbar_set
+* --> p_e_interactive  TYPE abap_bool
+**********************************************************************
+FORM edit_toolbar  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                            pv_interactive.
+
+  DATA : ls_button   TYPE stb_button,
+         lv_disabled.
+
+  IF gv_editmode EQ 0 .
+    lv_disabled = abap_true.
+  ENDIF.
+
+  CLEAR ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR ls_button.
+  ls_button-function  = 'TOGL'.
+  ls_button-icon      = icon_toggle_display_change.
+  ls_button-quickinfo = 'Toggle mode'.
+  ls_button-quickinfo = 'Insert row'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR ls_button.
+  ls_button-function  = 'IROW'.
+  ls_button-icon      = icon_insert_row.
+  ls_button-quickinfo = 'Insert row'.
+  ls_button-disabled  = lv_disabled.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR ls_button.
+  ls_button-function  = 'SAVE'.
+  ls_button-icon      = icon_system_save.
+  ls_button-quickinfo = 'Save row'.
+  ls_button-disabled  = lv_disabled.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+ENDFORM.
+
+**********************************************************************
+* Form user_command
+*  – ALV 그리드 내 함수키(F-code) 처리
+*--------------------------------------------------------------*------
+* --> p_e_ucomm TYPE sy-ucomm
+**********************************************************************
+FORM user_command  USING    pv_ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'TOGL'.
+      PERFORM toggle_mode.
+    WHEN 'IROW'.
+      PERFORM insert_row.
+    WHEN 'SAVE'.
+      PERFORM save_data.
+  ENDCASE.
+
+ENDFORM.
+
+**********************************************************************
+* Form double_click
+*  – ALV 그리드 더블클릭 시 상세 처리
+*--------------------------------------------------------------*------
+* --> p_e_row    TYPE i    " 더블클릭된 행 번호
+* --> p_e_column TYPE c    " 더블클릭된 컬럼 ID
+**********************************************************************
+FORM double_click USING p_e_row p_e_column.
+
+  DATA: lv_conditionid     TYPE zc103sdt0003-conditionid,
+        lv_conditiontype   TYPE zc103sdt0003-conditiontype,
+        hide_cust_flag     TYPE abap_bool,
+        hide_bpid_flag     TYPE abap_bool,
+        hide_custname_flag TYPE abap_bool.   " ← 여기를 추가!
+
+  " 1) 클릭된 행에서 CONDITIONID 읽기
+  READ TABLE gt_body INDEX p_e_row ASSIGNING FIELD-SYMBOL(<fs_row>).
+  IF sy-subrc <> 0 OR <fs_row>-conditionid IS INITIAL.
+    MESSAGE '조건 ID가 없습니다.' TYPE 'I'.
+    RETURN.
+  ENDIF.
+  lv_conditionid = <fs_row>-conditionid.
+  lv_conditiontype = <fs_row>-conditiontype.
+
+  " 2) 출력용 타입 / 테이블 선언에 CONDITIONTYPE 추가
+
+
+  CLEAR gt_disp.
+  SELECT
+    a~bookingid,
+    a~bpid,
+    b~bpname,
+    a~custid,
+    cust~name       AS custname,    " ← 여기가 핵심
+    a~conditionid,
+    c~conditiontype,
+    a~flightid,
+    a~scheduleid,
+    a~bookingdate,
+    a~totalticket,
+    a~totalprice,
+    a~currency,
+    CASE a~book_status
+      WHEN 'A' THEN '정상 예약'
+      WHEN 'B' THEN '고객 취소'
+      ELSE a~book_status
+    END              AS book_status
+  INTO TABLE @gt_disp
+  FROM zc103sdt0011 AS a
+    INNER JOIN zc103sdt0003 AS c
+      ON a~conditionid = c~conditionid
+    LEFT OUTER JOIN zc103sdt0001 AS b
+      ON a~bpid       = b~bpid
+    LEFT OUTER JOIN zc103sdt0002 AS cust
+      ON a~custid     = cust~custid  " ← 고객 테이블 조인
+  WHERE a~conditionid = @lv_conditionid.
+  IF gt_disp IS INITIAL.
+    MESSAGE |{ lv_conditiontype }으로 조회된 항공편이 없습니다.| TYPE 'S'.
+    RETURN.
+  ENDIF.
+**********************************************************************
+  " 1) 클릭된 조건의 특별 할인 여부 가져오기
+  DATA: lv_discount_flag TYPE zc103sdt0003-special_discount.
+
+  SELECT SINGLE special_discount
+    INTO @lv_discount_flag
+    FROM zc103sdt0003
+    WHERE conditionid = @lv_conditionid.
+
+  " 2) 필드카탈로그 수정 (컬럼 숨김 처리)
+  LOOP AT gt_fcat3 INTO DATA(ls_fcat3).
+    CASE ls_fcat3-fieldname.
+      WHEN 'CUSTID' OR 'CUSTNAME'.
+        IF lv_discount_flag = 'Y'.
+          ls_fcat3-no_out = abap_false.
+        ELSE.
+          ls_fcat3-no_out = abap_true.
+        ENDIF.
+
+      WHEN 'BPID' OR 'BPNAME'.
+        IF lv_discount_flag = 'N'.
+          ls_fcat3-no_out = abap_false.
+        ELSE.
+          ls_fcat3-no_out = abap_true.
+        ENDIF.
+
+      WHEN OTHERS.
+        CLEAR ls_fcat3-no_out. " 나머지는 항상 표시
+    ENDCASE.
+    MODIFY gt_fcat3 FROM ls_fcat3.
+  ENDLOOP.
+
+**********************************************************************
+  LOOP AT gt_fcat3 ASSIGNING FIELD-SYMBOL(<fs_fcat>).
+    CASE <fs_fcat>-fieldname.
+      WHEN 'CUSTID'.
+        <fs_fcat>-coltext = '고객 ID'.
+      WHEN 'CUSTNAME'.
+        <fs_fcat>-coltext = '고객명'.
+      WHEN 'BPID'.
+        <fs_fcat>-coltext = '거래처 ID'.
+      WHEN 'BPNAME'.
+        <fs_fcat>-coltext = '거래처명'.
+        "… 생략 …
+    ENDCASE.
+  ENDLOOP.
+  " 3-1) 컬럼 숨김 여부 판단
+  hide_cust_flag     = abap_true.
+  hide_custname_flag = abap_true.
+  LOOP AT gt_disp INTO DATA(ls_disp).
+    IF ls_disp-custid     IS NOT INITIAL.
+      hide_cust_flag     = abap_false.
+    ENDIF.
+    IF ls_disp-custname  IS NOT INITIAL.
+      hide_custname_flag = abap_false.
+    ENDIF.
+    IF hide_cust_flag     = abap_false AND
+       hide_custname_flag = abap_false.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+
+
+  IF go_right_grid IS BOUND.
+    CALL METHOD go_right_grid->set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout2
+      CHANGING
+        it_outtab       = gt_disp
+        it_fieldcatalog = gt_fcat3.
+  ENDIF.
+  MESSAGE | '{ lv_conditiontype }'으로 예약한 내역은 총 { lines( gt_disp ) }건 조회됩니다.| TYPE 'S'.
+*  MESSAGE |조건 { lv_conditionid } 기준으로 예약 { lines( gt_disp ) }건 조회됨| TYPE 'S'.
+
+ENDFORM.
+**********************************************************************
+* Form on_date_selected
+*  – 범위(range) 선택 달력에서 날짜 변경 시 호출
+*--------------------------------------------------------------*------
+* --> p_date_begin TYPE cnca_utc_date        " 시작 날짜
+* --> p_date_end   TYPE cnca_utc_date        " 종료 날짜
+* --> p_sender     TYPE REF TO cl_gui_calendar " 이벤트 발생 객체
+**********************************************************************
+FORM on_date_selected
+  USING
+    p_date_begin TYPE cnca_utc_date
+    p_date_end   TYPE cnca_utc_date
+    p_sender     TYPE REF TO cl_gui_calendar.
+
+*  " 선택된 From/To 범위를 전역 변수에 반영
+*  gv_fr_date = p_date_begin.
+*  gv_to_date = p_date_end.
+*
+*  "   자동 조회를 원하시면 주석 해제
+*  PERFORM search_data.
+
+  DATA: lv_date_begin TYPE sy-datum,
+        lv_date_end   TYPE sy-datum.
+
+  CALL FUNCTION 'CNCA_CONVERT_DATE_TO_SAP_DATE'
+    EXPORTING
+      date_cnca = p_date_begin
+    IMPORTING
+      date_sap  = lv_date_begin.
+
+  CALL FUNCTION 'CNCA_CONVERT_DATE_TO_SAP_DATE'
+    EXPORTING
+      date_cnca = p_date_end
+    IMPORTING
+      date_sap  = lv_date_end.
+
+  gv_fr_date = lv_date_begin.
+  gv_to_date = lv_date_end.
+
+  PERFORM search_data.
+ENDFORM.  " on_date_selected
+**********************************************************************
+* Form hotspot_click
+*  – ALV 그리드 hotspot 클릭 시 호출
+*---------------------------------------------------------------------*
+* --> p_e_row_id     TYPE i    " 클릭된 행 번호
+* --> p_e_column_id  TYPE c    " 클릭된 컬럼 ID
+**********************************************************************
+FORM hotspot_click
+  USING p_e_row_id
+        p_e_column_id.
+
+  " 빈 구현: 상세 팝업 호출은 MODULE user_command_0100 또는
+  " double_click 로직에서 처리됩니다.
+
+ENDFORM.                    " hotspot_click
+
+**********************************************************************
+* Form set_init_date
+*  – 초기 날짜 범위 설정
+*    • gv_fr_date = 오늘 기준 최소 2개월 전
+*    • gv_to_date = 오늘
+*---------------------------------------------------------------------*
+FORM set_init_date.
+
+  CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+    EXPORTING
+      date      = sy-datum
+      years     = 0
+      months    = 2
+      days      = 0
+      signum    = '-'
+    IMPORTING
+      calc_date = gv_fr_date.
+
+  gv_to_date = sy-datum.
+
+*-- 켈린더 오브젝트 생성 화면
+  DATA : date_sel_begin TYPE cnca_utc_date,
+         date_sel_end   TYPE cnca_utc_date.
+
+  date_sel_begin = gv_fr_date.
+  date_sel_end = gv_to_date.
+
+  CALL METHOD go_fr_cal->set_selection
+    EXPORTING
+      date_begin = date_sel_begin
+      date_end   = date_sel_end.
+
+ENDFORM.                    " set_init_date
+
+**********************************************************************
+* Form create_calendar_object
+*  – 한 개(Custom) 컨테이너에서 범위(range) 선택 달력 생성
+*---------------------------------------------------------------------*
+FORM create_calendar_object.
+
+  DATA lv_focus TYPE cnca_utc_date.
+
+  " 1) From 자리의 Custom Container 생성
+  CREATE OBJECT go_fr_con
+    EXPORTING
+      container_name = 'C_PICKER_FR'.
+
+  " 2) 달력 스타일/선택 모드: navigator + date picker, 범위 선택
+  gv_calendar_style = cnca_style_v_navigator +
+                      cnca_style_dtpicker.
+*  gv_calendar_style  = cnca_style_h_navigator.
+  gv_selection_style = cnca_sel_interval.  " <-- cnca_sel_range 대신 cnca_sel_interval
+
+  " 3) 캘린더 객체 생성 (범위 지정 모드를 지원)
+  lv_focus = gv_fr_date.
+  CREATE OBJECT go_fr_cal
+    EXPORTING
+      parent          = go_fr_con
+      view_style      = gv_calendar_style
+      selection_style = gv_selection_style
+      focus_date      = lv_focus.
+
+ENDFORM.                    " create_calendar_object
+
+
+**********************************************************************
+* Form set_calendar_event
+*  – 범위 선택 달력(go_fr_cal)에만 이벤트 핸들러 등록
+*---------------------------------------------------------------------*
+FORM set_calendar_event.
+
+  SET HANDLER lcl_event_handler=>on_date_selected FOR go_fr_cal.
+*-- 켈린더에 여러 이벤트들 다시 설치
+  myevent-appl_event = ' '.
+  myevent-eventid = go_fr_cal->m_id_date_selected.
+  APPEND myevent TO myevent_tab.
+
+  myevent-appl_event = 'X'.
+  myevent-eventid = go_fr_cal->m_id_pre_selection.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_fr_cal->m_id_info_request.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_fr_cal->m_id_ctxmenu_request.
+  APPEND myevent TO myevent_tab.
+
+  myevent-eventid = go_fr_cal->m_id_ctxmenu_selected.
+  APPEND myevent TO myevent_tab.
+
+  CALL METHOD go_fr_cal->set_registered_events
+    EXPORTING
+      events = myevent_tab.
+ENDFORM.                    " set_calendar_event
+
+
+*&---------------------------------------------------------------------*
+*& Form display_100_screen
+*&---------------------------------------------------------------------*
+*& 화면 100의 ALV 그리드(좌/우) 생성 및 초기 바인딩
+*&---------------------------------------------------------------------*
+FORM display_100_screen .
+
+  " 최초 호출 시에만 컨테이너·그리드 객체를 생성
+  IF go_container IS NOT BOUND.
+
+**********************************************************************
+    "─── ① DDIC 메타정보를 담을 내부 테이블 선언 ───
+    DATA: lt_dd03l_cond TYPE dfies_tab,  " 가격조건 테이블 메타
+          lt_dd03l_bp   TYPE dfies_tab,  " BP 마스터 테이블 메타
+          lt_dd03l_cust TYPE dfies_tab,  " 고객 마스터 테이블 메타
+          ls_dd03l      TYPE dfies.      " 단일 레코드 타입
+
+    "─── ② DDIC 메타정보 읽어오기 ───────────────────
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING
+        tabname   = 'ZC103SDT0003'    " 가격조건 테이블
+        langu     = sy-langu
+      TABLES
+        dfies_tab = lt_dd03l_cond
+      EXCEPTIONS
+        OTHERS    = 1.
+    IF sy-subrc <> 0.
+      MESSAGE 'ZC103SDT0003 메타정보 로드 실패' TYPE 'E'.
+    ENDIF.
+
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING
+        tabname   = 'ZC103SDT0001'    " BP 마스터 테이블
+        langu     = sy-langu
+      TABLES
+        dfies_tab = lt_dd03l_bp
+      EXCEPTIONS
+        OTHERS    = 1.
+    IF sy-subrc <> 0.
+      MESSAGE 'ZC103SDT0001 메타정보 로드 실패' TYPE 'E'.
+    ENDIF.
+
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING
+        tabname   = 'ZC103SDT0002'    " 고객 마스터 테이블
+        langu     = sy-langu
+      TABLES
+        dfies_tab = lt_dd03l_cust
+      EXCEPTIONS
+        OTHERS    = 1.
+    IF sy-subrc <> 0.
+      MESSAGE 'ZC103SDT0002 메타정보 로드 실패' TYPE 'E'.
+    ENDIF.
+**********************************************************************
+    " ▶ 1) 필드 카탈로그 초기화 및 세팅
+    CLEAR: gt_fcat, gs_fcat.
+    PERFORM set_field_catalog USING :
+      'X' 'CONDITIONID'      'ZC103SDT0003' 'C' ' ',
+      ' ' 'BPID'             'ZC103SDT0003' ' ' ' ',
+      ' ' 'CONDITIONTYPE'    'ZC103SDT0003' ' ' 'X',
+      ' ' 'VALID_FROM'       'ZC103SDT0003' 'C' ' ',
+      ' ' 'VALID_TO'         'ZC103SDT0003' 'C' ' ',
+      ' ' 'DISCOUNTRATE'     'ZC103SDT0003' 'C' ' ',
+      ' ' 'IS_CARGO_INCLUDE' 'ZC103SDT0003' 'C' ' ',
+      ' ' 'SPECIAL_DISCOUNT' 'ZC103SDT0003' 'C' ' '.
+    CLEAR: gt_fcat3, gs_fcat3.
+    PERFORM set_field_catalog02 USING:
+  'X' 'BOOKINGID'    'ZC103SDT0011' ' ' ' ',
+  ' ' 'BPID'         'ZC103SDT0011' ' ' ' ',
+  ' ' 'BPNAME'       'ZC103SDT0001' ' ' ' ',   " 컬럼 추가
+  ' ' 'CUSTID'       'ZC103SDT0011' ' ' ' ',
+  ' ' 'CUSTNAME'       'ZC103SDT0002' ' ' ' ',
+  ' ' 'CONDITIONID'  'ZC103SDT0011' ' ' ' ',
+  ' ' 'CONDITIONTYPE'  'ZC103SDT0003' ' ' 'X',
+  ' ' 'FLIGHTID'     'ZC103SDT0011' ' ' ' ',
+  ' ' 'SCHEDULEID'   'ZC103SDT0011' ' ' ' ',
+  ' ' 'BOOKINGDATE'  'ZC103SDT0011' ' ' ' ',
+  ' ' 'TOTALTICKET'  'ZC103SDT0011' ' ' ' ',
+  ' ' 'TOTALPRICE'   'ZC103SDT0011' ' ' ' ',
+  ' ' 'CURRENCY'     'ZC103SDT0011' ' ' ' ',
+  ' ' 'BOOK_STATUS'  'ZC103SDT0011' ' ' ' '.
+
+    " ▶ 2) 레이아웃 설정
+    PERFORM set_layout.
+
+    " ▶ 3) 컨테이너 및 스플리터 생성
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'MAIN_CONT'.
+
+    CREATE OBJECT go_split_main
+      EXPORTING
+        parent  = go_container
+        rows    = 1
+        columns = 2.
+
+    " ▶ 4) 컨테이너 취득
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 1
+        column    = 1
+      RECEIVING
+        container = go_left_cont.
+
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 1
+        column    = 2
+      RECEIVING
+        container = go_right_cont.
+
+    "─── 5) 그리드 생성 ───────────────────────
+    CREATE OBJECT go_left_grid EXPORTING i_parent = go_left_cont.
+    CREATE OBJECT go_right_grid EXPORTING i_parent = go_right_cont.
+
+    "─── 6) 이벤트 핸들러 등록 ───────────────
+    " 더블클릭 처리
+    SET HANDLER lcl_event_handler=>double_click FOR go_left_grid.
+    " 대신 이렇게
+    SET HANDLER lcl_event_handler=>double_click FOR go_left_grid.
+    SET HANDLER lcl_event_handler=>user_command  FOR go_left_grid.
+
+    " ▶ 7) ALV 바인딩
+    CALL METHOD go_left_grid->set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout1
+      CHANGING
+        it_outtab       = gt_body
+        it_fieldcatalog = gt_fcat.
+
+    CALL METHOD go_right_grid->set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout2
+      CHANGING
+        it_outtab       = gt_right_booking
+        it_fieldcatalog = gt_fcat3.
+
+  ELSE.
+
+    " ▶ 컨테이너는 있지만 fcat 날아간 경우 (예외 방지용)
+    IF gt_fcat IS INITIAL.
+      PERFORM set_field_catalog USING :
+        'X' 'CONDITIONID'      'ZC103SDT0003' ' ' ' ',
+        ' ' 'BPID'             'ZC103SDT0003' ' ' ' ',
+        ' ' 'CONDITIONTYPE'    'ZC103SDT0003' ' ' 'X',
+        ' ' 'SPECIAL_DISCOUNT' 'ZC103SDT0003' ' ' ' ',
+        ' ' 'VALID_FROM'       'ZC103SDT0003' 'C' ' ',
+        ' ' 'VALID_TO'         'ZC103SDT0003' 'C' ' ',
+        ' ' 'DISCOUNTRATE'     'ZC103SDT0003' 'C' ' ',
+        ' ' 'IS_CARGO_INCLUDE' 'ZC103SDT0003' 'C' ' ',
+        ' ' 'CURRENCY'         'ZC103SDT0003' 'C' ' '.
+    ENDIF.
+
+  ENDIF.
+
+  " ▶ 항상 최신 데이터로 Refresh
+  PERFORM refresh_alv.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form search_data
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form search_data
+*&---------------------------------------------------------------------*
+FORM search_data.
+
+  CLEAR: gt_body.
+  DATA(lv_pattern) = ||.
+  DATA lv_subrc TYPE sy-subrc.
+
+  " ✅ 1) 날짜 유효성 검사
+  IF ( gv_fr_date IS INITIAL AND gv_to_date IS NOT INITIAL )
+   OR ( gv_fr_date IS NOT INITIAL AND gv_to_date IS INITIAL ).
+    MESSAGE '시작일과 종료일을 모두 입력해 주세요.' TYPE 'I'.
+    RETURN.
+  ENDIF.
+
+  " ✅ 2) 조건유형 공백 보정
+  IF gv_event CP ' '.
+    CLEAR gv_event.
+  ENDIF.
+
+  " ✅ 3) 전체 조건 없이 → 전체 조회 (초기 진입 또는 둘 다 공백)
+  IF gv_event IS INITIAL AND gv_fr_date IS INITIAL AND gv_to_date IS INITIAL.
+    SELECT mandt,conditionid, bpid, conditiontype, special_discount, valid_to, discountrate, is_cargo_include, currency FROM zc103sdt0003
+      WHERE valid_from BETWEEN @gv_fr_date AND @gv_to_date INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+
+    " ✅ 4) 조건유형만 검색
+  ELSEIF gv_event IS NOT INITIAL AND gv_fr_date IS INITIAL AND gv_to_date IS INITIAL.
+    lv_pattern = |%{ gv_event }%|.
+    SELECT * FROM zc103sdt0003
+      WHERE conditiontype LIKE @lv_pattern
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+
+    " ✅ 5) 날짜만 검색
+  ELSEIF gv_event IS INITIAL AND gv_fr_date IS NOT INITIAL AND gv_to_date IS NOT INITIAL.
+    SELECT * FROM zc103sdt0003
+      WHERE valid_from BETWEEN @gv_fr_date AND @gv_to_date
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+
+    " ✅ 6) 조건유형 + 날짜 둘 다 검색
+  ELSEIF gv_event IS NOT INITIAL AND gv_fr_date IS NOT INITIAL AND gv_to_date IS NOT INITIAL.
+    lv_pattern = |%{ gv_event }%|.
+    SELECT * FROM zc103sdt0003
+      WHERE conditiontype LIKE @lv_pattern
+        AND valid_from BETWEEN @gv_fr_date AND @gv_to_date
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+
+  ENDIF.
+
+  " 결과 없을 경우 메시지
+  IF gt_body IS INITIAL.
+    MESSAGE '조건에 맞는 데이터가 없습니다.' TYPE 'I'.
+    RETURN.
+  ENDIF.
+
+  " 후처리: 표시용 값 변환
+  LOOP AT gt_body ASSIGNING FIELD-SYMBOL(<fs_body>).
+    IF <fs_body>-bpid IS INITIAL.
+      <fs_body>-bpid = '일반 고객'.
+    ELSE.
+      <fs_body>-bpid = '여행사 고객'.
+    ENDIF.
+
+    IF <fs_body>-special_discount = 'Y'.
+      <fs_body>-special_discount = 'O'.
+    ELSE.
+      <fs_body>-special_discount = 'X'.
+    ENDIF.
+
+    IF <fs_body>-is_cargo_include = 'N'.
+      <fs_body>-is_cargo_include = 'X'.
+    ELSE.
+      <fs_body>-is_cargo_include = 'O'.
+    ENDIF.
+  ENDLOOP.
+
+  MESSAGE s008(zmsgc103) WITH sy-dbcnt.
+  PERFORM refresh_alv.
+
+ENDFORM.
+
+**********************************************************************
+*&---------------------------------------------------------------------*
+*& Form refresh_alv
+*&---------------------------------------------------------------------*
+*& 현재 gt_body 데이터를 좌/우 ALV 그리드에 Refresh합니다.
+*&---------------------------------------------------------------------*
+FORM refresh_alv .
+
+  DATA(ls_stable) = VALUE lvc_s_stbl( row = abap_true col = abap_true ).
+
+  " 왼쪽 그리드 업데이트
+  IF go_left_grid IS BOUND.
+    CALL METHOD go_left_grid->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+  " 오른쪽 그리드 업데이트
+  IF go_right_grid IS BOUND.
+    CALL METHOD go_right_grid->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+**********************************************************************
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  IF go_left_grid IS BOUND.
+    CALL METHOD go_left_grid->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+  IF go_alv_grid2 IS BOUND.
+    CALL METHOD go_alv_grid2->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+ENDFORM.                    " refresh_alv
+
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog
+*&---------------------------------------------------------------------*
+*& 구성 매개변수:
+*&  --> pv_key     TYPE c LENGTH 1           " 고정/Key 여부 (X = Key)
+*&  --> pv_field   TYPE lvc_fcat-fieldname  " 필드명
+*&  --> pv_table   TYPE lvc_fcat-ref_table  " 참조 테이블
+*&  --> pv_just    TYPE c LENGTH 1           " 정렬(Justify) 옵션
+*&  --> pv_emph    TYPE c LENGTH 1           " 강조(Emphasize) 옵션
+*&---------------------------------------------------------------------*
+FORM set_field_catalog USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat-key = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-ref_table = pv_table.
+  gs_fcat-just = pv_just.
+  gs_fcat-emphasize = pv_emph.
+
+
+  " 2) 추가 속성: 핫스팟, 출력제한, 컬럼텍스트 등
+  CASE pv_field.
+    WHEN 'CONDITIONID'.
+*      gs_fcat-hotspot = abap_true.
+      gs_fcat-coltext = '조건 ID'.
+    WHEN 'BPID'.
+      gs_fcat-coltext = '고객 유형'.
+    WHEN 'CONDITIONTYPE'.
+      gs_fcat-coltext = '조건 유형'.
+    WHEN 'SPECIAL_DISCOUNT'.
+      gs_fcat-coltext = '특별 할인'.
+    WHEN 'VALID_FROM'.
+      gs_fcat-coltext = '유효 시작일'.
+    WHEN 'VALID_TO'.
+      gs_fcat-coltext = '유효 종료일'.
+    WHEN 'DISCOUNTRATE'.
+      gs_fcat-coltext = '할인율(%)'.
+    WHEN 'IS_CARGO_INCLUDE'.
+      gs_fcat-coltext = '화물 포함'.
+    WHEN 'CURRENCY'.
+      gs_fcat-coltext = '통화'.
+      " 필요 시 더 많은 필드 추가 가능
+  ENDCASE.
+
+  " 3) 필드카탈로그 테이블에 추가
+  APPEND gs_fcat TO gt_fcat.
+
+ENDFORM.  " set_field_catalog
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*&  ALV 그리드 레이아웃 및 Variant 설정
+*&---------------------------------------------------------------------*
+FORM set_layout .
+
+  gs_layout1-zebra      = abap_true.
+  gs_layout1-cwidth_opt = 'A'.
+  gs_layout1-sel_mode   = 'D'.
+  gs_layout1-grid_title = '조회된 가격 조건 항목(확인하고 싶은 항목을 더블클릭하세요!)'.
+
+  gs_variant-report    = sy-repid.
+
+  gs_layout2 = CORRESPONDING #( gs_layout1 ).
+  gs_layout2-grid_title = '고객별 세부 항목'.
+
+
+ENDFORM.  " set_layout
+*&---------------------------------------------------------------------*
+*& Form update_clock
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM update_clock.
+*  " 시스템 시간 → GV_CLOCK
+*  GET TIME.
+*  WRITE sy-uzeit TO gv_clock USING edit mask '__:__:__'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form count_account_by_category
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM count_account_by_category .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_html_chart
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form display_chart
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_chart .
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form set_category_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_category_value .
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form set_chart_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_chart_value .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form design_mode
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM design_mode .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form init_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GO_ALV_CONT1
+*&      <-- GO_ALV1
+*&---------------------------------------------------------------------*
+*FORM init_alv
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_tree_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form reset_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM reset_screen .
+
+
+  " 트랜잭션 다시 호출 (ZC103SD0005는 실제 트랜잭션 코드)
+  CALL TRANSACTION 'ZC103SD0005'.
+  LEAVE TO SCREEN 0.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form conditiondata
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM conditiondata .
+  IF go_container2 IS NOT BOUND.
+
+    SELECT conditionid conditiontype special_discount valid_from valid_to discountrate is_cargo_include
+      INTO CORRESPONDING FIELDS OF TABLE gt_condition
+      FROM zc103sdt0003
+       WHERE valid_to >= sy-datum
+      ORDER BY valid_from ASCENDING.
+
+    CLEAR : gt_fcat, gs_fcat.
+    PERFORM set_field_catalog03 USING :
+       'X' 'CONDITIONID'      'ZC103SDT0003' ' ' ' ',
+       ' ' 'CONDITIONTYPE'   'ZC103SDT0003' ' ' 'X',
+       ' ' 'SPECIAL_DISCOUNT' 'ZC103SDT0003' 'L' ' ',
+       ' ' 'VALID_FROM'      'ZC103SDT0003' 'C' ' ',
+       ' ' 'VALID_TO'        'ZC103SDT0003' 'C' ' ',
+       ' ' 'DISCOUNTRATE'    'ZC103SDT0003' 'C' ' ',
+       ' ' 'IS_CARGO_INCLUDE' 'ZC103SDT0003' 'C' ' '.
+    PERFORM set_data.
+    PERFORM display_layout.
+    PERFORM create_object_3.
+    PERFORM exclude_toolbar.
+    SET HANDLER : lcl_event_handler=>modify_value FOR go_alv_grid2,
+              lcl_event_handler=>edit_toolbar FOR go_alv_grid2,
+              lcl_event_handler=>user_command FOR go_alv_grid2.
+
+    CALL METHOD go_alv_grid2->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant2
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_layout02
+        it_toolbar_excluding = gt_ui_functions  " << 여기에 추가
+      CHANGING
+        it_outtab            = gt_condition
+        it_fieldcatalog      = gt_fcat2.
+
+
+  ENDIF.
+  PERFORM event_after_display. " Enable edit
+  PERFORM refresh_alv.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog03
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog03  USING    pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat2-key = pv_key.
+  gs_fcat2-fieldname = pv_field.
+  gs_fcat2-ref_table = pv_table.
+  gs_fcat2-just = pv_just.
+  gs_fcat2-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'CONDITIONID'.
+      gs_fcat2-coltext = '조건 ID'.
+*      gs_fcat2-edit    = abap_true.    " <<< 여기에 추가
+    WHEN 'CONDITIONTYPE'.
+      gs_fcat2-coltext = '조건 유형'.
+*      gs_fcat2-edit    = abap_true.
+    WHEN 'SPECIAL_DISCOUNT'.
+      gs_fcat2-coltext = '특별 할인 여부'.
+*      gs_fcat2-edit    = abap_true.
+    WHEN 'VALID_FROM'.
+      gs_fcat2-coltext = '유효 시작일'.
+*      gs_fcat2-edit    = abap_true.
+    WHEN 'VALID_TO'.
+      gs_fcat2-coltext = '유효 종료일'.
+*      gs_fcat2-edit    = abap_true.
+    WHEN 'DISCOUNTRATE'.
+      gs_fcat2-coltext = '할인율(%)'.
+*      gs_fcat2-edit    = abap_true.
+    WHEN 'IS_CARGO_INCLUDE'.
+      gs_fcat2-coltext = '화물 포함 여부'.
+*      gs_fcat2-edit    = abap_true.
+    WHEN 'CURRENCY'.
+      gs_fcat2-coltext = '통화'.
+*      gs_fcat2-edit    = abap_true.
+  ENDCASE.
+
+  APPEND gs_fcat2 TO gt_fcat2.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_layout .
+
+  gs_layout02-zebra = abap_true.
+  gs_layout02-cwidth_opt = 'A'.
+  gs_layout02-sel_mode = 'D'.
+  gs_layout02-stylefname = 'STYLE'.  " << 여기 반드시 추가
+  gs_layout02-grid_title = '이벤트 조회 및 생성'.
+
+  gs_variant2-report = sy-repid.
+  gs_variant2-handle = 'ALV1'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object_3
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object_3 .
+  CREATE OBJECT go_container2
+    EXPORTING
+      container_name = 'MAIN_CONT3'.
+
+  CREATE OBJECT go_alv_grid2
+    EXPORTING
+      i_parent = go_container2.
+
+  " ──> 여기에 추가
+  SET HANDLER lcl_event_handler=>edit_toolbar FOR go_alv_grid2.
+  SET HANDLER lcl_event_handler=>user_command FOR go_alv_grid2.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form SET_DATA
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_data .
+  " 예: Y/N 텍스트 변환만 GT_CONDITION 에 바로 반영
+  LOOP AT gt_condition ASSIGNING FIELD-SYMBOL(<fs>).
+    " Y/N → '적용'/'미적용'
+    <fs>-special_discount = COND string(
+      WHEN <fs>-special_discount = 'Y' THEN '일반고객적용'
+      ELSE '여행사적용' ).
+    <fs>-is_cargo_include = COND string(
+      WHEN <fs>-is_cargo_include = 'Y' THEN '적용'
+      ELSE '미적용' ).
+    " 필요하면 스타일 속성도
+    <fs>-style = COND #( WHEN <fs>-modi_yn = 'X' THEN VALUE lvc_t_styl( ) ).
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form insert_row
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM insert_row .
+
+  CLEAR gs_condition.
+
+  " ▶ 조건 ID 자동 채번
+  DATA: lv_max_id TYPE zc103sdt0003-conditionid,
+        lv_number TYPE i,
+        lv_prefix TYPE c LENGTH 4 VALUE 'COND',
+        lv_suffix TYPE c LENGTH 4.
+
+  " MAX 조건 ID 읽기
+  SELECT MAX( conditionid ) INTO lv_max_id FROM zc103sdt0003
+    WHERE conditionid LIKE 'COND____'.  " COND + 4자리 숫자
+
+  IF sy-subrc = 0 AND lv_max_id IS NOT INITIAL.
+    lv_suffix = lv_max_id+4(4).   " 'COND0037' -> '0037'
+    lv_number = lv_suffix.
+  ELSE.
+    lv_number = 0.  " 테이블이 비어있으면 COND0001부터 시작
+  ENDIF.
+
+  lv_number = lv_number + 1.
+
+  " 숫자 4자리 문자열 변환 (예: 38 → '0038')
+  lv_suffix = |{ lv_number WIDTH = 4 PAD = '0' }|.
+
+  CONCATENATE lv_prefix lv_suffix INTO gs_condition-conditionid.
+
+  " ▶ 기본값 세팅
+  gs_condition-valid_from       = sy-datum.
+  gs_condition-valid_to         = sy-datum + 30.
+  gs_condition-currency         = 'KRW'.
+  gs_condition-special_discount = 'N'.
+  gs_condition-is_cargo_include = 'N'.
+**********************************************************************
+  " ▶ 저장 대상으로 표시
+  gs_condition-modi_yn = 'X'.   " <-- 이 줄 추가!!
+**********************************************************************
+  " ▶ 스타일 설정 (Edit 활성화)
+  PERFORM set_style_detail USING :
+    'CONDITIONID'      'D' CHANGING gs_condition-style,
+    'CONDITIONTYPE'    'E' CHANGING gs_condition-style,
+    'SPECIAL_DISCOUNT' 'E' CHANGING gs_condition-style,
+    'VALID_FROM'       'E' CHANGING gs_condition-style,
+    'VALID_TO'         'E' CHANGING gs_condition-style,
+    'DISCOUNTRATE'     'E' CHANGING gs_condition-style,
+    'IS_CARGO_INCLUDE' 'E' CHANGING gs_condition-style,
+    'CURRENCY'         'E' CHANGING gs_condition-style.
+
+  " ▶ 내부 테이블에 추가 및 ALV 갱신
+  APPEND gs_condition TO gt_condition.
+  PERFORM refresh_alv.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form SET_STYLE_DETAIL
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      <-- GS_DISPLAY_STYLE
+*&---------------------------------------------------------------------*
+FORM set_style_detail USING pv_field pv_status CHANGING pt_style TYPE lvc_t_styl.
+
+  DATA: ls_style TYPE lvc_s_styl.
+
+  CLEAR ls_style.
+  ls_style-fieldname = pv_field.
+
+  IF pv_status = 'E'.
+    ls_style-style = cl_gui_alv_grid=>mc_style_enabled.
+  ENDIF.
+
+  INSERT ls_style INTO TABLE pt_style.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form toggle_mode
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM toggle_mode .
+  " ① 아직 go_alv_grid2 가 생성 안 됐으면 EXIT
+  IF go_alv_grid2 IS NOT BOUND.
+    RETURN.
+  ENDIF.
+
+  " ② 모드 토글
+  gv_editmode = 1 - gv_editmode.   " 0↔1
+
+  " ③ 스타일·입력모드 재설정
+  PERFORM set_style.
+  CALL METHOD go_alv_grid2->set_ready_for_input
+    EXPORTING
+      i_ready_for_input = gv_editmode.
+
+  " ④ 다시 그리기
+  PERFORM refresh_alv.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form save_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form save_data_for_conditions
+*&---------------------------------------------------------------------*
+FORM save_data .
+
+  DATA:
+    lt_save   TYPE TABLE OF zc103sdt0003,
+    ls_cond   LIKE gs_condition,
+    lv_answer TYPE c.
+
+  " 1) ALV2에서 변경된 데이터 반영
+  CALL METHOD go_alv_grid2->check_changed_data.
+
+  " 2) 변경된 행이 하나라도 있는지 체크
+  READ TABLE gt_condition INTO ls_cond WITH KEY modi_yn = 'X'.
+  IF sy-subrc <> 0.
+    CALL FUNCTION 'POPUP_TO_INFORM'
+      EXPORTING
+        titel = '알림'
+        txt1  = '변경된 데이터가 없습니다.'
+        txt2  = '확인 후 다시 시도하세요.'.
+    RETURN.
+  ENDIF.
+
+  " ✅ 3) 저장 전 유효성 검사 (조건유형, 할인율)
+  LOOP AT gt_condition ASSIGNING FIELD-SYMBOL(<fs_check>)
+       WHERE modi_yn = 'X'.
+
+    IF <fs_check>-conditiontype IS INITIAL.
+      CALL FUNCTION 'POPUP_TO_INFORM'
+        EXPORTING
+          titel = '입력 오류'
+          txt1  = '조건 유형은 필수 입력입니다.'
+          txt2  = '입력 후 다시 저장해 주세요.'.
+      RETURN.
+    ENDIF.
+
+    IF <fs_check>-discountrate IS INITIAL OR <fs_check>-discountrate = 0.
+      CALL FUNCTION 'POPUP_TO_INFORM'
+        EXPORTING
+          titel = '입력 오류'
+          txt1  = '할인율(%)은 0보다 커야 합니다.'
+          txt2  = '0보다 큰 값을 입력해 주세요.'.
+      RETURN.
+    ENDIF.
+
+  ENDLOOP.
+
+  " 4) 저장 전 사용자 확인
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '저장'
+    IMPORTING
+      ev_answer = lv_answer.
+  IF lv_answer = '2'.
+    RETURN.
+  ENDIF.
+
+  " 5) 변경된 데이터 → 저장 테이블로 변환
+  LOOP AT gt_condition ASSIGNING FIELD-SYMBOL(<fs_cond>)
+       WHERE modi_yn = 'X'.
+    APPEND CORRESPONDING zc103sdt0003( <fs_cond> ) TO lt_save.
+  ENDLOOP.
+
+  " 6) DB 반영
+  MODIFY zc103sdt0003 FROM TABLE lt_save.
+  IF sy-subrc = 0.
+    COMMIT WORK AND WAIT.
+    CALL FUNCTION 'POPUP_TO_INFORM'
+      EXPORTING
+        titel = '성공'
+        txt1  = '데이터가 저장되었습니다.'
+        txt2  = '정상 처리되었습니다.'.
+  ELSE.
+    ROLLBACK WORK.
+    CALL FUNCTION 'POPUP_TO_INFORM'
+      EXPORTING
+        titel = '오류'
+        txt1  = '저장 중 오류가 발생했습니다.'
+        txt2  = '관리자에게 문의하세요.'.
+  ENDIF.
+
+  " 7) 화면 초기화
+  PERFORM reset_screen.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form EXLCUDE_TOOLBAR
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM exclude_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form event_after_display
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM event_after_display .
+
+  IF go_alv_grid2 IS BOUND.
+    CALL METHOD go_alv_grid2->set_ready_for_input
+      EXPORTING
+        i_ready_for_input = gv_editmode.
+
+    CALL METHOD go_alv_grid2->register_edit_event
+      EXPORTING
+        i_event_id = go_alv_grid2->mc_evt_modified.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_style .
+  DATA: lv_tabix TYPE sy-tabix.
+
+  LOOP AT gt_condition INTO gs_condition.
+    lv_tabix = sy-tabix.
+    CLEAR gs_condition-style.
+
+    PERFORM set_style_detail USING:
+      'CONDITIONID'      'D' CHANGING gs_condition-style,
+      'CONDITIONTYPE'    'E' CHANGING gs_condition-style,
+      'SPECIAL_DISCOUNT' 'E' CHANGING gs_condition-style,
+      'VALID_FROM'       'E' CHANGING gs_condition-style,
+      'VALID_TO'         'E' CHANGING gs_condition-style,
+      'DISCOUNTRATE'     'E' CHANGING gs_condition-style,
+      'IS_CARGO_INCLUDE' 'E' CHANGING gs_condition-style,
+      'CURRENCY'         'E' CHANGING gs_condition-style.
+
+    MODIFY gt_condition FROM gs_condition INDEX lv_tabix TRANSPORTING style.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog02
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog02 USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat3-key       = pv_key.
+  gs_fcat3-fieldname = pv_field.
+  gs_fcat3-ref_table = pv_table.
+  gs_fcat3-just      = pv_just.
+  gs_fcat3-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'BOOKINGID'.
+      gs_fcat3-coltext = '예약 ID'.
+    WHEN 'BPID'.
+      gs_fcat3-coltext = '거래처 ID'.
+    WHEN 'CUSTID'.
+      gs_fcat3-coltext = '고객 ID'.
+    WHEN 'CUSTNAME'.
+      gs_fcat3-coltext       = '고객명'.
+    WHEN 'CONDITIONID'.
+      gs_fcat3-coltext = '조건 ID'.
+    WHEN 'FLIGHTID'.
+      gs_fcat3-coltext = '항공편 ID'.
+    WHEN 'SCHEDULEID'.
+      gs_fcat3-coltext = '스케줄 ID'.
+    WHEN 'BOOKINGDATE'.
+      gs_fcat3-coltext = '예약일'.
+    WHEN 'TOTALTICKET'.
+      gs_fcat3-coltext = '총 티켓 수'.
+    WHEN 'TOTALPRICE'.
+      gs_fcat3-coltext = '총 금액'.
+      gs_fcat3-cfieldname = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_fcat3-coltext = '통화'.
+    WHEN 'BOOK_STATUS'.
+      gs_fcat3-coltext = '상태'.
+    WHEN 'BPNAME'.
+      gs_fcat3-coltext = '거래처명'.
+    WHEN 'CONDITIONTYPE'.
+      gs_fcat3-coltext = '이벤트명'.
+  ENDCASE.
+
+  APPEND gs_fcat3 TO gt_fcat3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form Orginal_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM orginal_data .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form first_entry_process
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM first_entry_process.
+  IF gv_first_entry = abap_true.
+    gv_first_entry = abap_false.
+
+    CLEAR:  gv_event. " ← 무조건 초기화!
+*    CLEAR : gv_fr_date, gv_to_date.
+    PERFORM search_data.
+    PERFORM display_100_screen.
+  ENDIF.
+ENDFORM.

@@ -1,0 +1,427 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZC103SD0002TOP                       - Module Pool      SAPMZC103SD0002
+*&---------------------------------------------------------------------*
+PROGRAM sapmzc103sd0002 MESSAGE-ID zmsgc103.
+
+**********************************************************************
+* TABLES
+**********************************************************************
+TABLES : zc103sdt0006, zc103sdt0007.
+
+**********************************************************************
+* Macro
+**********************************************************************
+DEFINE _init.
+  REFRESH &1.
+  CLEAR &1.
+END-OF-DEFINITION.
+
+**********************************************************************
+* Class Instance
+**********************************************************************
+DATA : go_main_container   TYPE REF TO cl_gui_custom_container,
+       go_split_container  TYPE REF TO cl_gui_splitter_container,
+       go_top_container    TYPE REF TO cl_gui_container,
+       go_bottom_container TYPE REF TO cl_gui_container,
+       go_top_alv_grid     TYPE REF TO cl_gui_alv_grid,
+       go_bottom_alv_grid  TYPE REF TO cl_gui_alv_grid.
+
+*-- For Calendar
+DATA : go_cale_container TYPE REF TO cl_gui_custom_container,
+       go_calendar       TYPE REF TO cl_gui_calendar.
+
+*-- For 130 Screen
+DATA : go_130_container TYPE REF TO cl_gui_custom_container,
+       go_130_alv_grid  TYPE REF TO cl_gui_alv_grid.
+
+**********************************************************************
+* ITab and WA
+**********************************************************************
+DATA : BEGIN OF gs_head,
+         orderid         TYPE zc103sdt0006-orderid,
+         bpid            TYPE zc103sdt0006-bpid,
+         custid          TYPE zc103sdt0006-custid,
+         conditionid     TYPE zc103sdt0006-conditionid,
+         order_date      TYPE zc103sdt0006-order_date,
+         cancel_deadline TYPE zc103sdt0006-cancel_deadline,
+         order_type      TYPE zc103sdt0006-order_type,
+         total_amount    TYPE zc103sdt0006-total_amount,
+         currency        TYPE zc103sdt0006-currency,
+         order_status    TYPE zc103sdt0006-order_status,
+         cancel_reason   TYPE zc103sdt0006-cancel_reason,
+         billing_status  TYPE zc103sdt0006-billing_status,
+         srv_end_status  TYPE zc103sdt0006-srv_end_status,
+         erdat           TYPE zc103sdt0006-erdat,
+         erzet           TYPE zc103sdt0006-erzet,
+         ernam           TYPE zc103sdt0006-ernam,
+         aedat           TYPE zc103sdt0006-aedat,
+         aezet           TYPE zc103sdt0006-aezet,
+         aenam           TYPE zc103sdt0006-aenam,
+         modi_yn(1),
+         style           TYPE lvc_t_styl,
+       END OF gs_head,
+       gt_head LIKE TABLE OF gs_head.
+
+DATA : BEGIN OF gs_line,
+         orderid         TYPE zc103sdt0007-orderid,
+         orderitemno     TYPE zc103sdt0007-orderitemno,
+         bookingid       TYPE zc103sdt0007-bookingid,
+         transportid     TYPE zc103sdt0007-transportid,
+         charged_item    TYPE zc103sdt0007-charged_item,
+         description     TYPE zc103sdt0007-description,
+         ticket_quantity TYPE zc103sdt0007-ticket_quantity,
+         ticket_unit     TYPE zc103sdt0007-ticket_unit,
+         cargo_weight    TYPE zc103sdt0007-cargo_weight,
+         cargo_unit      TYPE zc103sdt0007-cargo_unit,
+         unit_price      TYPE zc103sdt0007-unit_price,
+         tax_amount      TYPE zc103sdt0007-tax_amount,
+         discount        TYPE zc103sdt0007-discount,
+         currency        TYPE zc103sdt0007-currency,
+         used_mileage    TYPE zc103sdt0007-used_mileage,
+         order_status    TYPE zc103sdt0007-order_status,
+         srv_end_status  TYPE zc103sdt0007-srv_end_status,
+         erdat           TYPE zc103sdt0007-erdat,
+         erzet           TYPE zc103sdt0007-erzet,
+         ernam           TYPE zc103sdt0007-ernam,
+         aedat           TYPE zc103sdt0007-aedat,
+         aezet           TYPE zc103sdt0007-aezet,
+         aenam           TYPE zc103sdt0007-aenam,
+         modi_yn(1),
+         style           TYPE lvc_t_styl,
+       END OF gs_line,
+       gt_line LIKE TABLE OF gs_line.
+
+*-- For Display(Fixed Value -> Text)
+DATA : BEGIN OF gs_hdisplay,
+         orderid            TYPE zc103sdt0006-orderid,
+         bpid               TYPE zc103sdt0006-bpid,
+         custid             TYPE zc103sdt0006-custid,
+         conditionid        TYPE zc103sdt0006-conditionid,
+         order_date         TYPE zc103sdt0006-order_date,
+         cancel_deadline    TYPE zc103sdt0006-cancel_deadline,
+         order_type(20),
+         total_amount       TYPE zc103sdt0006-total_amount,
+         currency           TYPE zc103sdt0006-currency,
+         order_status(20),
+         cancel_reason      TYPE zc103sdt0006-cancel_reason,
+         billing_status(20),
+         srv_end_status(20),
+       END OF gs_hdisplay,
+       gt_hdisplay LIKE TABLE OF gs_hdisplay.
+
+DATA : BEGIN OF gs_ldisplay,
+         orderid            TYPE zc103sdt0007-orderid,
+         orderitemno        TYPE zc103sdt0007-orderitemno,
+         bookingid          TYPE zc103sdt0007-bookingid,
+         transportid        TYPE zc103sdt0007-transportid,
+         charged_item(20),
+         description        TYPE zc103sdt0007-description,
+         ticket_quantity    TYPE zc103sdt0007-ticket_quantity,
+         ticket_unit        TYPE zc103sdt0007-ticket_unit,
+         cargo_weight       TYPE zc103sdt0007-cargo_weight,
+         cargo_unit         TYPE zc103sdt0007-cargo_unit,
+         unit_price         TYPE zc103sdt0007-unit_price,
+         tax_amount         TYPE zc103sdt0007-tax_amount,
+         discount           TYPE zc103sdt0007-discount,
+         currency           TYPE zc103sdt0007-currency,
+         used_mileage       TYPE zc103sdt0007-used_mileage,
+         order_status(20),
+         srv_end_status(20),
+       END OF gs_ldisplay,
+       gt_ldisplay LIKE TABLE OF gs_ldisplay.
+
+*-- For F4(BPName)
+DATA : BEGIN OF gs_bpnf4,
+         bpid   TYPE zc103sdt0001-bpid,
+         bpname TYPE zc103sdt0001-bpname,
+       END OF gs_bpnf4,
+       gt_bpnf4 LIKE TABLE OF gs_bpnf4.
+
+*-- For F4(BP)
+DATA : BEGIN OF gs_bpf4,
+         bpname TYPE zc103sdt0001-bpname,
+         phone  TYPE zc103sdt0001-phone,
+       END OF gs_bpf4,
+       gt_bpf4 LIKE TABLE OF gs_bpf4.
+
+*-- For F4(Cus)
+DATA : BEGIN OF gs_cusf4,
+         name  TYPE zc103sdt0002-name,
+         phone TYPE zc103sdt0002-phone,
+       END OF gs_cusf4,
+       gt_cusf4 LIKE TABLE OF gs_cusf4.
+
+*-- For F4(BP S/O Date)
+DATA : BEGIN OF gs_bpdf4,
+         bpname     TYPE zc103sdt0001-bpname,
+         order_date TYPE zc103sdt0006-order_date,
+       END OF gs_bpdf4,
+       gt_bpdf4 LIKE TABLE OF gs_bpdf4.
+
+*-- For F4(Customer S/O Date)
+DATA : BEGIN OF gs_cusdf4,
+         name       TYPE zc103sdt0002-name,
+         order_date TYPE zc103sdt0006-order_date,
+       END OF gs_cusdf4,
+       gt_cusdf4 LIKE TABLE OF gs_cusdf4.
+
+*-- For F4(BP S/O Status)
+DATA : BEGIN OF gs_bpsf4,
+         bpname       TYPE zc103sdt0001-bpname,
+         order_date   TYPE zc103sdt0006-order_date,
+         order_status TYPE zc103sdt0006-order_status,
+       END OF gs_bpsf4,
+       gt_bpsf4 LIKE TABLE OF gs_bpsf4.
+
+*-- For F4(Customer S/O Status)
+DATA : BEGIN OF gs_cussf4,
+         name         TYPE zc103sdt0002-name,
+         order_date   TYPE zc103sdt0006-order_date,
+         order_status TYPE zc103sdt0006-order_status,
+       END OF gs_cussf4,
+       gt_cussf4 LIKE TABLE OF gs_cussf4.
+
+*-- For Head Edit
+DATA : BEGIN OF gs_hedit,
+         mandt           TYPE mandt,
+         orderid         TYPE zc103sdt0006-orderid,
+         bpid            TYPE zc103sdt0006-bpid,
+         custid          TYPE zc103sdt0006-custid,
+         conditionid     TYPE zc103sdt0006-conditionid,
+         order_date      TYPE zc103sdt0006-order_date,
+         cancel_deadline TYPE zc103sdt0006-cancel_deadline,
+         order_type      TYPE zc103sdt0006-order_type,
+         total_amount    TYPE zc103sdt0006-total_amount,
+         currency        TYPE zc103sdt0006-currency,
+         cancel_reason   TYPE zc103sdt0006-cancel_reason,
+         order_status    TYPE zc103sdt0006-order_status,
+         billing_status  TYPE zc103sdt0006-billing_status,
+         srv_end_status  TYPE zc103sdt0006-srv_end_status,
+         erdat           TYPE zc103sdt0006-erdat,
+         erzet           TYPE zc103sdt0006-erzet,
+         ernam           TYPE zc103sdt0006-ernam,
+         aedat           TYPE zc103sdt0006-aedat,
+         aezet           TYPE zc103sdt0006-aezet,
+         aenam           TYPE zc103sdt0006-aenam,
+       END OF gs_hedit,
+       gt_hedit LIKE TABLE OF gs_hedit.
+
+*-- For Line Edit
+DATA : BEGIN OF gs_ledit,
+         mandt           TYPE mandt,
+         orderid         TYPE zc103sdt0007-orderid,
+         orderitemno     TYPE zc103sdt0007-orderitemno,
+         bookingid       TYPE zc103sdt0007-bookingid,
+         transportid     TYPE zc103sdt0007-transportid,
+         charged_item    TYPE zc103sdt0007-charged_item,
+         description     TYPE zc103sdt0007-description,
+         ticket_quantity TYPE zc103sdt0007-ticket_quantity,
+         ticket_unit     TYPE zc103sdt0007-ticket_unit,
+         cargo_weight    TYPE zc103sdt0007-cargo_weight,
+         cargo_unit      TYPE zc103sdt0007-cargo_unit,
+         unit_price      TYPE zc103sdt0007-unit_price,
+         tax_amount      TYPE zc103sdt0007-tax_amount,
+         discount        TYPE zc103sdt0007-discount,
+         currency        TYPE zc103sdt0007-currency,
+         used_mileage    TYPE zc103sdt0007-used_mileage,
+         order_status    TYPE zc103sdt0007-order_status,
+         srv_end_status  TYPE zc103sdt0007-srv_end_status,
+         erdat           TYPE zc103sdt0007-erdat,
+         erzet           TYPE zc103sdt0007-erzet,
+         ernam           TYPE zc103sdt0007-ernam,
+         aedat           TYPE zc103sdt0007-aedat,
+         aezet           TYPE zc103sdt0007-aezet,
+         aenam           TYPE zc103sdt0007-aenam,
+       END OF gs_ledit,
+       gt_ledit LIKE TABLE OF gs_ledit.
+
+*-- Sales Order : For Create Billing Document
+DATA : BEGIN OF gs_hso,
+         mandt           TYPE mandt,
+         orderid         TYPE zc103sdt0006-orderid,
+         bpid            TYPE zc103sdt0006-bpid,
+         conditionid     TYPE zc103sdt0006-conditionid,
+         order_date      TYPE zc103sdt0006-order_date,
+         cancel_deadline TYPE zc103sdt0006-cancel_deadline,
+         order_type      TYPE zc103sdt0006-order_type,
+         total_amount    TYPE zc103sdt0006-total_amount,
+         currency        TYPE zc103sdt0006-currency,
+         order_status    TYPE zc103sdt0006-order_status,
+         cancel_reason   TYPE zc103sdt0006-cancel_reason,
+         billing_status  TYPE zc103sdt0006-billing_status,
+         srv_end_status  TYPE zc103sdt0006-srv_end_status,
+         erdat           TYPE zc103sdt0006-erdat,
+         erzet           TYPE zc103sdt0006-erzet,
+         ernam           TYPE zc103sdt0006-ernam,
+         aedat           TYPE zc103sdt0006-aedat,
+         aezet           TYPE zc103sdt0006-aezet,
+         aenam           TYPE zc103sdt0006-aenam,
+       END OF gs_hso,
+       gt_hso LIKE TABLE OF gs_hso.
+
+DATA : gs_lso TYPE zc103sdt0007,
+       gt_lso TYPE TABLE OF zc103sdt0007.
+
+*-- For using 130 screen data
+DATA : BEGIN OF gs_bill,
+         status          TYPE icon-id,
+         mandt           TYPE mandt,
+         orderid         TYPE zc103sdt0006-orderid,
+         bpid            TYPE zc103sdt0006-bpid,
+         conditionid     TYPE zc103sdt0006-conditionid,
+         order_date      TYPE zc103sdt0006-order_date,
+         cancel_deadline TYPE zc103sdt0006-cancel_deadline,
+         order_type(20),
+         total_amount    TYPE zc103sdt0006-total_amount,
+         currency        TYPE zc103sdt0006-currency,
+         order_status(20),
+         cancel_reason   TYPE zc103sdt0006-cancel_reason,
+         billing_status(20),
+         srv_end_status(20),
+         erdat           TYPE zc103sdt0006-erdat,
+         erzet           TYPE zc103sdt0006-erzet,
+         ernam           TYPE zc103sdt0006-ernam,
+         aedat           TYPE zc103sdt0006-aedat,
+         aezet           TYPE zc103sdt0006-aezet,
+         aenam           TYPE zc103sdt0006-aenam,
+       END OF gs_bill,
+       gt_bill LIKE TABLE OF gs_bill.
+
+*-- Bill : For Create Billing Document
+DATA : gs_hbill TYPE zc103sdt0004,
+       gt_hbill TYPE TABLE OF zc103sdt0004,
+       gs_lbill TYPE zc103sdt0005,
+       gt_lbill TYPE TABLE OF zc103sdt0005.
+
+*-- For Radio Button
+DATA : BEGIN OF gs_rbg,
+         tbp(1),
+         cybp(1),
+         cnbp(1),
+         cus(1),
+       END OF gs_rbg.
+
+*-- For Billing Radio Button
+DATA: BEGIN OF gs_brbg,
+        travel TYPE c,
+        cargo  TYPE c,
+      END OF gs_brbg.
+
+*-- For ALV(Top, Bottom)
+DATA : gt_tfcat    TYPE lvc_t_fcat,
+       gs_tfcat    TYPE lvc_s_fcat,
+       gt_bfcat    TYPE lvc_t_fcat,
+       gs_bfcat    TYPE lvc_s_fcat,
+       gs_tlayout  TYPE lvc_s_layo,
+       gs_blayout  TYPE lvc_s_layo,
+       gs_tvariant TYPE disvariant,
+       gs_bvariant TYPE disvariant.
+
+*-- For 130 Screen
+DATA : gt_130_fcat    TYPE lvc_t_fcat,
+       gs_130_fcat    TYPE lvc_s_fcat,
+       gs_130_layout  TYPE lvc_s_layo,
+       gs_130_variant TYPE disvariant.
+
+*-- For Exclude
+DATA : gt_ui_functions TYPE ui_functions.
+
+*-- For Delete
+DATA : gs_delete_head TYPE zc103sdt0006,
+       gt_delete_head LIKE TABLE OF gs_delete_head,
+       gs_delete_line TYPE zc103sdt0007,
+       gt_delete_line LIKE TABLE OF gs_delete_line.
+
+**********************************************************************
+* Common Variable
+**********************************************************************
+DATA : gv_okcode    TYPE sy-ucomm,
+       gv_mode_head VALUE 'D',
+       gv_mode_line VALUE 'D'.
+
+*-- [Header 조회 조건]
+*-- BP 조회 성분
+DATA : gv_bpid     TYPE zc103sdt0001-bpid,
+       gv_cdate    TYPE c LENGTH 10,
+       gv_cstat    TYPE zc103sdt0006-order_status,
+*-- Customer 조회 성분
+       gv_cusid    TYPE zc103sdt0002-custid,
+       gv_bdate    TYPE c LENGTH 10,
+       gv_bstat    TYPE zc103sdt0006-order_status.
+
+*-- Head Edit Variable
+DATA : gv_tpbpname  TYPE zc103sdt0001-bpname,
+       gv_tpcusname TYPE zc103sdt0002-name,
+       gv_tptype    TYPE string.
+
+*-- Head Pop Edit Variable
+DATA : gv_tpcreason TYPE zc103sdt0006-cancel_reason.
+
+*-- Line Edit Variable
+DATA : gv_pbname TYPE zc103sdt0002-name,
+       gv_cbname TYPE zc103sdt0001-bpname,
+       gv_utype  TYPE string.
+
+*-- For Mileage edit
+DATA : gv_bfmile      TYPE zc103sdt0010-mile_total,
+       gv_afmile      TYPE zc103sdt0010-mile_total,
+       gv_tmile       TYPE zc103sdt0010-mile_total,
+       gv_milestat(1).
+
+*-- For file browser
+DATA : objfile       TYPE REF TO cl_gui_frontend_services,
+       pickedfolder  TYPE string,
+       initialfolder TYPE string,
+       fullinfo      TYPE string,
+       pfolder       TYPE rlgrap-filename. "MEMORY ID mfolder.
+
+*-- For Excel
+DATA: gv_tot_page   LIKE sy-pagno,          " Total page
+      gv_percent(3) TYPE n,                 " Reading percent
+      gv_file       LIKE rlgrap-filename,  " File name
+      gv_pdf(1).
+
+DATA : gv_temp_filename     LIKE rlgrap-filename,
+       gv_temp_filename_pdf LIKE rlgrap-filename,
+       gv_form(40).
+
+DATA: excel       TYPE ole2_object,
+      workbook    TYPE ole2_object,
+      books       TYPE ole2_object,
+      book        TYPE ole2_object,
+      sheets      TYPE ole2_object,
+      sheet       TYPE ole2_object,
+      activesheet TYPE ole2_object,
+      application TYPE ole2_object,
+      pagesetup   TYPE ole2_object,
+      cells       TYPE ole2_object,
+      cell        TYPE ole2_object,
+      row         TYPE ole2_object,
+      buffer      TYPE ole2_object,
+      font        TYPE ole2_object,
+      range       TYPE ole2_object,  " Range
+      borders     TYPE ole2_object.
+
+DATA: cell1 TYPE ole2_object,
+      cell2 TYPE ole2_object.
+
+*-- For Calender
+DATA : gv_cale_date       TYPE dats,
+       gv_focus           TYPE cnca_utc_date,
+       gv_cale_style      TYPE i,
+       gv_selection_style TYPE i.
+
+*-- For Billing Count
+DATA : gv_tpaid   TYPE i,
+       gv_tunpaid TYPE i,
+       gv_tcancel TYPE i,
+       gv_cpaid   TYPE i,
+       gv_cunpaid TYPE i,
+       gv_ccancel TYPE i,
+       gv_ppaid   TYPE i,
+       gv_pcancel TYPE i.
+
+*-- For Billing
+DATA : gv_compname    TYPE zc103sdt0001-bpname,
+       gv_brest(15),
+       gv_bill_status VALUE 'Y'.

@@ -1,0 +1,1358 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0006F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_init_date
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_init_date .
+
+  " ▶ 오늘 기준으로 한 달 전 날짜 계산 → 조회 가능 시작일(gv_min_date)
+  CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+    EXPORTING
+      date      = sy-datum        " 기준일: 오늘
+      days      = 0
+      months    = 1
+      years     = 0
+      signum    = '-'             " 과거 방향(-)
+    IMPORTING
+      calc_date = gv_min_date.    " 조회 가능 시작일
+
+  " ▶ 오늘 기준으로 한 달 후 날짜 계산 → 조회 가능 종료일(gv_max_date)
+  CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+    EXPORTING
+      date      = sy-datum        " 기준일: 오늘
+      days      = 0
+      months    = 1
+      years     = 0
+      signum    = '+'             " 미래 방향(+)
+    IMPORTING
+      calc_date = gv_max_date.    " 조회 가능 종료일
+
+  " ▶ 최초 조회 시 기본 범위 지정
+  gv_fr_date = gv_min_date.       " 화면 기본 시작일
+  gv_to_date = gv_max_date.       " 화면 기본 종료일
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form create_calendar_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_calendar_object.
+
+  DATA lv_focus TYPE cnca_utc_date.
+
+  " 1) From 자리의 Custom Container 생성
+  CREATE OBJECT go_fr_con
+    EXPORTING
+      container_name = 'C_PICKER_FR'.
+
+  " 2) 달력 스타일/선택 모드: navigator + date picker, 범위 선택
+  gv_calendar_style = cnca_style_h_navigator.
+*  gv_calendar_style  = cnca_style_h_navigator.
+  gv_selection_style = cnca_sel_interval.  " <-- cnca_sel_range 대신 cnca_sel_interval
+
+  " 3) 캘린더 객체 생성 (범위 지정 모드를 지원)
+  lv_focus = gv_fr_date.
+  CREATE OBJECT go_fr_cal
+    EXPORTING
+      parent          = go_fr_con
+      view_style      = gv_calendar_style
+      selection_style = gv_selection_style
+      focus_date      = lv_focus.
+
+ENDFORM.                    " create_calendar_object
+*&---------------------------------------------------------------------*
+*& Form first_entry_process
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM first_entry_process .
+  " ▶ 최초 진입 여부 확인 (중복 실행 방지)
+  IF gv_first_entry = abap_true.
+    gv_first_entry = abap_false.  " 플래그 OFF 처리
+
+    " ▶ 날짜 조건 초기화 (조회 범위 리셋)
+    CLEAR: gv_fr_date, gv_to_date.
+
+    " ▶ 데이터 조회 및 화면 출력 수행
+    PERFORM search_data.
+    PERFORM display_100_screen.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form search_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM search_data .
+
+  " ▶ 이전 데이터 초기화
+  CLEAR: gt_schedule, gt_cargo_order, gt_disp_sch.
+
+  DATA: lv_pattern   TYPE string,
+        lv_cnt_sched TYPE i,
+        lv_cnt_order TYPE i,
+        lv_msg       TYPE string,
+        lv_subrc     TYPE sy-subrc.
+
+  " ✅ 1) 날짜 유효성 검사
+  IF ( gv_fr_date IS INITIAL AND gv_to_date IS NOT INITIAL )
+   OR ( gv_fr_date IS NOT INITIAL AND gv_to_date IS INITIAL ).
+    MESSAGE '시작일과 종료일을 모두 입력해 주세요.' TYPE 'I'.
+    RETURN.
+  ENDIF.
+
+  " ✅ 2) 조건에 따라 항공편 스케줄 조회
+  IF gv_fr_date IS INITIAL AND gv_to_date IS INITIAL.
+    " 전체 조회 (날짜 필터 없음)
+    SELECT * FROM zc103sdt0026
+      INTO CORRESPONDING FIELDS OF TABLE @gt_schedule.
+  ELSEIF gv_fr_date IS NOT INITIAL AND gv_to_date IS NOT INITIAL.
+    " 날짜 조건으로 필터링 조회
+    SELECT * FROM zc103sdt0026
+      WHERE departdate BETWEEN @gv_fr_date AND @gv_to_date
+      INTO CORRESPONDING FIELDS OF TABLE @gt_schedule.
+  ENDIF.
+
+  " ✅ 3) 스케줄 데이터 → 화면 표시용 구조 변환
+  PERFORM set_data.
+
+  " ✅ 4) 조건에 맞는 화물 주문내역 조회
+  PERFORM main_cont2.
+
+  " ✅ 5) 건수 확인
+  lv_cnt_sched = lines( gt_schedule ).
+  lv_cnt_order = lines( gt_cargo_order ).
+
+  " ✅ 6) 조회 결과 메시지 출력
+  lv_msg = |스케쥴: { lv_cnt_sched }건, 화물 주문내역: { lv_cnt_order }건이 조회되었습니다.|.
+  MESSAGE lv_msg TYPE 'S'.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form set_calendar_event
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_calendar_event .
+  " ▶ 달력 객체(go_fr_cal)에 날짜 선택 이벤트 핸들러를 등록합니다.
+  SET HANDLER lcl_event_handler=>on_date_selected FOR go_fr_cal.
+
+  " ▶ 이벤트 등록 구조에 이벤트 ID와 응용 이벤트 여부를 설정하여 테이블에 추가합니다.
+
+  " 1. 날짜 선택 이벤트 (단순 이벤트)
+  myevent-appl_event = ' '.  " 응용 이벤트 아님
+  myevent-eventid    = go_fr_cal->m_id_date_selected.
+  APPEND myevent TO myevent_tab.
+
+  " 2. 사전 선택 이벤트 (응용 이벤트)
+  myevent-appl_event = 'X'.  " 응용 이벤트로 설정
+  myevent-eventid    = go_fr_cal->m_id_pre_selection.
+  APPEND myevent TO myevent_tab.
+
+  " 3. 날짜 정보 요청 이벤트
+  myevent-eventid    = go_fr_cal->m_id_info_request.
+  APPEND myevent TO myevent_tab.
+
+  " 4. 컨텍스트 메뉴 요청 이벤트
+  myevent-eventid    = go_fr_cal->m_id_ctxmenu_request.
+  APPEND myevent TO myevent_tab.
+
+  " 5. 컨텍스트 메뉴 선택 이벤트
+  myevent-eventid    = go_fr_cal->m_id_ctxmenu_selected.
+  APPEND myevent TO myevent_tab.
+
+  " ▶ 달력 객체에 위에서 구성한 이벤트들을 등록합니다.
+  CALL METHOD go_fr_cal->set_registered_events
+    EXPORTING
+      events = myevent_tab.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form display_100_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_100_screen .
+  " ▶ ALV 컨테이너 및 그리드 객체가 아직 생성되지 않은 경우에만 초기 생성 수행
+  IF go_container IS NOT BOUND.
+
+    " ▶ 항공편 스케줄 데이터 조회 (zc103sdt0026 테이블 기준)
+    SELECT scheduleid flightid countryfrom countryto
+           departdate departtime arrivedate arrivetime
+           flighttime weight_avail weight_unit total_loaded_count
+           current_loaded_count_int
+      INTO CORRESPONDING FIELDS OF TABLE gt_schedule
+      FROM zc103sdt0026
+      ORDER BY scheduleid ASCENDING.
+
+    " ▶ 출발/도착 국가 코드에 대한 도메인 텍스트 조회 (기초코드)
+    SELECT
+      FROM dd07v
+      FIELDS domvalue_l, ddtext
+      WHERE domname = 'ZC103D_FI_LAND'
+      INTO CORRESPONDING FIELDS OF TABLE @gt_dd07v.
+
+    " ▶ 기타 도메인 텍스트 (국가, ULD타입, YN여부 등) 조회
+    SELECT
+      FROM dd07v
+      FIELDS domvalue_l, ddtext
+      WHERE domname = 'ZC103D_FI_LAND'
+         OR domname = 'ZC103D_SD_ULDTYPE'
+         OR domname = 'ZC103D_SD_YN'
+      INTO CORRESPONDING FIELDS OF TABLE @gt_TT07v.
+
+    " ▶ 조회된 데이터를 기반으로 표시 구조 생성 및 DB 동기화 수행
+    PERFORM set_data.
+
+    " ▶ 스케줄에 연결된 화물 주문 데이터 조회
+    PERFORM main_cont2.
+
+    " ▶ ALV 필드 카탈로그 준비 (스케줄용)
+    CLEAR: gt_fcat, gs_fcat.
+    PERFORM set_field_catalog USING :
+      'X' 'SCHEDULEID'           'ZC103SDT0026' 'C' ' ',
+      ' ' 'FLIGHTID'                 'ZC103SDT0026' 'C' ' ',
+      ' ' 'COUNTRYFROM'         'ZC103SDT0026' 'L' 'X',
+      ' ' 'COUNTRYTO'           'ZC103SDT0026' 'L' 'X',
+      ' ' 'DEPARTDATE'      'ZC103SDT0026' 'C' ' ',
+      ' ' 'DEPARTTIME'      'ZC103SDT0026' 'C' ' ',
+      ' ' 'ARRIVEDATE'      'ZC103SDT0026' 'C' ' ',
+      ' ' 'ARRIVETIME'      'ZC103SDT0026' 'C' ' ',
+      ' ' 'FLIGHTTIME'         'ZC103SDT0026' '' ' ',
+      ' ' 'WEIGHT_AVAIL'         'ZC103SDT0026' '' ' ',
+      ' ' 'WEIGHT_UNIT'          'ZC103SDT0026' 'C' ' ',
+      ' ' 'TOTAL_LOADED_COUNT' 'ZC103SDT0026' 'C' 'X',
+      ' ' 'CURRENT_LOADED_COUNT_INT' 'ZC103SDT0026' 'C' ' '.
+
+
+
+    CLEAR: gt_fcat3, gs_fcat3.
+    PERFORM set_field_catalog02 USING:
+    'X' 'TRANSPORTID'     'ZC103SDT0017' 'C' ' ',
+    'X' 'BPID'            'ZC103SDT0017' ' ' ' ',
+  ' ' 'COUNTRYFROM'         'ZC103SDT0017' 'L' 'X',
+  ' ' 'COUNTRYTO'         'ZC103SDT0017' 'L' 'X',
+  ' ' 'TDATE'               'ZC103SDT0017' 'C' ' ',
+  ' ' 'FLIGHTID'          'ZC103SDT0017' 'C' ' ',
+  ' ' 'SCHEDULEID'      'ZC103SDT0017' 'C' ' ',
+  ' ' 'WEIGHT'          'ZC103SDT0017' ' ' ' ',
+  ' ' 'WEIGHT_UNIT'       'ZC103SDT0017' 'C' ' ',
+  ' ' 'ULD_TYPE'       'ZC103SDT0017' ' ' ' ',
+  ' ' 'CC_CHECKED'     'ZC103SDT0017' ' ' ' ',
+  ' ' 'IS_CONFIRMED'    'ZC103SDT0017' ' ' ' ',
+  ' ' 'PRICE'           'ZC103SDT0017' ' ' ' ',
+  ' ' 'CURRENCY'         'ZC103SDT0017' ' ' ' ',
+  ' ' 'MATID'            'ZC103SDT0017' 'C' 'X',
+  ' ' 'BTN_ASSIGN_PALLET' 'ZC103SDT0017' ' ' ' '.
+    " ▶ 2) 레이아웃 및 툴바 구성
+    PERFORM set_layout.         " ALV 레이아웃 세팅 (zebra, grid title 등)
+    PERFORM exclude_toolbar.    " 기본 툴바 기능 제외 설정
+
+    " ▶ 3) ALV 컨테이너 및 스플리터 객체 생성
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'MAIN_CONT'.
+
+    CREATE OBJECT go_split_main
+      EXPORTING
+        parent  = go_container
+        rows    = 2
+        columns = 1.
+
+    " ▶ 4) 분할된 컨테이너 객체 참조 획득 (위쪽: 스케줄, 아래쪽: 화물 주문)
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 1
+        column    = 1
+      RECEIVING
+        container = go_left_cont.
+
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 2
+        column    = 1
+      RECEIVING
+        container = go_right_cont.
+
+    " ▶ 5) 각 컨테이너에 ALV Grid 생성
+    CREATE OBJECT go_left_grid EXPORTING i_parent = go_left_cont.
+    CREATE OBJECT go_right_grid EXPORTING i_parent = go_right_cont.
+
+    " ▶ 6) 이벤트 핸들러 등록
+    "    - 오른쪽 ALV 버튼 클릭 이벤트 처리
+    SET HANDLER lcl_event_handler=>handle_btn_click FOR go_right_grid.
+    "    - ALV 더블 클릭 처리 (좌/우 공통)
+    SET HANDLER lcl_event_handler=>double_click FOR go_left_grid.
+    SET HANDLER lcl_event_handler=>double_click FOR go_right_grid.
+    "    - 사용자 명령 이벤트 처리 (예: 버튼 클릭 등)
+    SET HANDLER lcl_event_handler=>user_command FOR go_left_grid.
+
+    " ▶ 7) 좌측 ALV (스케줄 리스트) 데이터 바인딩
+    CALL METHOD go_left_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_layout1
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_disp_sch
+        it_fieldcatalog      = gt_fcat.
+
+    " ▶ 우측 ALV (화물 주문 리스트) 데이터 바인딩
+    CALL METHOD go_right_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_layout2
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_Tisp_ORD
+        it_fieldcatalog      = gt_fcat3.
+
+    " ▶ 세 번째 영역 (팔레트 영역 등) 초기 구성
+    PERFORM main_cont3.
+
+  ENDIF.
+
+  " ▶ (선택적) 항상 최신 데이터를 반영하기 위한 ALV 리프레시
+*  PERFORM refresh_alv.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form main_cont2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM main_cont2 .
+
+  " 스케줄 ID 목록을 저장할 내부 테이블 및 단일 변수 선언
+  DATA: lt_sched_ids TYPE STANDARD TABLE OF zc103e_sd_scheduleid,
+        lv_schedid   TYPE zc103e_sd_scheduleid.
+
+  " gt_schedule에서 scheduleid만 추출하여 lt_sched_ids에 저장
+  LOOP AT gt_schedule ASSIGNING FIELD-SYMBOL(<fs_sched>).
+    APPEND <fs_sched>-scheduleid TO lt_sched_ids.
+  ENDLOOP.
+
+  " 중복된 스케줄 ID 제거를 위해 정렬 후 중복 제거 수행
+  SORT lt_sched_ids.
+  DELETE ADJACENT DUPLICATES FROM lt_sched_ids.
+
+  " 추출된 스케줄 ID에 해당하는 화물 주문 데이터를 조회하여 gt_cargo_order에 저장
+  SELECT transportid, bpid, matid, countryfrom, countryto, tdate, flightid,
+         scheduleid, weight, weight_unit, uld_type, cc_checked,
+         is_confirmed, price, currency
+    INTO CORRESPONDING FIELDS OF TABLE @gt_cargo_order
+    FROM zc103sdt0017
+    FOR ALL ENTRIES IN @lt_sched_ids
+    WHERE scheduleid = @lt_sched_ids-table_line.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_layout .
+
+  gs_layout1-zebra      = abap_true.
+  gs_layout1-cwidth_opt = 'A'.
+  gs_layout1-sel_mode   = 'D'.
+  gs_layout1-grid_title = '조회되는 스케쥴 (화물 탑재는 "■" 심볼로 시각화됩니다)'.
+
+  gs_variant-report    = sy-repid.
+
+  gs_layout2 = CORRESPONDING #( gs_layout1 ).
+  gs_layout2-sel_mode = 'A'.  " 행 선택 가능하게 설정!
+  gs_layout2-stylefname = 'STYLE'.
+
+  gs_layout2-grid_title = '화물주문내역'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat-key = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-ref_table = pv_table.
+  gs_fcat-just = pv_just.
+  gs_fcat-emphasize = pv_emph.
+
+
+  " 2) 추가 속성: 핫스팟, 출력제한, 컬럼텍스트 등
+  CASE pv_field.
+    WHEN 'SCHEDULEID'.
+*      gs_fcat-hotspot = abap_true.
+      gs_fcat-coltext = '스케쥴 ID'.
+    WHEN 'FLIGHTID'.
+      gs_fcat-coltext = '항공기 ID'.
+    WHEN 'COUNTRYFROM'.
+      gs_fcat-coltext = '출발 국가'.
+    WHEN 'COUNTRYTO'.
+      gs_fcat-coltext = '도착 국가'.
+    WHEN 'DEPARTDATE'.
+      gs_fcat-coltext = '출발 날짜'.
+    WHEN 'DEPARTTIME'.
+      gs_fcat-coltext = '출발 시간'.
+    WHEN 'ARRIVEDATE'.
+      gs_fcat-coltext = '도착 날짜'.
+    WHEN 'ARRIVETIME'.
+      gs_fcat-coltext = '도착 시간'.
+    WHEN 'FLIGHTTIME'.
+      gs_fcat-coltext = '비행 시간'.
+    WHEN 'WEIGHT_AVAIL'.
+      gs_fcat-coltext = '수용 중량'.
+      gs_fcat-Qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_UNIT'.
+      gs_fcat-coltext = '무게 단위'.
+    WHEN 'TOTAL_LOADED_COUNT'.
+      gs_fcat-coltext = '탑재량'.
+    WHEN 'CURRENT_LOADED_COUNT_INT'.
+      gs_fcat-coltext = '탑재예정 화물수'.
+      " 필요 시 더 많은 필드 추가 가능
+  ENDCASE.
+
+
+  " 3) 필드카탈로그 테이블에 추가
+  APPEND gs_fcat TO gt_fcat.
+
+ENDFORM.  " set_field_catalog
+*&---------------------------------------------------------------------*
+*& Form hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM hotspot_click  USING    p_e_row_id
+                             p_e_column_id.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM user_command USING p_ucomm.
+
+  CASE p_ucomm.
+    WHEN '&BTN_BTN_ASSIGN_PALLET'.
+      PERFORM assign_pallet_to_order.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog02
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog02 USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat3-key       = pv_key.
+  gs_fcat3-fieldname = pv_field.
+  gs_fcat3-ref_table = pv_table.
+  gs_fcat3-just      = pv_just.
+  gs_fcat3-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'TRANSPORTID'.
+      gs_fcat3-coltext = '화물 운송 예약 ID'.
+    WHEN 'BPID'.
+      gs_fcat3-coltext = '거래처 ID'.
+    WHEN 'MATID'.
+      gs_fcat3-coltext = '담당 팔레트'.
+    WHEN 'COUNTRYFROM'.
+      gs_fcat3-coltext = '출발국가'.
+    WHEN 'COUNTRYTO'.
+      gs_fcat3-coltext = '도착국가'.
+    WHEN 'TDATE'.
+      gs_fcat3-coltext = '운송일자'.
+    WHEN 'FLIGHTID'.
+      gs_fcat3-coltext = '항공기 ID'.
+    WHEN 'SCHEDULEID'.
+      gs_fcat3-coltext = '항공편 스케줄 ID'.
+    WHEN 'WEIGHT'.
+      gs_fcat3-coltext = '총 중량(KG)'.
+      gs_fcat3-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_UNIT'.
+      gs_fcat3-coltext = '중량 단위'.
+    WHEN 'ULD_TYPE'.
+      gs_fcat3-coltext = 'ULD 타입'.
+    WHEN 'CC_CHECKED'.
+      gs_fcat3-coltext = 'CC 점검 여부'.
+    WHEN 'IS_CONFIRMED'.
+      gs_fcat3-coltext = '예약 확정 여부'.
+    WHEN 'PRIORITY'.
+      gs_fcat3-coltext = '우선순위'.
+    WHEN 'PRICE'.
+      gs_fcat3-coltext = '운송 금액'.
+      gs_fcat3-cfieldname = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_fcat3-coltext = '통화'.
+    WHEN 'BTN_ASSIGN_PALLET'.
+      gs_fcat3-coltext  = '팔레트 탑재'.
+      gs_fcat3-style    = cl_gui_alv_grid=>mc_style_button.
+      gs_fcat3-edit     = abap_true.
+      gs_fcat3-tooltip = '팔레트 탑재 처리 버튼'.
+
+  ENDCASE.
+
+
+
+  APPEND gs_fcat3 TO gt_fcat3.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form main_cont3
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM main_cont3 .
+
+  " 컨테이너2 객체가 아직 생성되지 않은 경우에만 ALV 관련 초기 구성 수행
+  IF go_container2 IS NOT BOUND.
+
+    " 팔레트 데이터 조회 및 상태 정리 수행
+    PERFORM cont3_data.
+
+    " ALV 그리드2가 이미 존재하는 경우에는 먼저 화면을 새로 고침
+    IF go_alv_grid2 IS BOUND.
+      CALL METHOD go_alv_grid2->refresh_table_display.
+    ENDIF.
+
+    " 필드 카탈로그 초기화
+    CLEAR : gt_fcat2, gs_fcat2.
+
+    " 팔레트 ALV에 필요한 필드 목록 설정
+    PERFORM set_field_catalog03 USING :
+       ' ' 'ICON_STATUS'   'ZC103SDT0023' 'C' ' ',
+       'X' 'PALLET_ID'     'ZC103SDT0023' ' ' ' ',
+       ' ' 'PLNID'         'ZC103SDT0023' ' ' 'X',
+       ' ' 'STRID'         'ZC103SDT0023' 'C' ' ',
+       ' ' 'MATID'         'ZC103SDT0023' 'C' ' ',
+       ' ' 'MATNAME'       'ZC103SDT0023' 'C' ' ',
+       ' ' 'WEIGHT'        'ZC103SDT0023' 'C' ' ',
+       ' ' 'WEIGHT_AVAIL'  'ZC103SDT0023' 'C' ' ',
+       ' ' 'WEIGHT_UNIT'   'ZC103SDT0023' 'C' ' '.
+
+    " 레이아웃 설정 수행
+    PERFORM display_layout.
+
+    " 컨테이너 및 그리드 객체 생성
+    PERFORM create_object_3.
+
+    " ALV 툴바 버튼 제외 처리
+    PERFORM EXclUDE_TOOLBAR.
+
+    " 팔레트용 ALV 그리드 데이터 바인딩
+    CALL METHOD go_alv_grid2->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant2
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_layout02
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_PALLET
+        it_fieldcatalog      = gt_fcat2.
+
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form EXclUDE_TOOLBAR
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM EXclUDE_TOOLBAR .
+
+  DATA: ls_ui_functions TYPE ui_func.
+
+  CLEAR gt_ui_functions.
+
+  " 전체 툴바 제거용 SAP 표준 기능 코드 추가
+  APPEND cl_gui_alv_grid=>mc_fc_loc_copy         TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_cut          TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_delete_row   TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_insert_row   TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_append_row   TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_paste        TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_undo         TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_copy_row     TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_refresh          TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_auf              TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_average          TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_print            TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_graph            TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_find             TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_filter           TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_subtot           TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_sum              TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_sort_asc         TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_sort_dsc         TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_info             TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_views            TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_check            TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_view_crystal     TO gt_ui_functions.
+  APPEND cl_gui_alv_grid=>mc_fc_view_excel       TO gt_ui_functions.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object_3
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object_3 .
+  CREATE OBJECT go_container2
+    EXPORTING
+      container_name = 'MAIN_CONT3'.
+
+  CREATE OBJECT go_alv_grid2
+    EXPORTING
+      i_parent = go_container2.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_layout .
+  gs_layout02-zebra = abap_true.
+  gs_layout02-cwidth_opt = 'A'.
+  gs_layout02-sel_mode = 'D'.
+  gs_layout02-stylefname = 'STYLE'.  " << 여기 반드시 추가
+  gs_layout02-grid_title = '가용팔레트조회'.
+  gs_layout02-stylefname = 'STYLE'.
+
+
+  gs_variant2-report = sy-repid.
+  gs_variant2-handle = 'ALV1'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog03
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog03 USING    pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat2-key = pv_key.
+  gs_fcat2-fieldname = pv_field.
+  gs_fcat2-ref_table = pv_table.
+  gs_fcat2-just = pv_just.
+  gs_fcat2-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ICON_STATUS'.
+      gs_fcat2-coltext = '상태 표시'.
+      gs_fcat2-icon = abap_true.
+    WHEN 'PALLET_ID'.
+      gs_fcat2-coltext = '시리얼 번호'.
+    WHEN 'PLNID'.
+      gs_fcat2-coltext = '플랜트 번호'.
+    WHEN 'STRID'.
+      gs_fcat2-coltext = 'S/L 번호'.
+    WHEN 'MATID'.
+      gs_fcat2-coltext = '팔레트 번호'.
+    WHEN 'MATNAME'.
+      gs_fcat2-coltext = '이름'.
+    WHEN 'STATUS'.
+      gs_fcat2-coltext = '팔레트 상태'.
+    WHEN 'WEIGHT'.
+      gs_fcat2-coltext = '현재 무게'.
+      gs_fcat2-Qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_AVAIL'.
+      gs_fcat2-coltext = '가용 중량'.
+      gs_fcat2-Qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'WEIGHT_UNIT'.
+      gs_fcat2-coltext = '중량 단위'.
+*      gs_fcat2-edit    = abap_true.
+  ENDCASE.
+
+  APPEND gs_fcat2 TO gt_fcat2.
+ENDFORM.
+**********************************************************************
+FORM set_data .
+
+  CLEAR: gt_disp_sch, gt_tisp_ord.
+
+  DATA: BEGIN OF gs_sched_count,
+          scheduleid TYPE zc103e_sd_scheduleid,
+          count      TYPE i,
+        END OF gs_sched_count.
+
+  DATA: lt_sched_count LIKE HASHED TABLE OF gs_sched_count WITH UNIQUE KEY scheduleid,
+        ls_sched_count LIKE gs_sched_count.
+
+  " 1. ZC103SDT0017 기준 SCHEDULEID별 적재 수량 집계
+  SELECT scheduleid, COUNT(*) AS count
+    INTO CORRESPONDING FIELDS OF TABLE @lt_sched_count
+    FROM zc103sdt0017
+    GROUP BY scheduleid.
+
+  " ✅ 1-1. DB 테이블 ZC103SDT0026의 CURRENT_LOADED_COUNT_INT도 즉시 업데이트
+  LOOP AT lt_sched_count INTO ls_sched_count.
+    UPDATE zc103sdt0026
+       SET current_loaded_count_int = @ls_sched_count-count
+     WHERE scheduleid = @ls_sched_count-scheduleid.
+  ENDLOOP.
+
+  " 2. gt_schedule 및 gt_disp_sch 반영
+  LOOP AT gt_schedule ASSIGNING FIELD-SYMBOL(<fs_sched>).
+    READ TABLE lt_sched_count INTO ls_sched_count WITH TABLE KEY scheduleid = <fs_sched>-scheduleid.
+    <fs_sched>-current_loaded_count_int = COND #( WHEN sy-subrc = 0 THEN ls_sched_count-count ELSE 0 ).
+
+    gs_disp_sch = VALUE #(
+      scheduleid               = <fs_sched>-scheduleid
+      flightid                 = <fs_sched>-flightid
+      countryfrom              = VALUE #( gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryfrom ]-ddtext DEFAULT '알수없음' )
+      countryto                = VALUE #( gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryto ]-ddtext DEFAULT '알수없음' )
+      departdate               = <fs_sched>-departdate
+      departtime               = <fs_sched>-departtime
+      arrivedate               = <fs_sched>-arrivedate
+      arrivetime               = <fs_sched>-arrivetime
+      flighttime               = <fs_sched>-flighttime
+      weight_avail             = <fs_sched>-weight_avail
+      weight_unit              = <fs_sched>-weight_unit
+      total_loaded_count       = <fs_sched>-total_loaded_count
+      current_loaded_count_int = <fs_sched>-current_loaded_count_int ).
+
+    APPEND gs_disp_sch TO gt_disp_sch.
+  ENDLOOP.
+
+  " 3. 화물 주문내역 화면용 구조 변환
+  LOOP AT gt_cargo_order ASSIGNING FIELD-SYMBOL(<fs_order>).
+    gs_tisp_ord = VALUE #(
+      transportid        = <fs_order>-transportid
+      bpid               = <fs_order>-bpid
+      countryfrom        = VALUE #( gt_TT07v[ KEY key domvalue_l = <fs_order>-countryfrom ]-ddtext DEFAULT '알수없음' )
+      countryto          = VALUE #( gt_TT07v[ KEY key domvalue_l = <fs_order>-countryto ]-ddtext DEFAULT '알수없음' )
+      tdate              = <fs_order>-tdate
+      flightid           = <fs_order>-flightid
+      scheduleid         = <fs_order>-scheduleid
+      weight             = <fs_order>-weight
+      weight_unit        = <fs_order>-weight_unit
+      uld_type           = VALUE #( gt_TT07v[ KEY key domvalue_l = <fs_order>-uld_type ]-ddtext DEFAULT '알수없음' )
+      cc_checked         = VALUE #( gt_TT07v[ KEY key domvalue_l = <fs_order>-cc_checked ]-ddtext DEFAULT '알수없음' )
+      is_confirmed       = VALUE #( gt_TT07v[ KEY key domvalue_l = <fs_order>-is_confirmed ]-ddtext DEFAULT '알수없음' )
+      price              = <fs_order>-price
+      currency           = <fs_order>-currency
+      matid              = <fs_order>-matid
+      btn_assign_pallet  = COND #( WHEN <fs_order>-matid IS NOT INITIAL THEN '문서 출력'
+                                   WHEN ( <fs_order>-cc_checked = '적용' OR <fs_order>-cc_checked = 'Y' ) AND
+                                        ( <fs_order>-is_confirmed = '적용' OR <fs_order>-is_confirmed = 'Y' )
+                                     THEN '팔레트 탑재'
+                                   ELSE '불가' ) ).
+
+    APPEND gs_tisp_ord TO gt_tisp_ord.
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*& Form CONT3_DATA
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM cont3_data .
+
+  " ▶ 현재 배정된 팔레트 ID들을 담기 위한 내부 테이블 선언
+  " - gt_tisp_ord 에 있는 matid(PALLET_ID)를 수집함
+  " - 키 정렬로 빠른 검색을 위해 SORTED KEY 정의
+  DATA: lt_assigned_pallets TYPE TABLE OF zc103e_mm_serial
+        WITH NON-UNIQUE SORTED KEY key COMPONENTS table_line.
+
+  " ✅ 1. 화물 주문 목록(gt_tisp_ord)에서 이미 팔레트가 배정된 항목을 추출
+  LOOP AT gt_tisp_ord ASSIGNING FIELD-SYMBOL(<fs_ord>).
+    IF <fs_ord>-matid IS NOT INITIAL.
+      " - 이미 배정된 PALLET_ID 를 수집
+      APPEND <fs_ord>-matid TO lt_assigned_pallets.
+    ENDIF.
+  ENDLOOP.
+
+  " ✅ 2. 전체 가용 팔레트 목록을 DB에서 조회
+  " - 모든 팔레트 정보를 화면용 내부 테이블 gt_pallet 에 담음
+  SELECT pallet_id plnid strid matid matname
+         status weight weight_avail weight_unit
+    INTO CORRESPONDING FIELDS OF TABLE gt_pallet
+    FROM zc103sdt0023.
+
+  " ✅ 3. 팔레트 상태별 아이콘 지정 및 DB 동기화 처리
+  LOOP AT gt_pallet ASSIGNING FIELD-SYMBOL(<fs_pallet>).
+
+    " 🚩 이미 배정된 팔레트인 경우 → 노란불 처리
+    IF line_exists( lt_assigned_pallets[ table_line = <fs_pallet>-pallet_id ] ).
+      <fs_pallet>-icon_status = icon_led_yellow.
+
+      " 🔄 상태값이 B가 아닌 경우에는 DB에 상태 업데이트 ('B': 배정됨)
+      IF <fs_pallet>-status <> 'B'.
+        <fs_pallet>-status = 'B'.
+        UPDATE zc103sdt0023
+           SET status = 'B'
+         WHERE pallet_id = @<fs_pallet>-pallet_id.
+      ENDIF.
+
+      " 이미 배정된 경우는 추가 판단 없이 다음으로 넘어감
+      CONTINUE.
+    ENDIF.
+
+    " ▶ 나머지 팔레트들은 상태값(status)에 따라 아이콘 색상을 부여
+    CASE <fs_pallet>-status.
+      WHEN 'A'.  " 사용 가능 → 초록불
+        <fs_pallet>-icon_status = icon_led_green.
+      WHEN 'B'.  " 이미 배정됨 → 노란불 (이미 처리됨이지만 방어 코드로 유지)
+        <fs_pallet>-icon_status = icon_led_yellow.
+      WHEN 'C'.  " 비정상 또는 고장 → 빨간불
+        <fs_pallet>-icon_status = icon_led_red.
+      WHEN OTHERS.  " 정의되지 않은 상태 → 아이콘 없음
+        CLEAR <fs_pallet>-icon_status.
+    ENDCASE.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*& Form refresh_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_alv .
+
+  " ALV Refresh 시 행(Row)과 열(Column) 위치를 유지하기 위한 설정 구조
+  DATA(ls_stable) = VALUE lvc_s_stbl( row = abap_true col = abap_true ).
+
+  " 왼쪽 그리드(ALV) 갱신
+  IF go_left_grid IS BOUND.
+    CALL METHOD go_left_grid->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+  " 오른쪽 그리드(ALV) 갱신
+  IF go_right_grid IS BOUND.
+    CALL METHOD go_right_grid->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+**********************************************************************
+  " 아래 부분은 위와 동일한 기능으로 보이며 중복 호출입니다.
+  " 만약 여러 번 강제 리프레시가 필요하다면 유지, 그렇지 않으면 제거해도 무방합니다.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  " 왼쪽 그리드 다시 한 번 갱신
+  IF go_left_grid IS BOUND.
+    CALL METHOD go_left_grid->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+  " 팔레트 ALV (go_alv_grid2) 갱신
+  IF go_alv_grid2 IS BOUND.
+    CALL METHOD go_alv_grid2->refresh_table_display
+      EXPORTING
+        is_stable = ls_stable.
+  ENDIF.
+
+ENDFORM.                    " refresh_alv
+
+*&---------------------------------------------------------------------*
+*& Form justdoit
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM justdoit .
+  " 범위 체크
+  IF gv_fr_date < gv_min_date OR gv_to_date > gv_max_date.
+    MESSAGE '해당 운송은 이미 전달을 했거나, 아직 운송 준비를 할 수 없습니다.' TYPE 'S'.
+
+    " 👉 ALV 테이블 CLEAR
+    CLEAR: gt_schedule, gt_disp_sch, gt_cargo_order.
+
+    " 👉 ALV REFRESH
+    PERFORM refresh_alv.
+    RETURN.
+  ENDIF.
+
+  " 정상이면 데이터 다시 조회
+  PERFORM search_data.
+  PERFORM set_data.
+  PERFORM main_cont2.
+  PERFORM refresh_alv.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW
+*&      --> E_COLUMN
+*&---------------------------------------------------------------------*
+FORM double_click  USING p_e_row p_e_column.
+
+  DATA: lv_schedid TYPE zc103e_sd_scheduleid,
+        ls_ord     LIKE gs_tisp_ord.
+
+  READ TABLE gt_tisp_ord INTO ls_ord INDEX p_e_row.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  lv_schedid = ls_ord-scheduleid.
+
+  " ▶ gt_disp_sch 다시 만들어주기 (필터 기준으로!)
+  CLEAR gt_disp_sch.
+
+  LOOP AT gt_schedule ASSIGNING FIELD-SYMBOL(<fs_sched>).
+    IF <fs_sched>-scheduleid = lv_schedid.
+
+      gs_disp_sch = VALUE #(
+        scheduleid               = <fs_sched>-scheduleid
+        flightid                 = <fs_sched>-flightid
+        countryfrom              = VALUE #( gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryfrom ]-ddtext DEFAULT '알수없음' )
+        countryto                = VALUE #( gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryto ]-ddtext DEFAULT '알수없음' )
+        departdate               = <fs_sched>-departdate
+        departtime               = <fs_sched>-departtime
+        arrivedate               = <fs_sched>-arrivedate
+        arrivetime               = <fs_sched>-arrivetime
+        flighttime               = <fs_sched>-flighttime
+        weight_avail             = <fs_sched>-weight_avail
+        weight_unit              = <fs_sched>-weight_unit
+        total_loaded_count       = <fs_sched>-total_loaded_count
+        current_loaded_count_int = <fs_sched>-current_loaded_count_int
+      ).
+
+      APPEND gs_disp_sch TO gt_disp_sch.
+
+    ENDIF.
+  ENDLOOP.
+
+  PERFORM refresh_alv.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form assign_pallet_to_order
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM assign_pallet_to_order.
+
+  " 선택된 행 및 스케줄 ID 등 작업용 변수 선언
+  DATA: lt_row     TYPE lvc_t_row,
+        lv_row_idx TYPE lvc_index,
+        lv_schedid TYPE zc103e_sd_scheduleid,
+        lv_cnt     TYPE i,
+        lv_bar     TYPE char10.
+
+  " 필드 심볼 선언: 주문, 팔레트, 베이스(원본)
+  FIELD-SYMBOLS: <fs_ord>  LIKE LINE OF gt_tisp_ord,
+                 <fs_pal>  LIKE LINE OF gt_pallet,
+                 <fs_base> LIKE LINE OF gt_cargo_order.
+
+  " 1. 사용자 선택 행의 인덱스 가져오기
+  CALL METHOD go_right_grid->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_row.
+
+  READ TABLE lt_row INTO lv_row_idx INDEX 1.
+  IF sy-subrc <> 0.
+    MESSAGE '선택된 행이 없습니다.' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  " 2. 선택된 인덱스로부터 주문 내역 가져오기
+  READ TABLE gt_tisp_ord ASSIGNING <fs_ord> INDEX lv_row_idx.
+  IF sy-subrc <> 0 OR <fs_ord> IS INITIAL.
+    MESSAGE '선택된 행이 없습니다.' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  " 3. 조건 체크: CC 점검과 예약 확정이 "적용" 또는 "Y"여야 함
+  IF ( <fs_ord>-cc_checked = '적용' OR <fs_ord>-cc_checked = 'Y' ) AND
+     ( <fs_ord>-is_confirmed = '적용' OR <fs_ord>-is_confirmed = 'Y' ).
+
+    " 4. 사용 가능한 팔레트 검색
+    LOOP AT gt_pallet ASSIGNING <fs_pal>.
+      IF <fs_pal>-status = 'A' AND <fs_pal>-icon_status = icon_led_green.
+
+        " 팔레트 ID를 주문 건에 할당
+        <fs_ord>-matid = <fs_pal>-pallet_id.
+        <fs_pal>-icon_status = icon_led_yellow.
+        <fs_ord>-btn_assign_pallet = '문서 출력'.
+
+        " 관련 원본 데이터도 동기화
+        READ TABLE gt_cargo_order ASSIGNING <fs_base>
+          WITH KEY transportid = <fs_ord>-transportid.
+        IF sy-subrc = 0.
+          <fs_base>-matid = <fs_pal>-pallet_id.
+
+          " DB에 팔레트 ID 직접 반영
+          UPDATE zc103sdt0017
+             SET matid = @<fs_pal>-pallet_id
+           WHERE transportid = @<fs_ord>-transportid.
+        ENDIF.
+
+        " 현재 작업 중인 스케줄 ID 저장
+        lv_schedid = <fs_ord>-scheduleid.
+
+        " 해당 스케줄에 대한 적재 수량 계산
+        SELECT COUNT(*) INTO @lv_cnt
+          FROM zc103sdt0017
+         WHERE scheduleid = @lv_schedid
+           AND matid IS NOT NULL.
+
+        " 시각적 바(bar) 표시 문자열 생성 (예: ■■■■______ )
+        CLEAR lv_bar.
+        DO lv_cnt TIMES.
+          lv_bar = lv_bar && '■'.
+        ENDDO.
+        DO ( 10 - lv_cnt ) TIMES.
+          lv_bar = lv_bar && '_'.
+        ENDDO.
+
+        " 스케줄 테이블에 적재 수량 및 bar 반영
+        UPDATE zc103sdt0026
+           SET current_loaded_count_int = @lv_cnt,
+               total_loaded_count       = @lv_bar
+         WHERE scheduleid = @lv_schedid.
+
+        MESSAGE |팔레트 { <fs_pal>-pallet_id }가 배정 및 반영되었습니다.| TYPE 'S'.
+        EXIT. " 첫 번째 가능한 팔레트만 처리하고 루프 종료
+      ENDIF.
+    ENDLOOP.
+
+    " 할당 가능한 팔레트가 없었을 경우
+    IF <fs_ord>-matid IS INITIAL.
+      MESSAGE '사용 가능한 팔레트가 없습니다.' TYPE 'E'.
+    ENDIF.
+
+  ELSE.
+    " 점검 또는 예약 상태 미충족 시 안내 메시지
+    MESSAGE 'CC 점검 및 예약 확정이 "적용" 또는 "Y"이어야 합니다.' TYPE 'S'.
+  ENDIF.
+
+  " ALV 데이터 재정리 및 화면 새로 고침
+  PERFORM set_data.
+  PERFORM refresh_alv.
+
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*& Form handle_btn_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ES_ROW_NO
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+FORM handle_btn_click USING p_es_row_no TYPE lvc_s_roid
+                            p_sender     TYPE REF TO cl_gui_alv_grid.
+
+  " 선택된 행의 인덱스를 담을 변수
+  DATA: lv_idx TYPE lvc_index.
+
+  " TISP 주문 내부 테이블에 대한 필드 심볼 선언
+  FIELD-SYMBOLS: <fs_ord> LIKE LINE OF gt_tisp_ord.
+
+  " 전달받은 ALV 행 번호를 인덱스로 변환
+  lv_idx = p_es_row_no-row_id.
+
+  " 해당 인덱스에 해당하는 주문 내역을 내부 테이블에서 조회
+  READ TABLE gt_tisp_ord ASSIGNING <fs_ord> INDEX lv_idx.
+  IF sy-subrc <> 0 OR <fs_ord> IS INITIAL.
+    MESSAGE '선택된 행을 찾을 수 없습니다.' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  " 버튼 상태에 따라 기능 분기 처리
+  CASE <fs_ord>-btn_assign_pallet.
+
+    " 사용자가 '팔레트 탑재' 버튼을 클릭한 경우
+    WHEN '팔레트 탑재'.
+      " 해당 인덱스 기준으로 팔레트 자동 배정
+      PERFORM assign_pallet_to_order_index USING lv_idx.
+      " 탑재 이력 로깅 처리
+      PERFORM update_log_id USING <fs_ord>-transportid.
+
+    " 사용자가 '문서 출력' 버튼을 클릭한 경우
+    WHEN '문서 출력'.
+      " 화물 관련 송장 출력 실행
+      PERFORM submit_full_save USING <fs_ord>-transportid.
+
+    " 탑재 불가 상태인 경우
+    WHEN '불가'.
+      MESSAGE '아직 탑재할 수 없습니다.' TYPE 'S'.
+
+    " 정의되지 않은 버튼 상태일 경우
+    WHEN OTHERS.
+      MESSAGE '정의되지 않은 상태입니다. 관리자에게 문의하세요.' TYPE 'E'.
+
+  ENDCASE.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form assign_pallet_to_order_index
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LV_IDX
+*&---------------------------------------------------------------------*
+FORM assign_pallet_to_order_index USING p_idx TYPE lvc_index.
+
+  " 필드 심볼 선언
+  FIELD-SYMBOLS: <fs_ord>   LIKE LINE OF gt_tisp_ord,
+                 <fs_pal>   LIKE LINE OF gt_pallet,
+                 <fs_base>  LIKE LINE OF gt_cargo_order,
+                 <fs_sched> LIKE LINE OF gt_schedule.
+
+  " 작업용 변수 선언
+  DATA: lv_schedid TYPE zc103e_sd_scheduleid,
+        lv_cnt     TYPE i,
+        lv_bar     TYPE char10.
+
+  " 선택된 주문 행을 내부 테이블에서 조회
+  READ TABLE gt_tisp_ord ASSIGNING <fs_ord> INDEX p_idx.
+  IF sy-subrc <> 0 OR <fs_ord> IS NOT ASSIGNED.
+    RETURN.
+  ENDIF.
+
+  " CC 점검과 예약 확정 상태 확인
+  IF ( <fs_ord>-cc_checked = '적용' OR <fs_ord>-cc_checked = 'Y' ) AND
+     ( <fs_ord>-is_confirmed = '적용' OR <fs_ord>-is_confirmed = 'Y' ).
+
+    " 사용 가능한 팔레트를 검색하여 첫 번째 건을 할당
+    LOOP AT gt_pallet ASSIGNING <fs_pal>
+      WHERE status = 'A'
+        AND icon_status = icon_led_green.
+
+      " 주문 건과 팔레트 간 동기화
+      <fs_ord>-matid = <fs_pal>-pallet_id.
+      <fs_ord>-btn_assign_pallet = '문서 출력'.
+      <fs_pal>-icon_status = icon_led_yellow.
+
+      " 원본 데이터에도 할당된 팔레트 반영
+      READ TABLE gt_cargo_order ASSIGNING <fs_base>
+        WITH KEY transportid = <fs_ord>-transportid.
+      IF sy-subrc = 0.
+        <fs_base>-matid = <fs_pal>-pallet_id.
+
+        " DB에 화물 주문 업데이트
+        UPDATE zc103sdt0017
+           SET matid = @<fs_pal>-pallet_id
+         WHERE transportid = @<fs_ord>-transportid.
+
+        " DB에 팔레트 상태 'B'로 변경
+        UPDATE zc103sdt0023
+           SET status = 'B'
+         WHERE pallet_id = @<fs_pal>-pallet_id.
+      ENDIF.
+
+      " 사용자에게 배정 완료 메시지 출력
+      MESSAGE |팔레트 { <fs_pal>-pallet_id }가 배정되었습니다.| TYPE 'S'.
+      EXIT.
+    ENDLOOP.
+
+    " 할당 실패 시 오류 메시지 출력
+    IF <fs_ord>-matid IS INITIAL.
+      MESSAGE '사용 가능한 팔레트가 없습니다.' TYPE 'E'.
+    ENDIF.
+
+    " 적재 현황 계산 및 네모 bar 생성
+    lv_schedid = <fs_ord>-scheduleid.
+
+    SELECT COUNT(*) INTO @lv_cnt
+      FROM zc103sdt0017
+     WHERE scheduleid = @lv_schedid
+       AND matid IS NOT NULL.
+
+    CLEAR lv_bar.
+    DO 10 TIMES.
+      lv_bar = lv_bar && COND string( WHEN sy-index <= lv_cnt THEN '■' ELSE '_' ).
+    ENDDO.
+
+    " 스케줄 테이블에 적재 현황 업데이트
+    UPDATE zc103sdt0026
+       SET total_loaded_count        = @lv_bar,
+           current_loaded_count_int = @lv_cnt
+     WHERE scheduleid = @lv_schedid.
+
+  ELSE.
+    " 점검 또는 예약 확정 조건을 만족하지 않는 경우
+    MESSAGE 'CC 점검 및 예약 확정이 "적용" 또는 "Y"이어야 합니다.' TYPE 'S'.
+  ENDIF.
+
+  " ALV 출력을 위한 표시용 테이블 재구성
+  CLEAR gt_disp_sch.
+
+  LOOP AT gt_schedule ASSIGNING <fs_sched>
+    WHERE scheduleid = <fs_ord>-scheduleid.
+
+    gs_disp_sch = VALUE #(
+      scheduleid               = <fs_sched>-scheduleid
+      flightid                 = <fs_sched>-flightid
+      countryfrom              = VALUE #( gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryfrom ]-ddtext DEFAULT '알수없음' )
+      countryto                = VALUE #( gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryto ]-ddtext DEFAULT '알수없음' )
+      departdate               = <fs_sched>-departdate
+      departtime               = <fs_sched>-departtime
+      arrivedate               = <fs_sched>-arrivedate
+      arrivetime               = <fs_sched>-arrivetime
+      flighttime               = <fs_sched>-flighttime
+      weight_avail             = <fs_sched>-weight_avail
+      weight_unit              = <fs_sched>-weight_unit
+      total_loaded_count       = lv_bar
+      current_loaded_count_int = lv_cnt ).
+
+    APPEND gs_disp_sch TO gt_disp_sch.
+  ENDLOOP.
+
+  " ALV 그리드 화면 갱신
+  PERFORM refresh_alv.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form update_log_id
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> <FS_ORD>_TRANSPORTID
+*&---------------------------------------------------------------------*
+FORM update_log_id USING p_transportid TYPE zc103e_sd_transportid.
+
+  " 작업용 변수 선언
+  DATA: lv_last_log TYPE zc103e_sd_logid,
+        lv_num_part TYPE n LENGTH 7,
+        lv_new_log  TYPE zc103e_sd_logid,
+        ls_log      TYPE zc103sdt0024,
+        ls_ord      LIKE LINE OF gt_tisp_ord. " 주문 정보 참조
+
+  " 입력된 운송 ID에 해당하는 주문 데이터 조회
+  READ TABLE gt_tisp_ord INTO ls_ord WITH KEY transportid = p_transportid.
+  IF sy-subrc <> 0.
+    RETURN. " 해당 데이터가 없으면 종료
+  ENDIF.
+
+  " 현재 로그 테이블에서 가장 큰 log_id 조회
+  SELECT MAX( log_id ) INTO @lv_last_log FROM zc103sdt0024.
+
+  " 최초 로그일 경우 1부터 시작, 아니면 숫자 추출 후 +1 증가
+  IF lv_last_log IS INITIAL.
+    lv_num_part = 1.
+  ELSE.
+    lv_num_part = lv_last_log+3(7). " LOG 접두어 제외하고 숫자만 추출
+    lv_num_part = lv_num_part + 1.
+  ENDIF.
+
+  " 새 로그 ID 생성: LOG0000001 형식으로 포맷팅
+  lv_new_log = |LOG{ lv_num_part WIDTH = 7 PAD = '0' }|.
+
+  " 로그 테이블에 기록할 항목 구성
+  ls_log-log_id             = lv_new_log.
+  ls_log-cargo_id           = p_transportid.
+  ls_log-pallet_no          = ls_ord-matid.
+  ls_log-scheduleid         = ls_ord-scheduleid.
+  ls_log-bpid               = ls_ord-bpid.
+  ls_log-pallet_load_weight = ls_ord-weight.
+  ls_log-load_date          = ls_ord-tdate.
+  ls_log-erdat              = sy-datum.   " 생성일자
+  ls_log-erzet              = sy-uzeit.   " 생성시간
+  ls_log-ernam              = sy-uname.   " 생성자
+
+  " 최종 로그 테이블에 INSERT
+  INSERT zc103sdt0024 FROM @ls_log.
+
+ENDFORM.

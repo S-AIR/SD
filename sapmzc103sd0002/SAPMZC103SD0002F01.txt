@@ -1,0 +1,4703 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0002F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form modify_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_MODIFIED
+*&      --> ET_GOOD_CELLS
+*&---------------------------------------------------------------------*
+FORM modify_value_head  USING    pv_modified
+                            pt_good_cells TYPE lvc_t_modi.
+
+  DATA : ls_good_cells TYPE lvc_s_modi.
+
+  CHECK pv_modified IS NOT INITIAL.
+
+  LOOP AT pt_good_cells INTO ls_good_cells.
+
+    gs_head-modi_yn = abap_true.
+
+    MODIFY gt_head FROM gs_head INDEX ls_good_cells-row_id
+                                TRANSPORTING modi_yn.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form edit_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&      --> E_INTERACTIVE
+*&---------------------------------------------------------------------*
+FORM edit_toolbar_head  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                            pv_interactive.
+
+  DATA : lv_disabled,
+         ls_button TYPE stb_button.
+
+  IF gv_mode_head EQ 'D'.
+    lv_disabled = abap_true.
+  ENDIF.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'TOGLH'.
+  ls_button-icon = icon_toggle_display_change.
+  ls_button-quickinfo = 'Display <-> Edit'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'EDITH'.
+  ls_button-disabled = lv_disabled.
+  ls_button-icon = icon_wd_text_edit.
+  ls_button-quickinfo = 'EDIT Row'.
+  ls_button-text = TEXT-c01.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM user_command  USING    pv_ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'TOGLH'.
+      PERFORM set_head_toggle.
+    WHEN 'EDITH'.
+      PERFORM set_head_edit.
+    WHEN 'TOGLL'.
+      PERFORM set_line_toggle.
+    WHEN 'EDITL'.
+      PERFORM set_line_edit.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_head_toggle
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_head_toggle .
+
+  CASE gv_mode_head.
+    WHEN 'E'.
+      gv_mode_head = 'D'.
+      CALL METHOD go_top_alv_grid->set_ready_for_input
+        EXPORTING
+          i_ready_for_input = 0.
+    WHEN 'D'.
+      gv_mode_head = 'E'.
+      CALL METHOD go_top_alv_grid->set_ready_for_input
+        EXPORTING
+          i_ready_for_input = 1.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_head_delete
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_head_edit .
+
+  DATA : lt_roid TYPE lvc_t_roid,
+         ls_roid TYPE lvc_s_roid.
+
+  CALL METHOD go_top_alv_grid->get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i001 WITH TEXT-w08 DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  READ TABLE lt_roid INTO ls_roid INDEX 1.
+
+  READ TABLE gt_head INTO gs_head INDEX ls_roid-row_id.
+  gs_hedit = CORRESPONDING #( gs_head ).
+
+  CALL SCREEN 110 STARTING AT 15 10.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_head_table
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_head_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_top_alv_grid->refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form edit_toolbar_line
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&      --> E_INTERACTIVE
+*&---------------------------------------------------------------------*
+FORM edit_toolbar_line  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                                 pv_interactive.
+
+  DATA : lv_disabled,
+         ls_button TYPE stb_button.
+
+  IF gv_mode_line EQ 'D'.
+    lv_disabled = abap_true.
+  ENDIF.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'TOGLL'.
+  ls_button-icon = icon_toggle_display_change.
+  ls_button-quickinfo = 'Display <-> Edit'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'EDITL'.
+  ls_button-disabled = lv_disabled.
+  ls_button-icon = icon_wd_text_edit.
+  ls_button-quickinfo = 'EDIT Row'.
+  ls_button-text = TEXT-c01.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_line_toggle
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_line_toggle .
+
+  CASE gv_mode_line.
+    WHEN 'E'.
+      gv_mode_line = 'D'.
+      CALL METHOD go_bottom_alv_grid->set_ready_for_input
+        EXPORTING
+          i_ready_for_input = 0.
+    WHEN 'D'.
+      gv_mode_line = 'E'.
+      CALL METHOD go_bottom_alv_grid->set_ready_for_input
+        EXPORTING
+          i_ready_for_input = 1.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_line_delete
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_line_edit .
+
+  DATA : lt_roid TYPE lvc_t_roid,
+         ls_roid TYPE lvc_s_roid.
+
+  CALL METHOD go_bottom_alv_grid->get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i001 WITH TEXT-w08 DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  READ TABLE lt_roid INTO ls_roid INDEX 1.
+
+  READ TABLE gt_line INTO gs_line INDEX ls_roid-row_id.
+  gs_ledit = CORRESPONDING #( gs_line ).
+
+  IF gs_ledit-used_mileage IS NOT INITIAL.
+    gv_bfmile = gs_ledit-used_mileage.
+  ENDIF.
+
+  CALL SCREEN 120 STARTING AT 15 10.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_line_table
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_line_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_bottom_alv_grid->refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_100_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_100_screen .
+
+  DATA : lt_events TYPE cntl_simple_events,
+         ls_event  TYPE cntl_simple_event.
+
+*-- Header ALV : When B2B Type
+  IF ( gs_rbg-tbp EQ abap_true ) OR
+     ( gs_rbg-cybp EQ abap_true ) OR
+     ( gs_rbg-cnbp EQ abap_true ).
+    CLEAR : gt_tfcat, gs_tfcat.
+    PERFORM set_top_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'BPID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_DATE' 'ZC103SDT0006' 'C' ' ',
+                                          ' ' 'CANCEL_DEADLINE' 'ZC103SDT0006' 'C' ' ',
+                                          ' ' 'ORDER_TYPE' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'TOTAL_AMOUNT' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_STATUS' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'CANCEL_REASON' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'BILLING_STATUS' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'SRV_END_STATUS' 'ZC103SDT0006' ' ' 'X'.
+
+*-- Header ALV : When B2C Type
+  ELSEIF ( gs_rbg-cus EQ abap_true ).
+    CLEAR : gt_tfcat, gs_tfcat.
+    PERFORM set_top_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CUSTID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_DATE' 'ZC103SDT0006' 'C' ' ',
+                                          ' ' 'CANCEL_DEADLINE' 'ZC103SDT0006' 'C' ' ',
+                                          ' ' 'ORDER_TYPE' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'TOTAL_AMOUNT' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_STATUS' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'CANCEL_REASON' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'BILLING_STATUS' 'ZC103SDT0006' ' ' 'X'.
+  ENDIF.
+
+*-- Line Item ALV : When Travel Agency Type
+  IF ( gs_rbg-tbp EQ abap_true ).
+
+    CLEAR : gt_bfcat, gs_bfcat.
+    PERFORM set_bottom_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0007' ' ' ' ',
+                                             'X' 'ORDERITEMNO' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'BOOKINGID' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'CHARGED_ITEM' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'DESCRIPTION' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'TICKET_QUANTITY' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'TICKET_UNIT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'UNIT_PRICE' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'TAX_AMOUNT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'DISCOUNT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'USED_MILEAGE' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'ORDER_STATUS' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'SRV_END_STATUS' 'ZC103SDT0007' ' ' 'X'.
+
+*-- Line Item ALV : When B2C Customer
+  ELSEIF ( gs_rbg-cus EQ abap_true ).
+    CLEAR : gt_bfcat, gs_bfcat.
+    PERFORM set_bottom_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0007' ' ' ' ',
+                                             'X' 'ORDERITEMNO' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'BOOKINGID' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'CHARGED_ITEM' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'DESCRIPTION' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'TICKET_QUANTITY' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'TICKET_UNIT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'UNIT_PRICE' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'TAX_AMOUNT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'DISCOUNT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'USED_MILEAGE' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'ORDER_STATUS' 'ZC103SDT0007' ' ' 'X'.
+
+*-- Line Item ALV : When Cargo Type
+  ELSEIF ( gs_rbg-cybp EQ abap_true ) OR
+         ( gs_rbg-cnbp EQ abap_true ).
+
+    CLEAR : gt_bfcat, gs_bfcat.
+    PERFORM set_bottom_field_catalog USING : 'X' 'ORDERID' 'ZC103SDT0007' ' ' ' ',
+                                             'X' 'ORDERITEMNO' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'TRANSPORTID' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'CHARGED_ITEM' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'DESCRIPTION' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'CARGO_WEIGHT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'CARGO_UNIT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'UNIT_PRICE' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'TAX_AMOUNT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'DISCOUNT' 'ZC103SDT0007' ' ' ' ',
+                                             ' ' 'ORDER_STATUS' 'ZC103SDT0007' ' ' 'X',
+                                             ' ' 'SRV_END_STATUS' 'ZC103SDT0007' ' ' 'X'.
+  ENDIF.
+
+  IF go_main_container IS INITIAL.
+    PERFORM set_top_layout_variant.
+    PERFORM set_bottom_layout_variant.
+    PERFORM exclude_toolbar.
+    PERFORM create_object.
+
+    SET HANDLER : lcl_event_handler=>modify_value_head FOR go_top_alv_grid,
+              lcl_event_handler=>edit_toolbar_head FOR go_top_alv_grid,
+              lcl_event_handler=>user_command FOR go_top_alv_grid,
+              lcl_event_handler=>double_click FOR go_top_alv_grid,
+              lcl_event_handler=>modify_value_line FOR go_bottom_alv_grid,
+              lcl_event_handler=>edit_toolbar_line FOR go_bottom_alv_grid,
+              lcl_event_handler=>user_command FOR go_bottom_alv_grid.
+  ENDIF.
+
+*-- Display Head ALV
+  CALL METHOD go_top_alv_grid->set_table_for_first_display
+    EXPORTING
+      is_variant           = gs_tvariant
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_tlayout
+      it_toolbar_excluding = gt_ui_functions
+    CHANGING
+      it_outtab            = gt_hdisplay
+      it_fieldcatalog      = gt_tfcat.
+
+*-- Display Line ALV
+  CALL METHOD go_bottom_alv_grid->set_table_for_first_display
+    EXPORTING
+      is_variant           = gs_bvariant
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_blayout
+      it_toolbar_excluding = gt_ui_functions
+    CHANGING
+      it_outtab            = gt_ldisplay
+      it_fieldcatalog      = gt_bfcat.
+
+  IF go_calendar IS BOUND.
+    ls_event-eventid    = go_calendar->m_id_date_selected.
+    ls_event-appl_event = 'X'.
+    APPEND ls_event TO lt_events.
+
+    CALL METHOD go_calendar->set_registered_events
+      EXPORTING
+        events = lt_events.
+
+    SET HANDLER lcl_event_handler=>on_date_selected FOR go_calendar.
+  ENDIF.
+
+  PERFORM refresh_head_table.
+  PERFORM refresh_line_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_top_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_top_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph .
+
+  gs_tfcat-key = pv_key.
+  gs_tfcat-fieldname = pv_field.
+  gs_tfcat-ref_table = pv_table.
+  gs_tfcat-just = pv_just.
+  gs_tfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'TOTAL_AMOUNT'.
+      gs_tfcat-cfieldname = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_tfcat-coltext = '통화'.
+  ENDCASE.
+
+  APPEND gs_tfcat TO gt_tfcat.
+  CLEAR : gs_tfcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_bottom_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_bottom_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_bfcat-key = pv_key.
+  gs_bfcat-fieldname = pv_field.
+  gs_bfcat-ref_table = pv_table.
+  gs_bfcat-just = pv_just.
+  gs_bfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'UNIT_PRICE'.
+      gs_bfcat-cfieldname = 'CURRENCY'.
+    WHEN 'TAX_AMOUNT'.
+      gs_bfcat-cfieldname = 'CURRENCY'.
+    WHEN 'DISCOUNT'.
+      gs_bfcat-cfieldname = 'CURRENCY'.
+    WHEN 'TICKET_QUANTITY'.
+      gs_bfcat-qfieldname = 'TICKET_UNIT'.
+    WHEN 'CARGO_WEIGHT'.
+      gs_bfcat-qfieldname = 'CARGO_UNIT'.
+    WHEN 'USED_MILEAGE'.
+      gs_bfcat-cfieldname = 'CURRENCY'.
+  ENDCASE.
+
+  APPEND gs_bfcat TO gt_bfcat.
+  CLEAR : gs_bfcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_top_layout_variant
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_top_layout_variant .
+
+*-- Set layout
+  gs_tlayout-zebra = abap_true.
+  gs_tlayout-cwidth_opt = 'A'.
+  gs_tlayout-sel_mode = 'A'.
+  gs_tlayout-stylefname = 'STYLE'.
+
+*-- Set Variant
+  gs_tvariant-report = sy-repid.
+  gs_tvariant-handle = 'ALV1'.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_bottom_layout_variant
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_bottom_layout_variant .
+
+*-- Set layout
+  gs_blayout-zebra = abap_true.
+  gs_blayout-cwidth_opt = 'A'.
+  gs_blayout-sel_mode = 'A'.
+  gs_blayout-stylefname = 'STYLE'.
+
+*-- Set variant
+  gs_bvariant-report = sy-repid.
+  gs_bvariant-handle = 'ALV2'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form exclude_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM exclude_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_value_line
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_MODIFIED
+*&      --> ET_GOOD_CELLS
+*&---------------------------------------------------------------------*
+FORM modify_value_line  USING    pv_modified
+                                 pt_good_cells TYPE lvc_t_modi.
+
+  DATA : ls_good_cells TYPE lvc_s_modi.
+
+  CHECK pv_modified IS NOT INITIAL.
+
+  LOOP AT pt_good_cells INTO ls_good_cells.
+
+    gs_line-modi_yn = abap_true.
+
+    MODIFY gt_line FROM gs_line INDEX ls_good_cells-row_id
+                                TRANSPORTING modi_yn.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+*-- Main Custom Container
+  CREATE OBJECT go_main_container
+    EXPORTING
+      container_name = '100_CONT'.
+
+*-- Split Screen
+  CREATE OBJECT go_split_container
+    EXPORTING
+      parent  = go_main_container
+      rows    = 2
+      columns = 1.
+
+*-- Patch Container(Top)
+  CALL METHOD go_split_container->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_top_container.
+
+*-- Patch Container(Bottom)
+  CALL METHOD go_split_container->get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = go_bottom_container.
+
+*-- Patch ALV(Top)
+  CREATE OBJECT go_top_alv_grid
+    EXPORTING
+      i_parent = go_top_container.
+
+*-- Patch ALV(Bottom)
+  CREATE OBJECT go_bottom_alv_grid
+    EXPORTING
+      i_parent = go_bottom_container.
+
+*-- For Calendar
+  CREATE OBJECT go_cale_container
+    EXPORTING
+      container_name = 'CALE_CONT'.
+
+*-- 달력 모양 + 날짜 선택 화면
+  gv_cale_style = cnca_style_v_navigator +
+                       cnca_style_dtpicker.
+*-- 하루씩 선택
+  gv_selection_style = cnca_sel_day.
+
+*-- Focus 날자 설정
+  gv_focus = sy-datum.
+
+  CREATE OBJECT go_calendar
+    EXPORTING
+      parent          = go_cale_container
+      view_style      = gv_cale_style
+      selection_style = gv_selection_style
+      focus_date      = gv_focus.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_save_button
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_save_button .
+
+  DATA : lt_save_head TYPE TABLE OF zc103sdt0006,
+         ls_save_head TYPE zc103sdt0006,
+         lt_save_line TYPE TABLE OF zc103sdt0007,
+         ls_save_line TYPE zc103sdt0007,
+         lv_tabix     TYPE sy-tabix,
+         lv_answer,
+         lv_hsubrc    TYPE sy-subrc,
+         lv_lsubrc    TYPE sy-subrc.
+
+*-- Check Changed(Head)
+  CALL METHOD go_top_alv_grid->check_changed_data.
+
+  CLEAR : gs_head.
+  READ TABLE gt_head INTO gs_head WITH KEY modi_yn = abap_true.
+
+*-- Check Changed(Line)
+  CALL METHOD go_bottom_alv_grid->check_changed_data.
+
+  CLEAR : gs_line.
+  READ TABLE gt_line INTO gs_line WITH KEY modi_yn = abap_true.
+
+  IF ( sy-subrc NE 0 ) AND
+     ( gt_delete_head IS INITIAL ) AND
+     ( gt_delete_line IS INITIAL ).
+    MESSAGE i001 WITH TEXT-w02 DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+*-- Pop up Dialog
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+*-- Set Time Stamp(Head)
+  LOOP AT gt_head INTO gs_head WHERE modi_yn EQ abap_true.
+
+    lv_tabix = sy-tabix.
+
+    IF gs_head-erdat IS INITIAL.
+      gs_head-erdat = sy-datum.
+      gs_head-ernam = sy-uname.
+      gs_head-erzet = sy-uzeit.
+
+    ELSE.
+      gs_head-aedat = sy-datum.
+      gs_head-aenam = sy-uname.
+      gs_head-aezet = sy-uzeit.
+
+    ENDIF.
+
+    CLEAR : gs_head-modi_yn.
+
+    MODIFY gt_head FROM gs_head INDEX lv_tabix
+                                TRANSPORTING modi_yn erdat ernam erzet
+                                             aedat aenam aezet.
+
+  ENDLOOP.
+
+  lt_save_head = CORRESPONDING #( gt_head ).
+
+*-- SET Time Stamp(Line)
+  LOOP AT gt_head INTO gs_head WHERE modi_yn EQ abap_true.
+
+    lv_tabix = sy-tabix.
+
+    IF gs_line-erdat IS INITIAL.
+      gs_line-erdat = sy-datum.
+      gs_line-ernam = sy-uname.
+      gs_line-erzet = sy-uzeit.
+
+    ELSE.
+      gs_line-aedat = sy-datum.
+      gs_line-aenam = sy-uname.
+      gs_line-aezet = sy-uzeit.
+
+    ENDIF.
+
+    CLEAR : gs_line-modi_yn.
+
+    MODIFY gt_line FROM gs_line INDEX lv_tabix
+                                TRANSPORTING modi_yn erdat ernam erzet
+                                             aedat aenam aezet.
+
+  ENDLOOP.
+
+  lt_save_line = CORRESPONDING #( gt_line ).
+
+*-- Delete(Head)
+  IF gt_delete_head IS NOT INITIAL.
+    DELETE zc103sdt0006 FROM TABLE gt_delete_head.
+  ENDIF.
+
+  lv_hsubrc = sy-subrc.
+
+  CLEAR : gt_delete_head, gs_delete_head.
+
+*-- Delete(Line)
+  IF gt_delete_line IS NOT INITIAL.
+    DELETE zc103sdt0007 FROM TABLE gt_delete_line.
+  ENDIF.
+
+  lv_lsubrc = sy-subrc.
+
+  CLEAR : gt_delete_line, gs_delete_line.
+
+*-- Message
+  IF ( lv_hsubrc EQ 0 ) AND
+     ( lv_lsubrc EQ 0 ).
+    MESSAGE i001 WITH TEXT-t01 DISPLAY LIKE 'S'.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+  CLEAR : lv_hsubrc, lv_lsubrc.
+
+  PERFORM refresh_head_table.
+  PERFORM refresh_line_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_popup_to_confirm
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LV_ANSWER
+*&---------------------------------------------------------------------*
+FORM set_popup_to_confirm  CHANGING pv_answer.
+
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '저장'
+    IMPORTING
+      ev_answer = pv_answer.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_style .
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+*-- Head Style
+  LOOP AT gt_head INTO gs_head.
+
+    lv_tabix = sy-tabix.
+
+    CLEAR : gs_head-style.
+
+    PERFORM set_style_detail USING : 'ORDERID' 'D' CHANGING gs_head-style,
+                                     'BPID' 'D' CHANGING gs_head-style,
+                                     'CUSTID' 'D' CHANGING gs_head-style,
+                                     'ORDER_DATE' 'D' CHANGING gs_head-style,
+                                     'ORDER_TYPE' 'D' CHANGING gs_head-style,
+                                     'TOTAL_AMOUNT' 'D' CHANGING gs_head-style,
+                                     'CURRENCY' 'D' CHANGING gs_head-style,
+                                     'ORDER_STATUS' 'D' CHANGING gs_head-style.
+
+    MODIFY gt_head FROM gs_head INDEX lv_tabix TRANSPORTING style.
+
+  ENDLOOP.
+
+*-- Line Style
+  LOOP AT gt_line INTO gs_line.
+
+    lv_tabix = sy-tabix.
+
+    CLEAR : gs_line-style.
+
+    PERFORM set_style_detail USING : 'ORDERID' 'D' CHANGING gs_line-style,
+                                     'ORDERITEMNO' 'D' CHANGING gs_line-style,
+                                     'BOOKINGID' 'D' CHANGING gs_line-style,
+                                     'TRANSPORTID' 'D' CHANGING gs_line-style,
+                                     'CHARGED_ITEM' 'D' CHANGING gs_line-style,
+                                     'DESCRIPTION' 'D' CHANGING gs_line-style,
+                                     'TICKET_QUANTITY' 'D' CHANGING gs_line-style,
+                                     'TICKET_UNIT' 'D' CHANGING gs_line-style,
+                                     'CARGO_WEIGHT' 'D' CHANGING gs_line-style,
+                                     'CARGO_UNIT' 'D' CHANGING gs_line-style,
+                                     'UNIT_PRICE' 'D' CHANGING gs_line-style,
+                                     'TAX_AMOUNT' 'D' CHANGING gs_line-style,
+                                     'DISCOUNT' 'D' CHANGING gs_line-style,
+                                     'CURRENCY' 'D' CHANGING gs_line-style,
+                                     'USED_MILEAGE' 'D' CHANGING gs_line-style.
+
+    MODIFY gt_line FROM gs_line INDEX lv_tabix TRANSPORTING style.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style_detail
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      <-- GS_HEAD_STYLE
+*&---------------------------------------------------------------------*
+FORM set_style_detail  USING pv_field pv_status
+                       CHANGING pt_style TYPE lvc_t_styl.
+
+  DATA : ls_style TYPE lvc_s_styl.
+
+  CLEAR : ls_style.
+  ls_style-fieldname = pv_field.
+
+*-- D -> disabled, E -> Enabled
+  IF pv_status EQ 'D'.
+    ls_style-style = cl_gui_alv_grid=>mc_style_disabled.
+  ELSEIF pv_status EQ 'E'.
+    ls_style-style = cl_gui_alv_grid=>mc_style_enabled.
+  ENDIF.
+
+  INSERT ls_style INTO TABLE pt_style.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_search_button
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_search_button .
+
+  DATA : lv_date TYPE c LENGTH 10.
+
+*-- Case1 -> Cus Checked
+  IF ( gs_rbg-cus EQ abap_true ) AND
+     ( gv_cusid IS NOT INITIAL ) AND
+     ( gv_cdate IS NOT INITIAL ) AND
+     ( gv_cstat IS NOT INITIAL ).
+    _init gt_head.
+    _init gt_line.
+    _init gt_hdisplay.
+    _init gt_ldisplay.
+    CLEAR : lv_date.
+
+*-- GET CusID
+*    PERFORM get_cusid.
+
+*-- Replace Char -> Dats
+    lv_date = gv_cdate.
+    REPLACE ALL OCCURRENCES OF '.' IN lv_date WITH ''.
+
+*-- Get head Data(Customer)
+    SELECT orderid, bpid, custid, conditionid, order_date, order_type,
+           total_amount, currency, order_status, cancel_deadline, cancel_reason,
+           billing_status, srv_end_status
+      FROM zc103sdt0006
+      WHERE custid EQ @gv_cusid
+       AND order_date EQ @lv_date
+       AND order_status EQ @gv_cstat
+      INTO CORRESPONDING FIELDS OF TABLE @gt_head.
+
+*-- Change Order type To Text
+    LOOP AT gt_head INTO gs_head.
+      gs_hdisplay = CORRESPONDING #( gs_head ).
+      APPEND gs_hdisplay TO gt_hdisplay.
+    ENDLOOP.
+
+    LOOP AT gt_hdisplay ASSIGNING FIELD-SYMBOL(<fs_hdis>).
+      <fs_hdis>-order_type = '일반 고객'.
+*-- Set order_status to Text
+      CASE <fs_hdis>-order_status.
+        WHEN 'Y'.
+          <fs_hdis>-order_status = '결제 완료'.
+        WHEN 'N'.
+          <fs_hdis>-order_status = '미결제'.
+        WHEN 'C'.
+          <fs_hdis>-order_status = '결제 취소'.
+      ENDCASE.
+*-- Set billing_status to Text
+      <fs_hdis>-billing_status = '일반 고객(B2C, 청구 불필요)'.
+    ENDLOOP.
+
+*-- Message
+    IF gt_head IS INITIAL.
+      MESSAGE w001 WITH TEXT-w03.
+    ENDIF.
+
+*-- Case2 -> BP Checked
+  ELSEIF ( gs_rbg-cnbp EQ abap_true ) OR
+         ( gs_rbg-cybp EQ abap_true ) OR
+         ( gs_rbg-tbp EQ abap_true ) AND
+         ( gv_bpid IS NOT INITIAL ) AND
+         ( gv_bdate IS NOT INITIAL ) AND
+         ( gv_bstat IS NOT INITIAL ).
+
+    _init gt_head.
+    _init gt_line.
+    _init gt_hdisplay.
+    _init gt_ldisplay.
+    CLEAR : lv_date.
+
+*-- GET bpid
+*    PERFORM get_bpid.
+
+*-- Replace Char -> Dats
+    lv_date = gv_bdate.
+    REPLACE ALL OCCURRENCES OF '.' IN lv_date WITH ''.
+
+*-- Get Head Data(BP)
+    SELECT orderid, bpid, custid, conditionid, order_date, order_type,
+           total_amount, currency, order_status, cancel_deadline, cancel_reason,
+           billing_status, srv_end_status
+      FROM zc103sdt0006
+      WHERE bpid EQ @gv_bpid
+       AND order_date EQ @lv_date
+       AND order_status EQ @gv_bstat
+      INTO CORRESPONDING FIELDS OF TABLE @gt_head.
+
+*-- Change Order TYPE To Text
+    LOOP AT gt_head INTO gs_head.
+      gs_hdisplay = CORRESPONDING #( gs_head ).
+      APPEND gs_hdisplay TO gt_hdisplay.
+    ENDLOOP.
+
+    LOOP AT gt_hdisplay ASSIGNING FIELD-SYMBOL(<fs_bp>).
+      IF <fs_bp>-order_type EQ 'T'.
+        <fs_bp>-order_type = '여행사'.
+      ELSEIF <fs_bp>-order_type EQ 'B'.
+        <fs_bp>-order_type = '계약 화물사'.
+      ELSEIF <fs_bp>-order_type EQ 'NB'.
+        <fs_bp>-order_type = '미계약 화물사'.
+      ENDIF.
+*-- SET order_status to Text
+      CASE <fs_bp>-order_status.
+        WHEN 'Y'.
+          <fs_bp>-order_status = '결제 완료'.
+        WHEN 'N'.
+          <fs_bp>-order_status = '미결제'.
+        WHEN 'C'.
+          <fs_bp>-order_status = '결제 취소'.
+      ENDCASE.
+*-- Set billing_status to Text
+      CASE <fs_bp>-billing_status.
+        WHEN 'Y'.
+          <fs_bp>-billing_status = '대금청구 완료'.
+        WHEN 'N'.
+          <fs_bp>-billing_status = '대금청구 미완료'.
+      ENDCASE.
+*-- Set srv_end_status to Text
+      CASE <fs_bp>-srv_end_status.
+        WHEN 'Y'.
+          <fs_bp>-srv_end_status = '서비스 종료'.
+        WHEN 'N'.
+          <fs_bp>-srv_end_status = '서비스 미종료'.
+      ENDCASE.
+    ENDLOOP.
+
+    UNASSIGN <fs_bp>.
+
+*-- Message
+    IF gt_head IS INITIAL.
+      MESSAGE w001 WITH TEXT-w03.
+    ENDIF.
+
+  ELSE.
+    MESSAGE w001 WITH TEXT-w07.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_bpid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_bpid .
+
+*  CLEAR : gv_bpid.
+*
+**-- Get BPID Using gv_bpname, gv_bpphone
+*  SELECT SINGLE bpid
+*    FROM zc103sdt0001
+*    INTO ( gv_bpid )
+*    WHERE bpname EQ gv_bpname
+*      AND phone EQ gv_bpphone.
+*
+**-- Message
+*  IF gv_bpid IS INITIAL.
+*    MESSAGE i001 WITH TEXT-w03 DISPLAY LIKE 'W'.
+*  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_cusid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_cusid .
+*
+*  CLEAR : gv_cusid.
+*
+**-- Get Cusid Using gv_cusname, gv_cusphone
+*  SELECT SINGLE custid
+*    FROM zc103sdt0002
+*    INTO ( gv_cusid )
+*    WHERE name EQ gv_cusname
+*      AND phone EQ gv_cusphone.
+*
+**-- Message
+*  IF gv_cusid IS INITIAL.
+*    MESSAGE i001 WITH TEXT-w03 DISPLAY LIKE 'W'.
+*  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_screen_condition
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_screen_condition .
+
+  IF gs_rbg IS INITIAL.
+    gs_rbg-tbp = abap_true.
+  ENDIF.
+
+*-- Check RB
+  IF gs_rbg-cus EQ abap_true.
+    PERFORM set_iofield USING 'C'.
+  ELSE.
+    PERFORM set_iofield USING 'B'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_iofield
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_iofield  USING  pv_stat.
+
+*-- I/O field Setting
+*-- Block BP Field
+  IF pv_stat EQ 'C'.
+    LOOP AT SCREEN.
+      IF screen-group1 = 'BP'.
+        screen-input = 0.
+        MODIFY SCREEN.
+      ELSEIF screen-group1 = 'CUS'.
+        screen-input = 1.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDLOOP.
+
+*-- Block Customer Field
+  ELSEIF pv_stat EQ 'B'.
+    LOOP AT SCREEN.
+      IF screen-group1 = 'CUS'.
+        screen-input = 0.
+        MODIFY SCREEN.
+      ELSEIF screen-group1 = 'BP'.
+        screen-input = 1.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_type
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_type .
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form bpdate_f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM bpdate_f4_control .
+
+  DATA : lt_return LIKE TABLE OF ddshretval WITH HEADER LINE,
+         lt_dynp   TYPE TABLE OF dynpread   WITH HEADER LINE,
+         lv_bpid   TYPE zc103sdt0001-bpid.
+
+*-- Get Field Value
+  APPEND VALUE #( fieldname = 'GV_BPID' ) TO lt_dynp.
+
+*-- Read value
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-cprog
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_dynp.
+
+*-- Get Result
+  READ TABLE lt_dynp INTO DATA(ls_bpid) WITH KEY fieldname = 'GV_BPID'.
+
+  lv_bpid = ls_bpid-fieldvalue.
+
+  IF ( lv_bpid IS INITIAL ).
+    MESSAGE i000 WITH TEXT-w05 DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+*-- GET select DATA by condition
+  CLEAR gt_bpdf4.
+  SELECT bp~bpname so~order_date INTO CORRESPONDING FIELDS OF TABLE gt_bpdf4
+    FROM zc103sdt0006 AS so INNER JOIN zc103sdt0001 AS bp
+    ON so~bpid EQ bp~bpid
+    WHERE bp~bpid EQ lv_bpid.
+
+  IF gt_bpdf4 IS INITIAL.
+    MESSAGE i000 WITH TEXT-w03 DISPLAY LIKE' W'.
+  ENDIF.
+
+  _init lt_return.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'DATE' " ALV 에 박히는 값
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_BDATE'
+      window_title    = 'BP S/O Date'
+      value_org       = 'S'
+    TABLES
+      value_tab       = gt_bpdf4
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form cusdate_f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM cusdate_f4_control .
+
+  DATA : lt_return LIKE TABLE OF ddshretval WITH HEADER LINE,
+         lt_dynp   TYPE TABLE OF dynpread   WITH HEADER LINE,
+         lv_cusid  TYPE zc103sdt0002-custid.
+
+*-- Get Field Value
+  APPEND VALUE #( fieldname = 'GV_CUSID' ) TO lt_dynp.
+
+*-- Read value
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-cprog
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_dynp.
+
+*-- Get Result
+  READ TABLE lt_dynp INTO DATA(ls_cusid) WITH KEY fieldname = 'GV_CUSID'.
+
+  lv_cusid = ls_cusid-fieldvalue.
+
+  IF ( lv_cusid IS INITIAL ).
+    MESSAGE i000 WITH TEXT-w05 DISPLAY LIKE 'W'.
+  ENDIF.
+
+*-- GET select DATA by condition
+  CLEAR gt_cusdf4.
+  SELECT cus~name so~order_date INTO CORRESPONDING FIELDS OF TABLE gt_cusdf4
+    FROM zc103sdt0002 AS cus INNER JOIN zc103sdt0006 AS so
+    ON cus~custid EQ so~custid
+    WHERE cus~custid EQ lv_cusid.
+
+  IF gt_cusdf4 IS INITIAL.
+    MESSAGE i001 WITH TEXT-w03 DISPLAY LIKE' W'.
+  ENDIF.
+
+  _init lt_return.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'PHONE' " ALV 에 박히는 값
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_CDATE'
+      window_title    = 'Customer S/O Date'
+      value_org       = 'S'
+    TABLES
+      value_tab       = gt_cusdf4
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form bstat_f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM bstat_f4_control .
+
+  DATA : lt_return LIKE TABLE OF ddshretval WITH HEADER LINE,
+         lt_dynp   TYPE TABLE OF dynpread   WITH HEADER LINE,
+         lv_bdate  TYPE c LENGTH 10,
+         lv_bpid   TYPE zc103sdt0001-bpid.
+
+**-- For Change Text field(order_status)
+*  DATA : BEGIN OF ls_bpsf4,
+*           bpname       TYPE zc103sdt0001-bpname,
+*           order_date   TYPE zc103sdt0006-order_date,
+*           order_status TYPE ZC103SDT0006-order_status,
+*         END OF ls_bpsf4,
+*         lt_bpsf4 LIKE TABLE OF ls_bpsf4.
+
+*-- Get Field Value
+  APPEND VALUE #( fieldname = 'GV_BDATE' ) TO lt_dynp.
+  APPEND VALUE #( fieldname = 'GV_BPID' ) TO lt_dynp.
+
+*-- Read value
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-cprog
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_dynp.
+
+*-- Get Result
+  READ TABLE lt_dynp INTO DATA(ls_bdate) WITH KEY fieldname = 'GV_BDATE'.
+  READ TABLE lt_dynp INTO DATA(ls_bpid) WITH KEY fieldname = 'GV_BPID'.
+
+  lv_bdate = ls_bdate-fieldvalue.
+  lv_bpid = ls_bpid-fieldvalue.
+
+  IF ( lv_bpid IS INITIAL ) OR
+     ( lv_bdate IS INITIAL ).
+    MESSAGE i000 WITH TEXT-w04 DISPLAY LIKE 'W'.
+  ENDIF.
+
+*-- Replace Char -> Dats
+  REPLACE ALL OCCURRENCES OF '.' IN lv_bdate WITH ''.
+
+*-- GET select DATA by condition
+  CLEAR gt_bpsf4.
+  SELECT bp~bpname so~order_date so~order_status
+    INTO CORRESPONDING FIELDS OF TABLE gt_bpsf4
+    FROM zc103sdt0006 AS so INNER JOIN zc103sdt0001 AS bp
+    ON so~bpid EQ bp~bpid
+    WHERE so~order_date EQ lv_bdate
+      AND bp~bpid EQ lv_bpid.
+
+**-- Move Corresponding
+*  CLEAR : lt_bpsf4, ls_bpsf4.
+*  LOOP AT gt_bpsf4 INTO gs_bpsf4.
+*    ls_bpsf4 = CORRESPONDING #( gs_bpsf4 ).
+*    APPEND ls_bpsf4 TO lt_bpsf4.
+*  ENDLOOP.
+*
+**-- Change Y -> 결제 완료, N -> 미결제, C -> 결제 취소
+*  LOOP AT lt_bpsf4 ASSIGNING FIELD-SYMBOL(<fs_bpsf4>).
+*    IF <fs_bpsf4>-order_status EQ 'Y'.
+*      <fs_bpsf4>-order_status = '결제 완료'.
+*    ELSEIF <fs_bpsf4>-order_status EQ 'N'.
+*      <fs_bpsf4>-order_status = '미결제'.
+*    ELSEIF <fs_bpsf4>-order_status EQ 'C'.
+*      <fs_bpsf4>-order_status = '결제 취소'.
+*    ENDIF.
+*  ENDLOOP.
+
+*  UNASSIGN : <fs_bpsf4>.
+
+  _init lt_return.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'LS_BPSF4-ORDER_STATUS'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_BSTAT'
+      window_title    = 'BP S/O Status'
+      value_org       = 'S'
+    TABLES
+      value_tab       = gt_bpsf4
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form cstat_f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM cstat_f4_control .
+
+  DATA : lt_return LIKE TABLE OF ddshretval WITH HEADER LINE,
+         lt_dynp   TYPE TABLE OF dynpread   WITH HEADER LINE,
+         lv_cdate  TYPE c LENGTH 10,
+         lv_cusid  TYPE zc103sdt0002-custid.
+
+*-- Get Field Value
+  APPEND VALUE #( fieldname = 'GV_CDATE' ) TO lt_dynp.
+  APPEND VALUE #( fieldname = 'GV_CUSID' ) TO lt_dynp.
+
+*-- Read value
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-cprog
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_dynp.
+
+*-- Get Result
+  READ TABLE lt_dynp INTO DATA(ls_cdate) WITH KEY fieldname = 'GV_CDATE'.
+  READ TABLE lt_dynp INTO DATA(ls_cusid) WITH KEY fieldname = 'GV_CUSID'.
+
+  lv_cdate = ls_cdate-fieldvalue.
+  lv_cusid = ls_cusid-fieldvalue.
+
+  IF ( lv_cusid IS INITIAL ) OR
+     ( lv_cdate IS INITIAL ).
+    MESSAGE i001 WITH TEXT-w04 DISPLAY LIKE 'W'.
+  ENDIF.
+
+*-- Replace Char -> Dats
+  REPLACE ALL OCCURRENCES OF '.' IN lv_cdate WITH ''.
+
+*-- GET select DATA by condition
+  CLEAR gt_cussf4.
+  SELECT cus~name so~order_date so~order_status
+    INTO CORRESPONDING FIELDS OF TABLE gt_cussf4
+    FROM zc103sdt0006 AS so INNER JOIN zc103sdt0002 AS cus
+    ON so~custid EQ cus~custid
+    WHERE so~order_date EQ lv_cdate
+      AND cus~custid EQ lv_cusid.
+
+  _init lt_return.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'STATUS' " ALV 에 박히는 값
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_CSTAT'
+      window_title    = 'Customer S/O Status'
+      value_org       = 'S'
+    TABLES
+      value_tab       = gt_cussf4
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_iofield_delete
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_iofield_delete .
+
+  CLEAR : gv_cusid, gv_cdate, gv_cstat,
+          gv_bpid, gv_bdate, gv_bstat.
+
+  _init gt_hdisplay.
+  _init gt_ldisplay.
+  _init gt_head.
+  _init gt_line.
+  CLEAR : gs_line, gs_head, gs_hdisplay, gs_ldisplay.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW
+*&      --> E_COLUMN
+*&---------------------------------------------------------------------*
+FORM double_click  USING    pv_row
+                            pv_column.
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  CLEAR : gs_line, gt_line, gt_ldisplay, gs_ldisplay.
+  READ TABLE gt_head INTO gs_head INDEX pv_row.
+
+*-- Get Line Data
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description,
+         ticket_quantity, ticket_unit, cargo_weight, cargo_unit,
+         unit_price, tax_amount, discount, currency, used_mileage, order_status, srv_end_status,
+         erdat, ernam, erzet, aenam, aezet, aedat
+    FROM zc103sdt0007
+    WHERE orderid EQ @gs_head-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_line.
+
+*-- Move data to Line display
+  LOOP AT gt_line INTO gs_line.
+    gs_ldisplay = CORRESPONDING #( gs_line ).
+    APPEND gs_ldisplay TO gt_ldisplay.
+  ENDLOOP.
+
+  PERFORM set_line_text_field.
+
+*-- Message
+  IF gt_line IS INITIAL.
+    MESSAGE i001 WITH TEXT-e01 DISPLAY LIKE 'E'.
+  ENDIF.
+
+  PERFORM refresh_line_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_name_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_name_field .
+
+  CLEAR : gv_tpbpname, gv_tpcusname, gv_tptype.
+
+*-- Set BP name
+  SELECT SINGLE bpname
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_hedit-bpid
+    INTO ( @gv_tpbpname ).
+
+*-- Set Customer name
+  SELECT SINGLE name
+    FROM zc103sdt0002
+    WHERE custid EQ @gs_hedit-custid
+    INTO ( @gv_tpcusname ).
+
+*-- Set User TYPE
+  CASE gs_hedit-order_type.
+    WHEN 'T'.
+      gv_tptype = '여행사'.
+    WHEN 'B'.
+      gv_tptype = '화물 계약 BP'.
+    WHEN 'NB'.
+      gv_tptype = '화물 미계약 BP'.
+    WHEN 'C'.
+      gv_tptype = '일반 여객 고객'.
+  ENDCASE.
+
+*--  Set Cancel Reason
+  CLEAR : gv_tpcreason.
+  gv_tpcreason = gs_hedit-cancel_reason.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_pop_save_button
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_pop_save_button .
+
+*-- CHECK Input DATA
+  IF ( gs_hedit-order_status NE 'Y' ) AND
+     ( gs_hedit-order_status NE 'N' ) AND
+     ( gs_hedit-order_status NE 'C' ).
+    MESSAGE i000 WITH TEXT-e11 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 110.
+  ENDIF.
+
+*-- Check Cancel Deadline
+  IF gs_hedit-cancel_deadline LT sy-datum.
+    MESSAGE i001 WITH TEXT-e05 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+*-- Check Cancel Reason
+  IF ( gs_hedit-order_status EQ 'C' ) AND
+     ( gs_hedit-cancel_deadline GE sy-datum ).
+    IF gv_tpcreason IS INITIAL.
+      MESSAGE i001 WITH TEXT-e02 DISPLAY LIKE 'E'.
+    ELSE.
+*-- Save Data
+      PERFORM save_head_pop_data USING 'C'.
+      PERFORM set_mileage_data.
+      PERFORM refresh_head_table.
+      PERFORM refresh_line_table.
+      LEAVE TO SCREEN 0.
+    ENDIF.
+  ELSEIF gs_hedit-order_status NE 'C'.
+    CLEAR : gv_tpcreason.
+    PERFORM save_head_pop_data USING 'NC'.
+    PERFORM refresh_head_table.
+    PERFORM refresh_line_table.
+    LEAVE TO SCREEN 0.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_pop_screen_condition
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_pop_screen_condition .
+
+*-- Check RB
+  IF ( gs_rbg-cus EQ abap_true ).
+    PERFORM set_hpop_iofield USING 'C'.
+  ELSE.
+    PERFORM set_hpop_iofield USING 'BP'.
+  ENDIF.
+
+*-- For Order Status
+  IF gs_hedit-order_status EQ 'C'.
+    PERFORM set_cancel_iofield USING 'O'.
+  ELSE.
+    PERFORM set_cancel_iofield USING 'B'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_cancel_iofield
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_cancel_iofield USING pv_type.
+
+  CASE pv_type.
+    WHEN 'B'.
+*-- Block Cancel Reason Field
+      LOOP AT SCREEN.
+        IF screen-name = 'GV_TPCREASON'.
+          screen-input = 0.
+          MODIFY SCREEN.
+        ENDIF.
+      ENDLOOP.
+    WHEN 'O'.
+*-- Open Cancel Reason Field
+      LOOP AT SCREEN.
+        IF screen-name = 'GV_TPCREASON'.
+          screen-input = 1.
+          MODIFY SCREEN.
+        ENDIF.
+      ENDLOOP.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_head_pop_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_head_pop_data USING pv_status .
+
+  DATA : lv_answer,
+         ls_cdiscount TYPE zc103sdt0003.
+
+*-- Pop-up Dialog
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+*-- CHECK Changed
+  CLEAR : gs_head.
+  READ TABLE gt_head INTO gs_head WITH KEY orderid = gs_hedit-orderid.
+
+  IF ( gs_head-order_status EQ gs_hedit-order_status ) AND
+     ( gs_head-conditionid EQ gs_hedit-conditionid ) AND
+     ( gs_head-currency EQ gs_hedit-currency ) AND
+     ( gs_head-order_date EQ gs_hedit-order_date ) AND
+     ( gs_head-cancel_reason EQ gs_hedit-cancel_reason ).
+    MESSAGE i000 WITH TEXT-w11 DISPLAY LIKE 'W'.
+    LEAVE TO SCREEN 110.
+  ENDIF.
+
+  CASE pv_status.
+    WHEN 'C'.
+      PERFORM save_pop_data_to_db.
+      PERFORM change_line_data.
+
+      IF ( gs_hedit-bpid IS INITIAL ) AND
+         ( gs_hedit-custid IS NOT INITIAL ).
+
+*-- Mileage Counting
+        SUBMIT zc103sdr0004 AND RETURN.
+
+        IF sy-subrc EQ 0.
+          MESSAGE s001 WITH TEXT-s02 DISPLAY LIKE 'S'.
+        ENDIF.
+      ENDIF.
+
+*-- Delete Booking Data
+      PERFORM change_booking_data.
+
+    WHEN 'NC'.
+      PERFORM save_pop_data_to_db.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_pop_data_to_db
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_pop_data_to_db .
+
+*-- MOVE Data( gv_tpcreason -> gs_hedit-cancel_reason )
+  CLEAR : gs_hedit-cancel_reason, gs_head.
+  gs_hedit-cancel_reason = gv_tpcreason.
+
+*-- Set Time Stamp
+  IF gs_hedit-erdat IS INITIAL.
+    gs_hedit-erdat = sy-datum.
+    gs_hedit-ernam = sy-uname.
+    gs_hedit-erzet = sy-uzeit.
+  ELSE.
+    gs_hedit-aedat = sy-datum.
+    gs_hedit-aenam = sy-uname.
+    gs_hedit-aezet = sy-uzeit.
+  ENDIF.
+
+  gs_head = CORRESPONDING #( gs_hedit ).
+  gs_hdisplay = CORRESPONDING #( gs_hedit ).
+
+*-- Change Text
+  IF gs_hdisplay-order_status EQ 'Y'.
+    gs_hdisplay-order_status = '결제 완료'.
+  ELSEIF gs_hdisplay-order_status EQ 'N'.
+    gs_hdisplay-order_status = '미결제'.
+  ELSEIF gs_hdisplay-order_status EQ 'C'.
+    gs_hdisplay-order_status = '결제 취소'.
+  ENDIF.
+
+*-- Modify gt_head
+  MODIFY gt_head FROM gs_head TRANSPORTING erdat ernam erzet
+                                           aedat aenam aezet
+                                           order_status currency
+                                           cancel_reason
+                              WHERE orderid = gs_head-orderid.
+*-- MODIFY gt_hdisplay
+  MODIFY gt_hdisplay FROM gs_hdisplay TRANSPORTING order_status
+                                                   currency cancel_reason
+                              WHERE orderid = gs_hdisplay-orderid.
+
+*-- Update DB
+  UPDATE zc103sdt0006 FROM gs_hedit.
+
+*-- Message
+  IF sy-subrc EQ 0.
+    COMMIT WORK.
+    MESSAGE s000 WITH TEXT-s01 DISPLAY LIKE 'S'.
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE e000 WITH TEXT-e03 DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form delete_booking_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM change_booking_data .
+  DATA : lt_cancel TYPE TABLE OF zc103sdt0011,
+         lt_bookid TYPE TABLE OF zc103sdt0007.
+
+*-- Get BookingID
+  SELECT orderid, orderitemno, bookingid
+    FROM zc103sdt0007
+    WHERE orderid EQ @gs_hedit-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_bookid.
+
+*-- Get Cancel Booking Data(A -> B)
+  SELECT b~bookingid, b~bpid, b~custid, b~conditionid, countryfrom, countryto,
+         b~flightid, scheduleid, bookingdate, totalticket, totalprice,
+         b~currency, book_status, b~erdat, b~erzet, b~ernam, b~aedat, b~aezet, b~aenam
+    FROM zc103sdt0011 AS b
+    INTO CORRESPONDING FIELDS OF TABLE @lt_cancel
+    FOR ALL ENTRIES IN @lt_bookid
+    WHERE b~bookingid = @lt_bookid-bookingid.
+
+*-- Change Booking Status
+  LOOP AT lt_cancel ASSIGNING FIELD-SYMBOL(<fs_cancel>).
+    <fs_cancel>-book_status = 'B'.
+
+*-- SET Time Stamp
+    IF gs_hedit-erdat IS INITIAL.
+      <fs_cancel>-erdat = sy-datum.
+      <fs_cancel>-ernam = sy-uname.
+      <fs_cancel>-erzet = sy-uzeit.
+    ELSE.
+      <fs_cancel>-aedat = sy-datum.
+      <fs_cancel>-aenam = sy-uname.
+      <fs_cancel>-aezet = sy-uzeit.
+    ENDIF.
+
+    UPDATE zc103sdt0011 FROM TABLE lt_cancel.
+  ENDLOOP.
+
+  UNASSIGN <fs_cancel>.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_pop_line_screen_condition
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_pop_line_screen_condition .
+
+*-- Check RB
+  IF ( gs_rbg-tbp EQ abap_true ).
+    PERFORM set_pop_iofield USING 'T'.
+
+  ELSEIF ( gs_rbg-cus EQ abap_true ).
+    PERFORM set_pop_iofield USING 'P'.
+
+  ELSEIF ( gs_rbg-cybp EQ abap_true ) OR
+         ( gs_rbg-cnbp EQ abap_true ).
+    PERFORM set_pop_iofield USING 'C'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_pop_iofield
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_pop_iofield  USING pv_type.
+
+  CASE pv_type.
+    WHEN 'P'. " Passenger
+*-- Block and Hiding field
+      LOOP AT SCREEN.
+        IF screen-group1 = 'CGP' OR
+           screen-name = 'GS_LEDIT-ORDER_STATUS' OR
+           screen-name = 'TEXT17' OR
+           screen-name = 'GS_LEDIT-TICKET_QUANTITY' OR
+           screen-name = 'TEXT7' OR
+           screen-name = 'GS_LEDIT-CURRENCY' OR
+           screen-name = 'TEXT15'.
+          screen-input = 0.
+          screen-invisible = 1.
+          MODIFY SCREEN.
+        ENDIF.
+      ENDLOOP.
+    WHEN 'T'. " Travel Agency
+*-- Block and Hiding field
+      LOOP AT SCREEN.
+        IF screen-group1 = 'CGP' OR
+           screen-name = 'GS_LEDIT-USED_MILEAGE' OR
+           screen-name = 'TEXT16' OR
+           screen-name = 'GS_LEDIT-CURRENCY' OR
+           screen-name = 'TEXT15' OR
+           screen-name = 'GS_LEDIT-TICKET_QUANTITY' OR
+           screen-name = 'TEXT7'.
+          screen-input = 0.
+          screen-invisible = 1.
+          MODIFY SCREEN.
+        ENDIF.
+      ENDLOOP.
+    WHEN 'C'. " Cargo
+*-- Block and Hiding field
+      LOOP AT SCREEN.
+        IF screen-group1 = 'PGP' OR
+           screen-name = 'GS_LEDIT-CURRENCY' OR
+           screen-name = 'TEXT15' OR
+           screen-name = 'GS_LEDIT-TICKET_QUANTITY' OR
+           screen-name = 'TEXT7'.
+          screen-input = 0.
+          screen-invisible = 1.
+          MODIFY SCREEN.
+        ENDIF.
+      ENDLOOP.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_line_name_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_line_name_field .
+
+  DATA : lv_bpid   TYPE zc103sdt0011-bpid,
+         lv_custid TYPE zc103sdt0011-custid.
+
+  CLEAR : gv_pbname, gv_cbname, gv_utype.
+
+*-- Get Name at Cargo part
+  IF ( gs_ledit-bookingid IS INITIAL ) AND
+     ( gs_ledit-transportid IS NOT INITIAL ). " Cargo
+
+    SELECT SINGLE bp~bpname
+      FROM zc103sdt0001 AS bp INNER JOIN zc103sdt0017 AS tb
+      ON bp~bpid EQ tb~bpid
+      WHERE tb~transportid EQ @gs_ledit-transportid
+      INTO ( @gv_cbname ).
+
+*-- Get Name at Passenger part
+  ELSEIF ( gs_ledit-bookingid IS NOT INITIAL ) AND
+         ( gs_ledit-transportid IS INITIAL ). " Passenger
+
+*-- CHECK Passenger OR Travel Agency
+    SELECT SINGLE bpid, custid
+    FROM zc103sdt0011
+    WHERE bookingid EQ @gs_ledit-bookingid
+    INTO ( @lv_bpid, @lv_custid ).
+
+*-- Get name(Passenger, Travel Agency)
+    IF lv_custid IS NOT INITIAL.
+      SELECT SINGLE name
+        FROM zc103sdt0002
+        WHERE custid EQ @lv_custid
+        INTO ( @gv_pbname ).
+    ELSEIF lv_bpid IS NOT INITIAL.
+      SELECT SINGLE bpname
+        FROM zc103sdt0001
+        WHERE bpid EQ @lv_bpid
+        INTO ( @gv_pbname ).
+    ENDIF.
+
+  ENDIF.
+
+*-- GET Type
+  CASE gs_ledit-charged_item.
+    WHEN 'A'.
+      gv_utype = '여객'.
+    WHEN 'B'.
+      gv_utype = '화물'.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_line_save_button
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_line_save_button .
+
+*-- Check Input Data
+  IF ( gs_ledit-order_status NE 'Y' ) AND
+     ( gs_ledit-order_status NE 'N' ) AND
+     ( gs_ledit-order_status NE 'C' ).
+    MESSAGE i000 WITH TEXT-e11 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 120.
+  ENDIF.
+
+*-- Check Cancel Status
+  PERFORM get_gs_head.
+  IF ( gs_head-cancel_deadline LT sy-datum ).
+    MESSAGE i000 WITH TEXT-e05 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 120.
+  ENDIF.
+
+*-- CHECK Cargo weight
+  IF ( gs_ledit-bookingid IS INITIAL ) AND
+     ( gs_ledit-transportid IS NOT INITIAL ) AND
+     ( gs_ledit-cargo_weight LE 0 ).
+    MESSAGE i000 WITH TEXT-e12 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 120.
+  ENDIF.
+
+*-- Cargo Part
+  IF ( gs_ledit-bookingid IS INITIAL ) AND
+     ( gs_ledit-transportid IS NOT INITIAL ).
+    PERFORM save_line_pop_data.
+    PERFORM calculate_price_byweight.
+
+*-- Travel Agency Part & Passenger
+  ELSEIF ( gs_ledit-bookingid IS NOT INITIAL ) AND
+         ( gs_ledit-transportid IS INITIAL ).
+    PERFORM save_line_pop_data.
+    PERFORM calculate_price_byorderstat.
+*    IF gv_milestat EQ 'S'.
+*      gv_milestat = 'P'.
+*      EXIT.
+*    ENDIF.
+
+*-- 티켓 업데이트는 불가능하도록
+*    PERFORM calculate_price_byticket_count.
+  ENDIF.
+
+  PERFORM refresh_head_table.
+  PERFORM refresh_line_table.
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_line_pop_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_line_pop_data.
+
+*-- Save DATA
+  DATA : lv_answer,
+         lv_custid TYPE zc103sdt0002-custid,
+         lv_bpid   TYPE zc103sdt0001-bpid.
+
+*-- Pop-up Dialog
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+*-- CHECK Changed
+  CLEAR : gs_line.
+  LOOP AT gt_line INTO gs_line WHERE orderid = gs_ledit-orderid
+                                 AND orderitemno = gs_ledit-orderitemno.
+    IF ( gs_line-description EQ gs_ledit-description ) AND
+       ( gs_line-cargo_weight EQ gs_ledit-cargo_weight ) AND
+       ( gs_line-order_status EQ gs_ledit-order_status ).
+      MESSAGE i000 WITH TEXT-w11 DISPLAY LIKE 'W'.
+      LEAVE TO SCREEN 120.
+    ENDIF.
+  ENDLOOP.
+
+*-- Check Passenger or Travel Agency
+  SELECT SINGLE bpid, custid
+    FROM zc103sdt0011
+    WHERE bookingid EQ @gs_ledit-bookingid
+    INTO ( @lv_bpid, @lv_custid ).
+
+*-- Check Total Mileage
+*  IF lv_custid IS NOT INITIAL.
+*    CLEAR : gv_tmile.
+*
+**-- GET Customer Total Mileage
+*    PERFORM get_cust_totalmileage USING lv_custid CHANGING gv_tmile.
+*    gv_tmile = gv_tmile + gv_bfmile.
+*    gv_afmile = gs_ledit-used_mileage.
+**-- IF Before edit(Used Mileage Value) > Customer Total Mileage
+**-- -> EXIT
+*    IF ( gv_afmile > gv_tmile ).
+*      MESSAGE i002 WITH TEXT-e04 gv_tmile DISPLAY LIKE 'E'.
+*      gv_milestat = 'S'.
+*      EXIT.
+*    ENDIF.
+*  ENDIF.
+
+*-- SET Time Stamp
+  IF gs_ledit-erdat IS INITIAL.
+    gs_ledit-erdat = sy-datum.
+    gs_ledit-ernam = sy-uname.
+    gs_ledit-erzet = sy-uzeit.
+  ELSE.
+    gs_ledit-aedat = sy-datum.
+    gs_ledit-aenam = sy-uname.
+    gs_ledit-aezet = sy-uzeit.
+  ENDIF.
+
+  gs_line = CORRESPONDING #( gs_ledit ).
+  gs_ldisplay = CORRESPONDING #( gs_ledit ).
+  PERFORM set_line_text_field.
+
+*-- MODIFY gt_line
+  MODIFY gt_line FROM gs_line TRANSPORTING erdat ernam erzet
+                                           aedat aenam aezet
+                                           description cargo_weight
+                                           currency order_status
+                              WHERE orderid = gs_line-orderid AND
+                                    orderitemno = gs_line-orderitemno.
+
+  MODIFY gt_ldisplay FROM gs_ldisplay TRANSPORTING description cargo_weight
+                                           currency order_status
+                              WHERE orderid = gs_line-orderid AND
+                                    orderitemno = gs_line-orderitemno.
+
+  PERFORM set_line_text_field.
+
+*-- Update DB
+  UPDATE zc103sdt0007
+  SET description = gs_ledit-description
+      cargo_weight = gs_ledit-cargo_weight
+      currency = gs_ledit-currency
+      order_status = gs_ledit-order_status
+      erdat = gs_ledit-erdat
+      ernam = gs_ledit-ernam
+      erzet = gs_ledit-erzet
+      aedat = gs_ledit-aedat
+      aenam = gs_ledit-aenam
+      aezet = gs_ledit-aezet
+  WHERE orderid = gs_ledit-orderid
+  AND orderitemno = gs_ledit-orderitemno.
+
+*-- MESSAGE
+  IF sy-subrc EQ 0.
+    MESSAGE s001 WITH TEXT-s01 DISPLAY LIKE 'S'.
+    COMMIT WORK.
+  ELSE.
+    MESSAGE e001 WITH TEXT-e03 DISPLAY LIKE 'E'.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form calculate_price_byweight
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM calculate_price_byweight .
+
+  DATA : lv_tprice       TYPE zc103sdt0006-total_amount,
+         lv_ttax         TYPE zc103sdt0007-tax_amount,
+         ls_htprice      TYPE zc103sdt0006,
+         lt_htprice      TYPE TABLE OF zc103sdt0006,
+         ls_ltprice      TYPE zc103sdt0007,
+         lt_ltprice      TYPE TABLE OF zc103sdt0007,
+         lv_amount       TYPE wrbtr,
+         lv_convert_desc TYPE string,
+         lv_char         TYPE char20,
+         lv_conv_amt     TYPE wrbtr,
+         lo_conv         TYPE REF TO zc103sdc_exrate_converter,
+         lv_lprice       TYPE wrbtr,
+         lv_etprice      TYPE wrbtr,
+         lv_ettax        TYPE wrbtr.
+
+  CREATE OBJECT lo_conv.
+
+*-- Get Head Data
+  SELECT orderid, bpid, custid, conditionid, order_date, cancel_deadline, order_type,
+         total_amount, currency, order_status, cancel_reason, billing_status, srv_end_status,
+         erdat, ernam, erzet, aenam, aezet, aedat
+    FROM zc103sdt0006
+    WHERE orderid EQ @gs_ledit-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_htprice.
+
+*-- Get Line Data
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description, ticket_quantity,
+         ticket_unit, cargo_weight, cargo_unit, unit_price, tax_amount, discount, currency,
+         used_mileage, order_status, srv_end_status,
+         erdat, ernam, erzet, aenam, aezet, aedat
+    FROM zc103sdt0007
+    WHERE order_status EQ 'N'
+      AND orderid EQ @gs_ledit-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_ltprice.
+
+*-- Sort lt_ltprice
+  SORT lt_ltprice BY orderid.
+
+*-- Caculate Total Price
+  LOOP AT lt_htprice INTO ls_htprice.
+
+    CLEAR : lv_tprice, lv_ttax.
+
+    LOOP AT lt_ltprice INTO ls_ltprice WHERE orderid = ls_htprice-orderid.
+      lv_lprice = ( ls_ltprice-cargo_weight * ls_ltprice-unit_price ).
+*-- Cargo weight * unit price
+*-- CONVERT to krw
+      lv_char = lv_lprice.
+      REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+      lv_amount = lv_char.
+
+      lo_conv->convert_amount(
+        EXPORTING
+          iv_amount = lv_amount
+          iv_from_curr = ls_ltprice-currency
+          iv_to_curr = 'KRW'
+          iv_date = ls_htprice-order_date
+        IMPORTING
+          ev_local_amt = lv_conv_amt
+          ev_desc = lv_convert_desc ).
+*-- Add Total Price
+      lv_tprice += lv_conv_amt.
+
+*-- Tax amount
+      ls_ltprice-tax_amount = ( ( ls_ltprice-cargo_weight * ls_ltprice-unit_price ) / 10 ).
+
+      lv_char = ls_ltprice-tax_amount.
+      REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+      lv_amount = lv_char.
+
+      lo_conv->convert_amount(
+        EXPORTING
+          iv_amount = lv_amount
+          iv_from_curr = ls_ltprice-currency
+          iv_to_curr = 'KRW'
+          iv_date = ls_htprice-order_date
+        IMPORTING
+          ev_local_amt = lv_conv_amt
+          ev_desc = lv_convert_desc ).
+*-- Add Total Price
+      lv_ttax += lv_conv_amt.
+
+*-- Time Stamp
+      IF ls_ltprice-erdat IS INITIAL.
+        ls_ltprice-erdat = sy-datum.
+        ls_ltprice-erzet = sy-uzeit.
+        ls_ltprice-ernam = sy-uname.
+      ELSE.
+        ls_ltprice-aedat = sy-datum.
+        ls_ltprice-aezet = sy-uzeit.
+        ls_ltprice-aenam = sy-uname.
+      ENDIF.
+
+      MODIFY lt_ltprice FROM ls_ltprice TRANSPORTING tax_amount ernam erdat erzet
+                                                   aedat aezet aenam.
+
+*-- Modify ALV ITab(Line)
+      READ TABLE gt_line ASSIGNING FIELD-SYMBOL(<fs_line>)
+                         WITH KEY orderitemno = ls_ltprice-orderitemno.
+      IF sy-subrc EQ 0.
+        <fs_line>-tax_amount = ls_ltprice-tax_amount.
+      ENDIF.
+
+*-- MODIFY alv ITab(Line Display)
+      READ TABLE gt_ldisplay ASSIGNING FIELD-SYMBOL(<fs_dline>)
+                           WITH KEY orderitemno = ls_ltprice-orderitemno.
+      IF sy-subrc EQ 0.
+        <fs_dline>-tax_amount = ls_ltprice-tax_amount.
+      ENDIF.
+    ENDLOOP.
+
+*-- Convert Total Price to Head Currency Type
+    lv_char = lv_tprice.
+    REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+    lv_amount = lv_char.
+
+    lo_conv->convert_amount(
+      EXPORTING
+        iv_amount = lv_amount
+        iv_from_curr = 'KRW'
+        iv_to_curr = gs_head-currency
+        iv_date = gs_head-order_date
+      IMPORTING
+        ev_local_amt = lv_conv_amt
+        ev_desc = lv_convert_desc ).
+
+    lv_etprice = lv_conv_amt.
+
+    lv_char = lv_ttax.
+    REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+    lv_amount = lv_char.
+
+    lo_conv->convert_amount(
+      EXPORTING
+        iv_amount = lv_amount
+        iv_from_curr = 'KRW'
+        iv_to_curr = gs_head-currency
+        iv_date = gs_head-order_date
+      IMPORTING
+        ev_local_amt = lv_conv_amt
+        ev_desc = lv_convert_desc ).
+
+    lv_ettax = lv_conv_amt.
+
+*-- Total Price = Total Price + Total Tax
+    ls_htprice-total_amount = lv_etprice + lv_ettax.
+
+*-- Check Order Status
+    IF ls_htprice-total_amount EQ 0.
+      ls_htprice-order_status = 'C'.
+    ELSE.
+      ls_htprice-order_status = 'N'.
+    ENDIF.
+
+*-- Time Stamp
+    IF ls_htprice-erdat IS INITIAL.
+      ls_htprice-erdat = sy-datum.
+      ls_htprice-erzet = sy-uzeit.
+      ls_htprice-ernam = sy-uname.
+    ELSE.
+      ls_htprice-aedat = sy-datum.
+      ls_htprice-aezet = sy-uzeit.
+      ls_htprice-aenam = sy-uname.
+    ENDIF.
+
+    MODIFY lt_htprice FROM ls_htprice TRANSPORTING total_amount order_status ernam erdat
+                                                   erzet aedat aezet aenam.
+
+*-- MODIFY alv ITab(Head)
+    READ TABLE gt_head ASSIGNING FIELD-SYMBOL(<fs_head>)
+                       WITH KEY orderid = ls_htprice-orderid.
+    IF sy-subrc EQ 0.
+      <fs_head>-total_amount = ls_htprice-total_amount.
+      <fs_head>-order_status = ls_htprice-order_status.
+    ENDIF.
+
+*-- MODIFY alv ITab(Head Display)
+    READ TABLE gt_hdisplay ASSIGNING FIELD-SYMBOL(<fs_dhead>)
+                           WITH KEY orderid = ls_htprice-orderid.
+    IF sy-subrc EQ 0.
+      <fs_dhead>-total_amount = ls_htprice-total_amount.
+      <fs_dhead>-order_status = ls_htprice-order_status.
+    ENDIF.
+  ENDLOOP.
+
+*-- Update DB Table(Header)
+  UPDATE zc103sdt0006 FROM TABLE lt_htprice.
+
+*-- Update DB Table(Line)
+  UPDATE zc103sdt0007 FROM TABLE lt_ltprice.
+
+*-- Update 화물 예약 테이블
+  READ TABLE lt_ltprice INTO ls_ltprice INDEX 1.
+  READ TABLE lt_htprice INTO ls_htprice INDEX 1.
+  UPDATE zc103sdt0017 SET weight = @ls_ltprice-cargo_weight,
+                          price = @ls_htprice-total_amount
+                      WHERE transportid = @ls_ltprice-transportid.
+
+  IF ( sy-subrc EQ 0 ).
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+*-- Unassign Field Symbol
+  UNASSIGN : <fs_line>, <fs_head>, <fs_dhead>, <fs_dline>.
+
+  CLEAR : gs_ledit.
+
+  PERFORM set_head_text_field.
+  PERFORM set_line_text_field.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form change_line_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM change_line_data .
+
+  DATA : lt_cline TYPE TABLE OF zc103sdt0007.
+
+  CLEAR: gt_line, gt_ldisplay.
+
+*-- Get Line Data
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description,
+         ticket_quantity, ticket_unit, cargo_weight, cargo_unit, unit_price,
+         tax_amount, discount, currency, used_mileage, order_status, srv_end_status
+    FROM zc103sdt0007
+    WHERE orderid EQ @gs_hedit-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_line.
+
+*-- Change Order Status -> 'C'(Line)
+  LOOP AT gt_line ASSIGNING FIELD-SYMBOL(<fs_cline>).
+
+    <fs_cline>-order_status = 'C'.
+
+*-- Move Data(Base -> Display)
+    gs_ldisplay = CORRESPONDING #( <fs_cline> ).
+    APPEND gs_ldisplay TO gt_ldisplay.
+
+*-- SET Time Stamp
+    IF <fs_cline>-erdat IS INITIAL.
+      <fs_cline>-erdat = sy-datum.
+      <fs_cline>-ernam = sy-uname.
+      <fs_cline>-erzet = sy-uzeit.
+    ELSE.
+      <fs_cline>-aedat = sy-datum.
+      <fs_cline>-aenam = sy-uname.
+      <fs_cline>-aezet = sy-uzeit.
+    ENDIF.
+
+    lt_cline = CORRESPONDING #( gt_line ).
+
+    UPDATE zc103sdt0007 FROM TABLE lt_cline.
+
+  ENDLOOP.
+
+  PERFORM set_line_text_field.
+
+  UNASSIGN : <fs_cline>.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form calculate_price_byticket_count
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM calculate_price_byticket_count .
+
+  DATA : lv_tprice       TYPE zc103sdt0006-total_amount,
+         lv_ttax         TYPE zc103sdt0007-tax_amount,
+         lv_bpid         TYPE zc103sdt0011-bpid,
+         lv_custid       TYPE zc103sdt0011-custid,
+         lv_discountrate TYPE zc103sdt0003-discountrate,
+         lv_discount     TYPE zc103sdt0007-discount,
+         lv_dispacked    TYPE p LENGTH 3 DECIMALS 2,
+         lv_conditionid  TYPE zc103sdt0003-conditionid,
+         lv_tabix        TYPE sy-tabix,
+         lv_curtabix     TYPE sy-tabix,
+         ls_htprice      TYPE zc103sdt0006,
+         lt_htprice      TYPE TABLE OF zc103sdt0006,
+         ls_ltprice      TYPE zc103sdt0007,
+         lt_ltprice      TYPE TABLE OF zc103sdt0007,
+         lt_mile         TYPE TABLE OF zc103sdt0010.
+
+*-- Check Passenger or Travel Agency
+  SELECT SINGLE bpid, custid
+    FROM zc103sdt0011
+    WHERE bookingid EQ @gs_ledit-bookingid
+    INTO ( @lv_bpid, @lv_custid ).
+
+  IF lv_bpid IS NOT INITIAL.
+*-- GET Head DATA
+    SELECT orderid, bpid, custid, conditionid, order_date, cancel_deadline, order_type,
+    total_amount, currency, order_status, cancel_reason, billing_status
+    FROM zc103sdt0006
+    WHERE order_status IN ( 'N', 'F' )
+      AND orderid EQ @gs_ledit-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_htprice.
+
+*-- Get Line Data
+    SELECT orderid, orderitemno, bookingid, transportid, charged_item, description, ticket_quantity,
+           ticket_unit, cargo_weight, cargo_unit, unit_price, tax_amount, discount, currency,
+           used_mileage, order_status
+      FROM zc103sdt0007
+      WHERE order_status IN ( 'N', 'F' )
+        AND orderid EQ @gs_ledit-orderid
+      INTO CORRESPONDING FIELDS OF TABLE @lt_ltprice.
+
+*-- Get Sales Condition
+    READ TABLE lt_htprice INTO ls_htprice INDEX 1.
+    IF ls_htprice-conditionid IS NOT INITIAL.
+      lv_conditionid = ls_htprice-conditionid.
+
+      SELECT SINGLE discountrate
+        FROM zc103sdt0003
+        WHERE conditionid EQ @lv_conditionid
+        INTO ( @lv_discountrate ).
+
+      lv_dispacked = ( lv_discountrate / 100 ).
+    ELSE.
+      lv_dispacked = 1.
+    ENDIF.
+
+    CLEAR : ls_htprice.
+
+*-- Sort lt_ltprice
+    SORT lt_ltprice BY orderid.
+
+*-- Calculate Total Price
+    LOOP AT lt_htprice INTO ls_htprice.
+
+      CLEAR : lv_tprice, lv_ttax.
+
+      LOOP AT lt_ltprice INTO ls_ltprice WHERE orderid = ls_htprice-orderid.
+
+*-- Ticket count * unit price
+        lv_tprice += ( ls_ltprice-ticket_quantity * ls_ltprice-unit_price ).
+
+*-- Discount amount(Total Price * Discount Percent)
+        ls_ltprice-discount = ( lv_tprice * lv_dispacked ).
+
+*-- Tax amount(Total Price * ( 1 - Discount Percent ) ) / 10 )
+        ls_ltprice-tax_amount = ( ( lv_tprice * ( 1 - lv_dispacked ) ) / 10 ).
+        lv_ttax += ls_ltprice-tax_amount.
+
+*-- Time Stamp
+        IF ls_ltprice-erdat IS INITIAL.
+          ls_ltprice-erdat = sy-datum.
+          ls_ltprice-erzet = sy-uzeit.
+          ls_ltprice-ernam = sy-uname.
+        ELSE.
+          ls_ltprice-aedat = sy-datum.
+          ls_ltprice-aezet = sy-uzeit.
+          ls_ltprice-aenam = sy-uname.
+        ENDIF.
+        MODIFY lt_ltprice FROM ls_ltprice TRANSPORTING tax_amount discount ernam erdat erzet
+                                                           aedat aezet aenam.
+
+*-- Modify ALV ITab(Line)
+        READ TABLE gt_line ASSIGNING FIELD-SYMBOL(<fs_line>)
+                           WITH KEY orderitemno = ls_ltprice-orderitemno.
+        IF sy-subrc EQ 0.
+          <fs_line>-tax_amount = ls_ltprice-tax_amount.
+          <fs_line>-discount = ls_ltprice-discount.
+        ENDIF.
+
+      ENDLOOP.
+
+*-- Total Price
+      ls_htprice-total_amount = ( ( lv_tprice * ( 1 - lv_dispacked ) ) + lv_ttax ).
+
+*-- Check Order Status
+      IF ls_htprice-total_amount EQ 0.
+        ls_htprice-order_status = 'Y'.
+      ELSE.
+        ls_htprice-order_status = 'N'.
+      ENDIF.
+
+*-- Time Stamp
+      IF ls_htprice-erdat IS INITIAL.
+        ls_htprice-erdat = sy-datum.
+        ls_htprice-erzet = sy-uzeit.
+        ls_htprice-ernam = sy-uname.
+      ELSE.
+        ls_htprice-aedat = sy-datum.
+        ls_htprice-aezet = sy-uzeit.
+        ls_htprice-aenam = sy-uname.
+      ENDIF.
+
+      MODIFY lt_htprice FROM ls_htprice TRANSPORTING total_amount order_status ernam erdat
+                                                     erzet aedat aezet aenam.
+
+*-- MODIFY alv ITab(Head)
+      READ TABLE gt_head ASSIGNING FIELD-SYMBOL(<fs_head>)
+                         WITH KEY orderid = ls_htprice-orderid.
+      IF sy-subrc EQ 0.
+        <fs_head>-total_amount = ls_htprice-total_amount.
+        <fs_head>-order_status = ls_htprice-order_status.
+      ENDIF.
+    ENDLOOP.
+
+*-- Update DB Table(Header)
+    UPDATE zc103sdt0006 FROM TABLE lt_htprice.
+
+*-- Update DB Table(Line)
+    UPDATE zc103sdt0007 FROM TABLE lt_ltprice.
+
+*-- Unassign Field Symbol
+    UNASSIGN : <fs_line>, <fs_head>.
+
+    CLEAR : gs_ledit.
+
+  ELSEIF lv_custid IS NOT INITIAL.
+
+*-- Get Mileage Date
+    SELECT mileage_id, custid, occur_date, expire_date, event_type,
+           bookingid, mile_amount, balance_after, mile_total, erdat,
+           erzet, ernam, aedat, aezet, aenam
+      FROM zc103sdt0010
+      WHERE custid EQ @lv_custid
+      INTO CORRESPONDING FIELDS OF TABLE @lt_mile.
+
+**********************************************************************
+*-- Before Edit Mileage Logic
+**********************************************************************
+*-- Sort by expire_date
+    SORT lt_mile BY expire_date ASCENDING.
+
+*-- GET Target row(Previous TYPE 'A')
+    CLEAR : lv_tabix, lv_curtabix.
+
+    READ TABLE lt_mile ASSIGNING FIELD-SYMBOL(<fs_bmile>) WITH KEY event_type = 'A'.
+
+    IF sy-subrc NE 0.
+      MESSAGE s001 WITH TEXT-w09 DISPLAY LIKE 'W'.
+      EXIT.
+    ENDIF.
+
+    lv_curtabix = sy-tabix - 1.
+
+*-- Edit Before Mileage
+    WHILE lv_curtabix > 0.
+
+      READ TABLE lt_mile ASSIGNING <fs_bmile> INDEX lv_curtabix.
+      IF sy-subrc NE 0.
+        EXIT.
+      ENDIF.
+
+      IF <fs_bmile>-mile_amount <= gv_bfmile.
+        gv_bfmile = gv_bfmile - <fs_bmile>-mile_amount.
+        <fs_bmile>-balance_after = <fs_bmile>-mile_total.
+        <fs_bmile>-mile_amount = 0.
+        <fs_bmile>-event_type = 'A'.
+        lv_curtabix = lv_curtabix - 1.
+      ELSE.
+        <fs_bmile>-mile_amount = <fs_bmile>-mile_amount - gv_bfmile.
+        <fs_bmile>-balance_after = <fs_bmile>-balance_after + gv_bfmile.
+        <fs_bmile>-event_type = 'B'.
+        EXIT.
+      ENDIF.
+
+    ENDWHILE.
+
+    CLEAR : gv_bfmile.
+
+    UNASSIGN <fs_bmile>.
+
+**********************************************************************
+*-- After Edit Mileage Logic
+**********************************************************************
+*-- Get Target row(Event type = 'B')
+    CLEAR : lv_tabix, lv_curtabix.
+
+    READ TABLE lt_mile ASSIGNING FIELD-SYMBOL(<fs_amile>) WITH KEY event_type = 'B'.
+
+    IF sy-subrc NE 0.
+      READ TABLE lt_mile ASSIGNING <fs_amile> WITH KEY event_type = 'A'.
+    ENDIF.
+
+    IF sy-subrc NE 0.
+      MESSAGE s001 WITH TEXT-w09 DISPLAY LIKE 'E'.
+      EXIT.
+    ENDIF.
+
+    lv_curtabix = sy-tabix.
+
+*-- Edit After Mileage
+    WHILE lv_curtabix <= lines( lt_mile ).
+      READ TABLE lt_mile ASSIGNING <fs_amile> INDEX lv_curtabix.
+      IF sy-subrc NE 0.
+        EXIT.
+      ENDIF.
+      IF <fs_amile>-balance_after <= gv_afmile.
+        gv_afmile = gv_afmile - <fs_amile>-balance_after.
+        <fs_amile>-balance_after = 0.
+        <fs_amile>-mile_amount = <fs_amile>-mile_total.
+        <fs_amile>-event_type = 'C'.
+        lv_curtabix = lv_curtabix + 1.
+      ELSE.
+        <fs_amile>-balance_after = <fs_amile>-balance_after - gv_afmile.
+        <fs_amile>-mile_amount = <fs_amile>-mile_amount + gv_afmile.
+        <fs_amile>-event_type = 'B'.
+        EXIT.
+      ENDIF.
+
+*-- Time Stamp
+      IF <fs_amile>-erdat IS INITIAL.
+        <fs_amile>-erdat = sy-datum.
+        <fs_amile>-erzet = sy-uzeit.
+        <fs_amile>-ernam = sy-uname.
+      ELSE.
+        <fs_amile>-aedat = sy-datum.
+        <fs_amile>-aezet = sy-uzeit.
+        <fs_amile>-aenam = sy-uname.
+      ENDIF.
+
+    ENDWHILE.
+
+
+    UNASSIGN <fs_amile>.
+
+    CLEAR : gv_afmile.
+
+*-- Update DB Table
+    UPDATE zc103sdt0010 FROM TABLE lt_mile.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_cust_totalmileage
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LV_CUSTID
+*&      <-- GV_TMILE
+*&---------------------------------------------------------------------*
+FORM get_cust_totalmileage  USING    pv_custid
+                            CHANGING pv_tmile.
+
+  DATA : lt_mile TYPE TABLE OF zc103sdt0010.
+
+  SELECT mileage_id, custid, occur_date, expire_date, event_type,
+         bookingid, mile_amount, balance_after, mile_total, erdat, erzet,
+         ernam, aedat, aezet, aenam
+    FROM zc103sdt0010
+    WHERE custid EQ @pv_custid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_mile.
+
+*-- Calculate Total Mileage
+  LOOP AT lt_mile ASSIGNING FIELD-SYMBOL(<fs_mile>).
+
+    IF <fs_mile>-event_type NE 'C'.
+      pv_tmile += <fs_mile>-balance_after.
+    ENDIF.
+
+  ENDLOOP.
+
+  UNASSIGN <fs_mile>.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form excel_download
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM excel_download .
+
+  DATA : lt_roid   TYPE lvc_t_roid,
+         ls_roid   TYPE lvc_s_roid,
+         lv_line   TYPE i,
+         lv_answer.
+
+*-- Get Selected row
+  CALL METHOD go_top_alv_grid->get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+*-- Message
+  IF lt_roid IS INITIAL.
+    MESSAGE s001 WITH TEXT-e06 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+*-- Only Single Line
+  lv_line = lines( lt_roid ).
+
+  IF lv_line GT 1.
+    MESSAGE s001 WITH TEXT-e07 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+*-- Dialog Box
+  PERFORM set_POPUP_TO_CONFIRM2 CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1' OR lv_answer EQ '2'.
+
+  IF lv_answer EQ '2'.
+    gv_pdf = abap_true.
+  ENDIF.
+
+*-- Get Selected Header Info
+  ls_roid = VALUE #( lt_roid[ 1 ] OPTIONAL ).
+  gs_head = VALUE #( gt_head[ ls_roid-row_id ] OPTIONAL ).
+
+*-- IF gt_line is initial -> get line data
+  IF gt_line IS INITIAL.
+    PERFORM get_line_data USING gs_head-orderid.
+  ENDIF.
+
+  IF objfile IS INITIAL.
+    TRY.
+        CREATE OBJECT objfile.
+    ENDTRY.
+  ENDIF.
+
+*-- Open file save window
+  IF pfolder IS NOT INITIAL.
+    initialfolder = pfolder.
+  ELSE.
+    objfile->get_temp_directory( CHANGING temp_dir = initialfolder
+                                 EXCEPTIONS cntl_error = 1
+                                           error_no_gui = 2
+                                           not_supported_by_gui = 3 ).
+  ENDIF.
+
+  objfile->directory_browse( EXPORTING initial_folder = initialfolder
+                             CHANGING selected_folder = pickedfolder
+                             EXCEPTIONS cntl_error = 1
+                                        error_no_gui = 2
+                                        not_supported_by_gui = 3 ).
+
+  IF sy-subrc = 0.
+    pfolder = pickedfolder.
+  ELSE.
+    MESSAGE 'An error has occured picking a folder' TYPE 'I' DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  IF pfolder IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  CALL METHOD objfile->free.
+  FREE objfile.
+
+  PERFORM download_excel.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form download_excel
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM download_excel .
+
+  DATA : lv_rc      TYPE i,
+         lv_cusname TYPE zc103sdt0002-name,
+         lv_bpname  TYPE zc103sdt0001-bpname.
+
+*-- File name
+  CLEAR gv_temp_filename.
+
+  IF gs_head-custid IS NOT INITIAL.
+*-- GET Customer Name
+    SELECT SINGLE name
+      FROM zc103sdt0002
+      WHERE custid EQ @gs_head-custid
+      INTO ( @lv_cusname ).
+
+    CONCATENATE pfolder '\' lv_cusname '-' gs_head-order_date '.XLS'
+              INTO gv_temp_filename.
+  ELSE.
+*-- GET bp Name
+    SELECT SINGLE bpname
+      FROM zc103sdt0001
+      WHERE bpid EQ @gs_head-bpid
+      INTO ( @lv_bpname ).
+
+    CONCATENATE pfolder '\' lv_bpname '-' gs_head-order_date '.XLS'
+            INTO gv_temp_filename.
+  ENDIF.
+
+  IF ( gs_head-order_type EQ 'T' ) OR
+     ( gs_head-order_type EQ 'C' ).
+    gv_form = 'ZSALES_ORDERS_TRAVEL'.
+  ELSE.
+    gv_form = 'ZSALES_ORDERS_CARGO'.
+  ENDIF.
+
+  PERFORM download_template   USING gv_form gv_temp_filename.
+  PERFORM open_excel_template USING gv_form.
+  PERFORM fill_excel_line.
+
+*-- 기본적으로 Sheet 1을 보여주도록 셋팅
+  CALL METHOD OF excel 'SHEETS' = sheet EXPORTING #1 = 1.
+  CALL METHOD OF sheet 'SELECT' NO FLUSH.
+
+*-- 모두 출력후 맨윗칸으로 커서 이동
+  CALL METHOD OF excel 'Cells' = cell
+    EXPORTING
+      #1 = 1
+      #2 = 1.
+
+  CALL METHOD OF cell 'Select'.
+
+  SET PROPERTY OF excel 'VISIBLE' = 1 . "엑셀 데이타를 다 뿌리고나서 보여줌
+
+*-- Convert to PDF
+  IF gv_pdf EQ abap_true.
+    PERFORM convert_to_pdf.
+  ENDIF.
+
+*-- Convert to PDF
+  IF gv_pdf EQ abap_true.
+    PERFORM convert_to_pdf.
+    MESSAGE s001 WITH TEXT-s05.
+  ELSE.
+    MESSAGE s001 WITH TEXT-s06.
+  ENDIF.
+
+  CLEAR : gv_pdf.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form download_template
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GV_FORM
+*&      --> GV_TEMP_FILENAME
+*&---------------------------------------------------------------------*
+FORM download_template  USING    p_zform
+                                 p_filename.
+
+  DATA : wwwdata_item LIKE wwwdatatab,
+         rc           TYPE i.
+
+  gv_file = p_filename.
+
+  CALL FUNCTION 'WS_FILE_DELETE'
+    EXPORTING
+      file   = gv_file
+    IMPORTING
+      return = rc.
+
+  IF rc = 0 OR rc = 1.
+
+  ELSE.
+    MESSAGE e001  WITH '임시파일 초기화 실패.'
+                       '이전에 Excel에서 자료를 OPEN하였는지 확인.'.
+  ENDIF.
+
+  SELECT SINGLE * FROM wwwdata
+    INTO CORRESPONDING FIELDS OF wwwdata_item
+   WHERE objid = p_zform.
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      key         = wwwdata_item
+      destination = gv_file.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form open_excel_template
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GV_FORM
+*&---------------------------------------------------------------------*
+FORM open_excel_template  USING    p_zform.
+
+  IF excel IS INITIAL.
+    CREATE OBJECT excel 'EXCEL.APPLICATION'.
+  ENDIF.
+
+  IF sy-subrc NE 0.
+    MESSAGE i001 WITH sy-msgli.
+  ENDIF.
+
+  CALL METHOD OF excel 'WORKBOOKS' = workbook.
+  SET PROPERTY OF excel 'VISIBLE' = 0 .
+
+  CALL METHOD OF workbook 'OPEN' EXPORTING #1 = gv_file.
+
+*-- Sheet에대한 설정을 할때 사용된다.
+
+
+
+
+
+
+  GET PROPERTY OF : workbook    'Application' = application,
+                    application 'ActiveSheet' = activesheet.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form fill_excel_line
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM fill_excel_line .
+
+  DATA : lv_orderdate(10),
+         lv_deadline(10),
+         lv_cusname            TYPE zc103sdt0002-name,
+         lv_bpname             TYPE zc103sdt0001-bpname,
+         lv_orderid            TYPE zc103sdt0007-orderid,
+         lv_line               TYPE i,
+         lv_unit_price(20),
+         lv_tax_price(20),
+         lv_total_price(20),
+         lv_discount_price(20),
+         lv_ticket_quan(20),
+         lv_cargo_weight(20),
+         lv_charged_item(20),
+         lv_order_status(20).
+
+*-- Get Customer Name
+  SELECT SINGLE name
+    FROM zc103sdt0002
+    WHERE custid EQ @gs_head-custid
+    INTO ( @lv_cusname ).
+
+*-- Get BP Name
+  SELECT SINGLE bpname
+    FROM zc103sdt0001
+    WHERE bpid EQ @gs_head-bpid
+    INTO ( @lv_bpname ).
+
+**********************************************************************
+* Write Sales Order Header
+**********************************************************************
+*-- 판매오더 발생일
+  CLEAR : lv_orderdate.
+  lv_orderdate = gs_head-order_date(4) && '.' && gs_head-order_date+4(2) && '.' &&
+                 gs_head-order_date+6(2).
+  PERFORM fill_cells USING 8 3 lv_orderdate.
+
+*-- 취소 가능일
+  CLEAR : lv_deadline.
+  lv_deadline = gs_head-cancel_deadline(4) && '.' && gs_head-cancel_deadline+4(2) && '.' &&
+                gs_head-cancel_deadline+6(2).
+  PERFORM fill_cells USING 9 3 lv_deadline.
+
+*-- Customer, BP 명
+  IF gs_head-custid IS NOT INITIAL.
+    PERFORM fill_cells USING 10 3 lv_cusname.
+  ELSEIF gs_head-bpid IS NOT INITIAL.
+    PERFORM fill_cells USING 10 3 lv_bpname.
+  ENDIF.
+
+*-- Currency
+  PERFORM fill_cells USING 8 10 gs_head-currency.
+
+*-- Total Price
+  WRITE gs_head-total_amount CURRENCY gs_head-currency TO lv_total_price.
+  PERFORM fill_cells USING 9 10 lv_total_price.
+
+**********************************************************************
+* Write Sales Order Line Item
+**********************************************************************
+  lv_orderid = gs_head-orderid.
+  lv_line = 14.
+
+  LOOP AT gt_line INTO gs_line WHERE orderid EQ lv_orderid.
+
+    WRITE gs_line-unit_price CURRENCY gs_line-currency TO lv_unit_price.
+    WRITE gs_line-tax_amount CURRENCY gs_line-currency TO lv_tax_price.
+    WRITE gs_line-discount CURRENCY gs_line-currency TO lv_discount_price.
+    WRITE gs_line-ticket_quantity TO lv_ticket_quan.
+    WRITE gs_line-cargo_weight UNIT gs_line-cargo_unit TO lv_cargo_weight.
+
+*-- Change order_status to Description
+    IF gs_line-order_status EQ 'Y'.
+      lv_order_status = '결제완료'.
+    ELSEIF gs_line-order_status EQ 'N'.
+      lv_order_status = '미결제'.
+    ELSEIF gs_line-order_status EQ 'C'.
+      lv_order_status = '결제취소'.
+    ELSE.
+      lv_order_status = '결제실패'.
+    ENDIF.
+
+*-- Change charged_item to Description
+    IF gs_line-charged_item EQ 'A'.
+      lv_charged_item = '여객'.
+    ELSE.
+      lv_charged_item = '화물'.
+    ENDIF.
+
+    IF ( gs_head-order_type EQ 'T' ) OR
+       ( gs_head-order_type EQ 'C' ).
+      PERFORM fill_cells USING lv_line 2 gs_line-bookingid.
+      PERFORM fill_cells USING lv_line 3 lv_charged_item.
+      PERFORM fill_cells USING lv_line 4 gs_line-description.
+      PERFORM fill_cells USING lv_line 5 lv_ticket_quan.
+      PERFORM fill_cells USING lv_line 6 gs_line-currency.
+      PERFORM fill_cells USING lv_line 7 lv_unit_price.
+      PERFORM fill_cells USING lv_line 8 lv_tax_price.
+      PERFORM fill_cells USING lv_line 9 lv_discount_price.
+      PERFORM fill_cells USING lv_line 10 lv_order_status.
+
+      lv_line += 1.
+
+    ELSE.
+      PERFORM fill_cells USING lv_line 2 gs_line-transportid.
+      PERFORM fill_cells USING lv_line 3 lv_charged_item.
+      PERFORM fill_cells USING lv_line 4 gs_line-description.
+      PERFORM fill_cells USING lv_line 5 lv_cargo_weight.
+      PERFORM fill_cells USING lv_line 6 gs_line-currency.
+      PERFORM fill_cells USING lv_line 7 lv_unit_price.
+      PERFORM fill_cells USING lv_line 8 lv_tax_price.
+      PERFORM fill_cells USING lv_line 9 lv_discount_price.
+      PERFORM fill_cells USING lv_line 10 lv_order_status.
+
+      lv_line += 1.
+
+    ENDIF.
+
+    CLEAR : lv_unit_price, lv_tax_price, lv_total_price, lv_discount_price,
+            lv_order_status.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form fill_cells
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_8
+*&      --> P_3
+*&      --> LV_ORDERDATE
+*&---------------------------------------------------------------------*
+FORM fill_cells  USING i j val.
+
+  CALL METHOD OF excel 'CELLS' = cell
+    EXPORTING
+      #1 = i " 행
+      #2 = j. "열
+
+  SET PROPERTY OF cell 'VALUE' = val.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_POPUP_TO_CONFIRM2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LV_ANSWER
+*&---------------------------------------------------------------------*
+FORM set_POPUP_TO_CONFIRM2  CHANGING pv_answer.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar       = '데이터 저장'
+      text_question  = '어떤 타입으로 저장하시겠습니까?'
+      text_button_1  = 'Excel'
+      icon_button_1  = 'ICON_XLS'
+      text_button_2  = 'PDF'
+      icon_button_2  = 'ICON_PDF'
+      default_button = '2'
+    IMPORTING
+      answer         = pv_answer.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_line_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_HEAD_ORDERID
+*&---------------------------------------------------------------------*
+FORM get_line_data  USING pv_head_orderid.
+
+  DATA : lv_orderid TYPE zc103sdt0007-orderid.
+
+  lv_orderid = pv_head_orderid.
+
+*-- Get Line Data
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description,
+         ticket_quantity, ticket_unit, cargo_weight, cargo_unit,
+         unit_price, tax_amount, discount, currency, used_mileage, order_status
+    FROM zc103sdt0007
+    WHERE orderid EQ @lv_orderid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_line.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form convert_to_pdf
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM convert_to_pdf .
+
+  DATA : lv_rc      TYPE i,
+         lv_cusname TYPE zc103sdt0002-name,
+         lv_bpname  TYPE zc103sdt0001-bpname.
+
+  CLEAR gv_temp_filename_pdf.
+
+  IF gs_head-custid IS NOT INITIAL.
+*-- GET Customer Name
+    SELECT SINGLE name
+      FROM zc103sdt0002
+      WHERE custid EQ @gs_head-custid
+      INTO ( @lv_cusname ).
+
+    CONCATENATE pfolder '\' lv_cusname '-' gs_head-order_date '.PDF'
+              INTO gv_temp_filename_pdf.
+  ELSE.
+*-- GET bp Name
+    SELECT SINGLE bpname
+      FROM zc103sdt0001
+      WHERE bpid EQ @gs_head-bpid
+      INTO ( @lv_bpname ).
+
+    CONCATENATE pfolder '\' lv_bpname '-' gs_head-order_date '.PDF'
+              INTO gv_temp_filename_pdf.
+  ENDIF.
+
+  GET PROPERTY OF excel 'Workbooks' = workbook
+    EXPORTING #1 = 1.
+
+  CALL METHOD OF workbook 'ExportAsFixedFormat'
+    EXPORTING
+      #1 = '0'
+      #2 = gv_temp_filename_pdf.
+
+  CALL METHOD OF workbook 'Close'
+    EXPORTING
+      #1 = 0.
+
+  CALL METHOD OF excel 'Quit'.
+
+*  CALL METHOD cl_gui_frontend_services=>file_delete
+*    EXPORTING
+*      filename = CONV #( gv_temp_filename )
+*    CHANGING
+*      rc       = lv_rc.
+
+  CALL METHOD OF workbook 'ExportAsFixedFormat'
+    EXPORTING
+      #1 = 0
+      #2 = gv_temp_filename_pdf.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form on_date_selected
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> DATE_BEGIN
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+FORM on_date_selected  USING    pv_date
+                                po_sender TYPE REF TO cl_gui_calendar .
+
+*-- Save Selected Date
+  CLEAR : gv_cale_date.
+  gv_cale_date = pv_date.
+
+*-- Set SO Data
+  PERFORM fetch_so_data USING gv_cale_date.
+
+*-- Refresh ALV Table
+  PERFORM refresh_line_table.
+  PERFORM refresh_head_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form fetch_so_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GV_CANL_DATE
+*&---------------------------------------------------------------------*
+FORM fetch_so_data  USING    pv_cale_date.
+
+  DATA : lv_cale_date TYPE zc103sdt0006-order_date.
+
+  lv_cale_date = pv_cale_date.
+
+*-- Get Head Data by calendar date
+  CLEAR : gt_head, gs_head, gt_line, gs_line, gt_hdisplay, gs_hdisplay, gt_ldisplay, gs_ldisplay.
+
+  SELECT orderid, bpid, custid, conditionid, order_date, cancel_deadline,
+         order_type, total_amount, currency, order_status, cancel_reason, billing_status, srv_end_status
+    FROM zc103sdt0006
+    WHERE order_date EQ @lv_cale_date
+    INTO CORRESPONDING FIELDS OF TABLE @gt_head.
+
+*-- Move Data head to hdisplay
+  LOOP AT gt_head INTO gs_head.
+    gs_hdisplay = CORRESPONDING #( gs_head ).
+    APPEND gs_hdisplay TO gt_hdisplay.
+  ENDLOOP.
+
+  PERFORM set_head_text_field.
+
+*-- Message
+  IF gt_head IS INITIAL.
+    MESSAGE s001 WITH TEXT-e08 DISPLAY LIKE 'E'.
+  ELSE.
+    MESSAGE s001 WITH TEXT-s03 DISPLAY LIKE 'S'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_billing_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_billing_value .
+
+  DATA : lt_billing     TYPE TABLE OF zc103sdt0006,
+         lv_char_date   TYPE char8,
+         lv_target_date TYPE d.
+
+*-- Get Billing Status
+  SELECT order_type, billing_status, order_status, srv_end_status, cancel_deadline
+    FROM zc103sdt0006
+    INTO CORRESPONDING FIELDS OF TABLE @lt_billing.
+
+*-- Set Screen Variable
+  CLEAR : gv_tpaid, gv_tunpaid, gv_tcancel,
+          gv_cpaid, gv_cunpaid, gv_ccancel,
+          gv_ppaid, gv_pcancel.
+
+*-- Count Travel Agency Billing(Y, N, C)
+  LOOP AT lt_billing INTO DATA(ls_billing).
+*-- Check Target Month
+    lv_target_date = ls_billing-cancel_deadline + 14.
+*-- Type Change
+    lv_char_date = lv_target_date.
+    IF ( lv_char_date+0(6) <> sy-datum+0(6) ).
+      CONTINUE.
+    ENDIF.
+
+    CASE ls_billing-order_type.
+      WHEN 'T'.
+        IF ls_billing-billing_status EQ 'Y'.
+          gv_tpaid += 1.
+        ELSEIF ( ls_billing-billing_status EQ 'N' ) AND
+               ( ls_billing-order_status EQ 'N' ) AND
+               ( ls_billing-srv_end_status EQ 'Y' ).
+          gv_tunpaid += 1.
+        ELSEIF ( ls_billing-billing_status EQ 'N' ) AND
+               ( ls_billing-order_status EQ 'C' ).
+          gv_tcancel += 1.
+        ENDIF.
+      WHEN 'B' OR 'NB'.
+        IF ls_billing-billing_status EQ 'Y'.
+          gv_cpaid += 1.
+        ELSEIF ( ls_billing-billing_status EQ 'N' ) AND
+               ( ls_billing-order_status EQ 'N' ) AND
+               ( ls_billing-srv_end_status EQ 'Y' ).
+          gv_cunpaid += 1.
+        ELSEIF ( ls_billing-billing_status EQ 'N' ) AND
+               ( ls_billing-order_status EQ 'C' ).
+          gv_ccancel += 1.
+        ENDIF.
+      WHEN 'C'.
+        IF ls_billing-order_status EQ 'Y'.
+          gv_ppaid += 1.
+        ELSEIF ls_billing-order_status EQ 'C'.
+          gv_pcancel += 1.
+        ENDIF.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_billing_document
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_billing_document .
+
+  CLEAR : gt_hso, gs_hso.
+
+  SELECT orderid, bpid, conditionid, order_date, cancel_deadline,
+         order_type, total_amount, currency, order_status, cancel_reason,
+         billing_status, srv_end_status, erdat, ernam, erzet, aenam, aezet, aedat
+    FROM zc103sdt0006
+    WHERE billing_status EQ 'N'
+      AND order_status EQ 'N'
+      AND srv_end_status EQ 'Y'
+    INTO CORRESPONDING FIELDS OF TABLE @gt_hso.
+
+  IF gt_hso IS INITIAL.
+    MESSAGE i001 WITH TEXT-w10 DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  CALL SCREEN 130 STARTING AT 15 10.
+
+  PERFORM refresh_line_table.
+  PERFORM refresh_head_table.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_130_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_130_screen .
+
+  IF go_130_container IS INITIAL.
+
+    CLEAR : gt_130_fcat, gs_130_fcat.
+    PERFORM set_130_field_catalog USING : 'X' 'STATUS' ' ' ' ' ' ',
+                                          'X' 'ORDERID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'BPID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CONDITIONID' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_DATE' 'ZC103SDT0006' 'C' ' ',
+                                          ' ' 'CANCEL_DEADLINE' 'ZC103SDT0006' 'C' ' ',
+                                          ' ' 'ORDER_TYPE' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'TOTAL_AMOUNT' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'CURRENCY' 'ZC103SDT0006' ' ' ' ',
+                                          ' ' 'ORDER_STATUS' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'CANCEL_REASON' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'BILLING_STATUS' 'ZC103SDT0006' ' ' 'X',
+                                          ' ' 'SRV_END_STATUS' 'ZC103SDT0006' ' ' 'X'.
+
+    PERFORM set_130_layout_variant.
+    PERFORM set_130_exclude_toolbar.
+    PERFORM create_130_object.
+
+    SET HANDLER : lcl_event_handler=>double_click_billing FOR go_130_alv_grid.
+
+    CALL METHOD go_130_alv_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_130_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_130_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_bill
+        it_fieldcatalog      = gt_130_fcat.
+
+  ENDIF.
+
+  PERFORM refresh_130_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_130_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_130_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_130_fcat-key = pv_key.
+  gs_130_fcat-fieldname = pv_field.
+  gs_130_fcat-ref_table = pv_table.
+  gs_130_fcat-just = pv_just.
+  gs_130_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'STATUS'.
+      gs_130_fcat-icon = 'X'.
+      gs_130_fcat-coltext = '상태'.
+    WHEN 'TOTAL_AMOUNT'.
+      gs_130_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_130_fcat-coltext = '통화'.
+  ENDCASE.
+
+  APPEND gs_130_fcat TO gt_130_fcat.
+  CLEAR : gs_130_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_130_layout_variant
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_130_layout_variant .
+
+*-- Set layout
+  gs_130_layout-zebra = abap_true.
+  gs_130_layout-cwidth_opt = 'A'.
+  gs_130_layout-sel_mode = 'D'.
+
+*-- Set variant
+  gs_130_variant-report = sy-repid.
+  gs_130_variant-handle = 'POP1'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_130_exclude_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_130_exclude_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_130_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_130_object .
+
+  CREATE OBJECT go_130_container
+    EXPORTING
+      container_name = '130_CONT'.
+
+  CREATE OBJECT go_130_alv_grid
+    EXPORTING
+      i_parent = go_130_container.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_hso_table
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_130_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_130_alv_grid->refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Module  130_EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE 130_exit INPUT.
+
+  CALL METHOD : go_130_alv_grid->free,
+                go_130_container->free.
+
+  FREE : go_130_alv_grid, go_130_container.
+
+  CLEAR : gt_bill, gs_bill, gv_compname.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Form send_billing_docu_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM send_billing_docu_data .
+
+*-- Insert Data to BIlling Table Header(ZC103SDT004)
+  DATA : lt_roid          TYPE lvc_t_roid,
+         ls_roid          TYPE lvc_s_roid,
+         lv_number        TYPE n LENGTH 6,
+         lv_total_tax     TYPE wrbtr,
+         lv_bitem_index   TYPE i,
+         lt_bline         TYPE TABLE OF zc103sdt0007, " To insert bill line item
+         lv_in_tabix      TYPE sy-tabix,
+         lv_check_line(1),
+         lv_answer(1),
+         lt_save          TYPE TABLE OF zc103sdt0006,
+         ls_save          TYPE zc103sdt0006,
+         lt_target        LIKE gt_bill,
+         lv_bptype        TYPE char20,
+         lv_belnr         TYPE belnr_d,
+         lv_message       TYPE char100,
+         lv_gjahr         TYPE bkpf-gjahr,
+         lv_tax           TYPE wert8,
+         lo_conv          TYPE REF TO zc103sdc_exrate_converter,
+         lv_char          TYPE char20,
+         lv_amount        TYPE wrbtr,
+         lv_conv_amt      TYPE wrbtr,
+         lv_convert_desc  TYPE string.
+
+  CREATE OBJECT lo_conv.
+
+  CALL METHOD go_130_alv_grid->get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i001 WITH TEXT-e14 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+*-- Pop-up Dialog
+  PERFORM set_popup_to_confirm3 CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+*-- Set field : Text to Value
+  PERFORM set_billing_value_field.
+
+  CLEAR : gs_hbill, gt_hbill, gs_lbill, gt_lbill.
+
+*-- Get orderid
+  READ TABLE gt_bill INTO gs_bill INDEX 1.
+
+*-- Set Selected orderid's Line Item
+  SELECT orderid, orderitemno, bookingid, transportid, charged_item, description, ticket_quantity,
+         ticket_unit, cargo_weight, cargo_unit, unit_price, tax_amount, discount, currency, used_mileage,
+         order_status
+    FROM zc103sdt0007
+    WHERE orderid EQ @gs_bill-orderid
+      AND order_status NE 'C'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_bline.
+
+  LOOP AT lt_roid INTO ls_roid.
+
+*-- For Billitemno
+    lv_bitem_index = 1.
+
+    READ TABLE gt_bill INTO gs_bill INDEX ls_roid-row_id.
+    APPEND gs_bill TO lt_target.
+
+*-- BillNUM -> Number Range(ZBILLNUM)
+    CALL FUNCTION 'NUMBER_GET_NEXT'
+      EXPORTING
+        nr_range_nr = '01'
+        object      = 'ZBILLNUM'
+      IMPORTING
+        number      = lv_number
+      EXCEPTIONS
+        OTHERS      = 1.
+
+**********************************************************************
+*-- Set Bill Header
+*-- BILLNUM : Concatenate BL + Bill number
+    IF sy-subrc = 0.
+      CONCATENATE 'BL' lv_number INTO gs_hbill-billnum.
+    ELSE.
+      MESSAGE i001 WITH TEXT-e09 DISPLAY LIKE 'E'.
+      EXIT.
+    ENDIF.
+
+    lv_tax = gs_bill-total_amount / 10.
+    lv_gjahr = sy-datum+0(4).
+
+*-- Check Travel agency, Cargo Company
+    PERFORM check_bptype CHANGING lv_bptype.
+
+*-- GET Document Number(Belnr)
+    CALL FUNCTION 'ZC1FM03FI0003'
+      EXPORTING
+        iv_billnum = gs_hbill-billnum
+        iv_gjahr   = lv_gjahr
+*       IV_CUSTID  =
+        iv_bpid    = gs_bill-bpid
+        iv_total   = gs_bill-total_amount
+        iv_type    = 'B' " BP면 B, B2C면 C
+        iv_b2btype = lv_bptype "여행사면 B, 화물사면 T
+*       IV_B2CTYPE =
+        iv_tax     = lv_tax
+        iv_waers   = gs_bill-currency
+*       IV_USCODE  =
+      IMPORTING
+        ev_belnr   = lv_belnr
+        ev_message = lv_message.
+
+    IF ( sy-subrc <> 0 ).
+      MESSAGE i000 WITH TEXT-e13 DISPLAY LIKE 'E'.
+      PERFORM set_billing_text_field.
+      PERFORM refresh_130_table.
+      EXIT.
+    ELSE.
+      gs_hbill-doc_flag = 'Y'.
+    ENDIF.
+
+    CLEAR : lv_char.
+
+    " 1. 문자형 금액 → 숫자 변환
+    lv_char = gs_bill-total_amount.
+    REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+    lv_amount = lv_char.
+
+    lo_conv->convert_amount(
+      EXPORTING
+        iv_amount = lv_amount
+        iv_from_curr = gs_bill-currency
+        iv_to_curr = 'KRW'
+        iv_date = gs_bill-order_date
+      IMPORTING
+        ev_local_amt = lv_conv_amt
+        ev_desc = lv_convert_desc ).
+
+*-- If. 변환 통화가 존재하지 않는 경우
+    IF lv_convert_desc IS NOT INITIAL.
+      MESSAGE i001 WITH lv_convert_desc DISPLAY LIKE 'E'.
+      EXIT.
+    ENDIF.
+
+*-- BPID, Total_amount, Tax_amount, Currency
+    gs_hbill-orderid = gs_bill-orderid.
+    gs_hbill-belnr = lv_belnr.
+    gs_hbill-gjahr = sy-datum+0(4).
+    gs_hbill-bpid = gs_bill-bpid.
+    gs_hbill-total_amount = CONV wrbtr( lv_conv_amt ).
+    gs_hbill-tax_amount = gs_hbill-total_amount / 10.
+    gs_hbill-currency = CONV waers( 'KRW' ).
+    gs_hbill-billing_status = 'N'.
+    gs_hbill-mail_status = 'N'.
+    gs_hbill-credit_status = 'N'.
+
+*-- Set Time Stamp
+    gs_hbill-erdat = sy-datum.
+    gs_hbill-ernam = sy-uname.
+    gs_hbill-erzet = sy-uzeit.
+
+    APPEND gs_hbill TO gt_hbill.
+
+**********************************************************************
+*-- SET Bill Line
+    LOOP AT lt_bline INTO DATA(ls_bline).
+
+      lv_in_tabix = sy-tabix.
+
+*-- SET Billnum
+      gs_lbill-billnum = gs_hbill-billnum.
+
+*-- Billitemno
+      gs_lbill-billitemno = lv_bitem_index.
+      lv_bitem_index += 1.
+
+*-- Bookingid, Transportid, Charged_item, Description
+      gs_lbill-bookingid = ls_bline-bookingid.
+      gs_lbill-transportid = ls_bline-transportid.
+      gs_lbill-charged_item = ls_bline-charged_item.
+      gs_lbill-description = ls_bline-description.
+      gs_lbill-ticket_quantity = ls_bline-ticket_quantity.
+      gs_lbill-cargo_weight = ls_bline-cargo_weight.
+      gs_lbill-cargo_unit = ls_bline-cargo_unit.
+      gs_lbill-ticket_unit = ls_bline-ticket_unit.
+      gs_lbill-unit_price = ls_bline-unit_price.
+      gs_lbill-unit_discount_amount = ls_bline-discount.
+      gs_lbill-unit_tax_amount = ls_bline-tax_amount.
+      gs_lbill-currency = ls_bline-currency.
+
+*-- SET Time Stamp
+      gs_lbill-erdat = sy-datum.
+      gs_lbill-ernam = sy-uname.
+      gs_lbill-erzet = sy-uzeit.
+
+      APPEND gs_lbill TO gt_lbill.
+      CLEAR : gs_lbill.
+    ENDLOOP.
+
+    IF gt_lbill IS NOT INITIAL.
+*-- UPDATE db(Line Item)
+      INSERT zc103sdt0005 FROM TABLE gt_lbill.
+*-- For check Data insert
+      IF sy-subrc EQ 0.
+        lv_check_line = 'Y'.
+      ELSE.
+        lv_check_line = 'N'.
+      ENDIF.
+    ELSE.
+      EXIT.
+    ENDIF.
+
+*-- Clear
+    CLEAR : gs_hbill, gt_lbill, lv_bitem_index.
+  ENDLOOP.
+
+  IF sy-subrc EQ 0.
+*-- UPDATE db(Header)
+    MODIFY zc103sdt0004 FROM TABLE gt_hbill.
+*-- Change Billing status N -> Y(When Success)
+    IF ( sy-subrc EQ 0 ) AND
+       ( lv_check_line EQ 'Y' ).
+      SORT : gt_bill BY orderid ASCENDING.
+      LOOP AT lt_target INTO DATA(ls_target).
+        READ TABLE gt_bill ASSIGNING FIELD-SYMBOL(<fs_cbill>) WITH KEY orderid = ls_target-orderid
+                                                              BINARY SEARCH.
+        <fs_cbill>-billing_status = 'Y'.
+        <fs_cbill>-status = icon_led_green.
+        <fs_cbill>-aedat = sy-datum.
+        <fs_cbill>-aezet = sy-uzeit.
+        <fs_cbill>-aenam = sy-uname.
+        ls_save = CORRESPONDING #( <fs_cbill> ).
+        APPEND ls_save TO lt_save.
+      ENDLOOP.
+*-- Update Billing Status
+      MODIFY zc103sdt0006 FROM TABLE lt_save.
+      COMMIT WORK.
+      MESSAGE i001 WITH TEXT-s04 DISPLAY LIKE 'S'.
+    ELSE.
+      ROLLBACK WORK.
+      MESSAGE i001 WITH TEXT-e10 DISPLAY LIKE 'E'.
+      EXIT.
+    ENDIF.
+  ENDIF.
+
+  SORT gt_hso BY orderid ASCENDING.
+
+*-- Update gt_hso Data
+  LOOP AT gt_bill INTO gs_bill WHERE billing_status = 'Y'.
+    READ TABLE gt_hso ASSIGNING FIELD-SYMBOL(<fs_hso>) WITH KEY orderid = gs_bill-orderid
+                                  BINARY SEARCH.
+    IF sy-subrc EQ 0.
+      <fs_hso>-billing_status = 'Y'.
+    ENDIF.
+    READ TABLE gt_head ASSIGNING FIELD-SYMBOL(<fs_head>) WITH KEY orderid = gs_bill-orderid
+                                  BINARY SEARCH.
+    IF sy-subrc EQ 0.
+      <fs_head>-billing_status = 'Y'.
+    ENDIF.
+    READ TABLE gt_hdisplay ASSIGNING FIELD-SYMBOL(<fs_hdis>) WITH KEY orderid = gs_bill-orderid
+                                  BINARY SEARCH.
+    IF sy-subrc EQ 0.
+      <fs_hdis>-billing_status = '대금청구 완료'.
+    ENDIF.
+  ENDLOOP.
+
+  CLEAR : gt_hbill.
+  UNASSIGN : <fs_cbill>, <fs_hso>.
+
+*-- UPDATE total price
+  gv_bill_status = 'N'.
+  PERFORM get_so_head_data.
+
+  PERFORM refresh_130_table.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form compname_f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM compname_f4_control .
+
+  DATA: lt_return     TYPE TABLE OF ddshretval,
+        lt_dynpfields TYPE TABLE OF dynpread,
+        ls_dynpfield  TYPE dynpread,
+        lv_travel     TYPE c,
+        lv_cargo      TYPE c.
+
+  DATA: BEGIN OF ls_bpid_list,
+          bpid   TYPE zc103sdt0001-bpid,
+          bpname TYPE zc103sdt0001-bpname,
+        END OF ls_bpid_list,
+        lt_bpid_list LIKE TABLE OF ls_bpid_list.
+
+*-- 수동으로 스크린 필드값 읽기
+  CLEAR: lt_dynpfields.
+
+  ls_dynpfield-fieldname = 'GS_BRBG-CARGO'.
+  APPEND ls_dynpfield TO lt_dynpfields.
+
+  ls_dynpfield-fieldname = 'GS_BRBG-TRAVEL'.
+  APPEND ls_dynpfield TO lt_dynpfields.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname             = sy-repid
+      dynumb             = sy-dynnr
+      translate_to_upper = 'X'
+    TABLES
+      dynpfields         = lt_dynpfields
+    EXCEPTIONS
+      OTHERS             = 1.
+
+*-- 읽은 라디오 버튼 값을 파싱해서 travel/cargo 판단
+  LOOP AT lt_dynpfields INTO ls_dynpfield.
+    CASE ls_dynpfield-fieldname.
+      WHEN 'GS_BRBG-TRAVEL'.
+        lv_travel = ls_dynpfield-fieldvalue.
+      WHEN 'GS_BRBG-CARGO'.
+        lv_cargo = ls_dynpfield-fieldvalue.
+    ENDCASE.
+  ENDLOOP.
+
+*-- Get BPID by 라디오 선택 값
+  IF lv_travel = 'X'.
+    SELECT DISTINCT s~bpid, b~bpname
+      INTO TABLE @lt_bpid_list
+      FROM zc103sdt0006 AS s
+      INNER JOIN zc103sdt0001 AS b ON s~bpid = b~bpid
+      WHERE s~order_type     = 'T'
+        AND s~order_status = 'N'
+        AND s~billing_status = 'N'
+        AND s~srv_end_status = 'Y'.
+
+  ELSEIF lv_cargo = 'X'.
+    SELECT DISTINCT s~bpid, b~bpname
+      INTO TABLE @lt_bpid_list
+      FROM zc103sdt0006 AS s
+      INNER JOIN zc103sdt0001 AS b ON s~bpid = b~bpid
+      WHERE s~order_type  IN ('B', 'NB')
+        AND s~order_status = 'N'
+        AND s~billing_status = 'N'
+        AND s~srv_end_status = 'Y'.
+  ENDIF.
+
+*-- Set F4 (bpname 선택되면 해당 값 gv_compname에 세팅됨)
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield    = 'BPNAME'
+      dynpprog    = sy-repid
+      dynpnr      = sy-dynnr
+      dynprofield = 'GV_COMPNAME'
+      value_org   = 'S'
+    TABLES
+      value_tab   = lt_bpid_list
+      return_tab  = lt_return.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_bill_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_bill_data .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_so_head_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_so_head_data .
+
+  DATA : lv_bpid         TYPE zc103sdt0001-bpid,
+         lv_amount       TYPE wrbtr,
+         lv_char         TYPE char20,
+         lv_conv_amt     TYPE wrbtr,
+         lv_total        TYPE wrbtr,
+         lo_conv         TYPE REF TO zc103sdc_exrate_converter,
+         lv_convert_desc TYPE string,
+         lv_tabix        TYPE sy-tabix.
+
+  CLEAR : gv_brest.
+  CREATE OBJECT lo_conv.
+
+  IF ( gt_bill IS INITIAL ) OR
+     ( gv_bill_status EQ 'Y' ).
+    CLEAR : gt_bill, gs_bill.
+
+*-- GET bpid
+    SELECT SINGLE bpid
+      FROM zc103sdt0001
+      WHERE bpname EQ @gv_compname
+      INTO ( @lv_bpid ).
+
+*-- SET gt_bill
+    LOOP AT gt_hso INTO gs_hso WHERE bpid = lv_bpid.
+      gs_bill = CORRESPONDING #( gs_hso ).
+      APPEND gs_bill TO gt_bill.
+    ENDLOOP.
+
+    CLEAR : lv_tabix.
+
+*-- Set Status
+    LOOP AT gt_bill INTO gs_bill.
+
+      lv_tabix = sy-tabix.
+
+      IF gs_bill-billing_status EQ 'N'.
+        gs_bill-status = icon_led_red.
+      ELSEIF gs_bill-billing_status EQ 'Y'.
+        gs_bill-status = icon_led_green.
+      ENDIF.
+      MODIFY gt_bill FROM gs_bill INDEX lv_tabix TRANSPORTING status.
+    ENDLOOP.
+
+*-- Sort
+    SORT gt_bill BY order_date ASCENDING.
+  ENDIF.
+
+*-- Set gt_hso
+  LOOP AT gt_bill INTO gs_bill WHERE billing_status EQ 'N'.
+
+    CLEAR: lv_amount, lv_conv_amt, lv_char.
+
+    " 1. 문자형 금액 → 숫자 변환
+    lv_char = gs_bill-total_amount.
+    REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+    lv_amount = lv_char.
+
+    lo_conv->convert_amount(
+      EXPORTING
+        iv_amount = lv_amount
+        iv_from_curr = gs_bill-currency
+        iv_to_curr = 'KRW'
+        iv_date = gs_bill-order_date
+      IMPORTING
+        ev_local_amt = lv_conv_amt
+        ev_desc = lv_convert_desc ).
+
+*-- If. 변환 통화가 존재하지 않는 경우
+    IF lv_convert_desc IS NOT INITIAL.
+      MESSAGE i001 WITH lv_convert_desc DISPLAY LIKE 'E'.
+      EXIT.
+    ENDIF.
+
+    " 3. 누적
+    lv_total += lv_conv_amt.
+
+  ENDLOOP.
+
+*-- 자동 소숫점 처리를 위함. krw 적용하면 100배 상승하니 100으로 나눠서 상쇄.
+  WRITE lv_total CURRENCY 'KRW' DECIMALS 0 TO gv_brest.
+
+  CLEAR : gs_bill, lv_total.
+  FREE lo_conv.
+
+  PERFORM set_billing_text_field.
+
+  PERFORM refresh_130_table.
+
+*-- Set Bill Data Change
+  gv_bill_status = 'Y'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form double_click_billing
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW
+*&      --> E_COLUMN
+*&---------------------------------------------------------------------*
+FORM double_click_billing  USING    pv_row
+                                    pv_column.
+
+  CLEAR : gs_bill.
+  READ TABLE gt_bill INTO gs_bill INDEX pv_row.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_popup_to_confirm3
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LV_ANSWER
+*&---------------------------------------------------------------------*
+FORM set_popup_to_confirm3  CHANGING pv_answer.
+
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '대금청구 데이터를 생성'
+    IMPORTING
+      ev_answer = pv_answer.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form move_billing_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM move_billing_screen .
+
+  DATA : lv_answer(1).
+
+  PERFORM popup_dialog CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+*  SUBMIT zc103sd0002.
+  CALL TRANSACTION 'ZC103SDR0003' AND SKIP FIRST SCREEN.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form popup_dialog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LV_ANSWER
+*&---------------------------------------------------------------------*
+FORM popup_dialog  CHANGING pv_answer.
+
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '대금청구 페이지로 이동'
+    IMPORTING
+      ev_answer = pv_answer.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_line_text_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_line_text_field .
+
+*-- Set Line Text Field
+  LOOP AT gt_ldisplay ASSIGNING FIELD-SYMBOL(<fs_ldis>).
+*-- For Charged Item
+    CASE <fs_ldis>-charged_item.
+      WHEN 'A'.
+        <fs_ldis>-charged_item = '여객'.
+      WHEN 'B'.
+        <fs_ldis>-charged_item = '화물'.
+    ENDCASE.
+*-- For Order Status
+    CASE <fs_ldis>-order_status.
+      WHEN 'Y'.
+        <fs_ldis>-order_status = '결제 완료'.
+      WHEN 'N'.
+        <fs_ldis>-order_status = '미결제'.
+      WHEN 'C'.
+        <fs_ldis>-order_status = '결제 취소'.
+    ENDCASE.
+*-- For Service end status
+    CASE <fs_ldis>-srv_end_status.
+      WHEN 'Y'.
+        <fs_ldis>-srv_end_status = '서비스 종료'.
+      WHEN 'N'.
+        <fs_ldis>-srv_end_status = '서비스 미종료'.
+      WHEN 'X'.
+        <fs_ldis>-srv_end_status = '일반고객(B2C, 청구 불필요)'.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_hpop_iofield
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_hpop_iofield  USING pv_type.
+
+  CASE pv_type.
+    WHEN 'C'.
+      LOOP AT SCREEN.
+        IF screen-name = 'GV_TPBPNAME' OR
+           screen-name = 'TEXT2'.
+          screen-invisible = 1.
+          MODIFY SCREEN.
+        ENDIF.
+      ENDLOOP.
+    WHEN 'BP'.
+      LOOP AT SCREEN.
+        IF screen-name = 'GV_TPCUSNAME' OR
+           screen-name = 'TEXT3'.
+          screen-invisible = 1.
+          MODIFY SCREEN.
+        ENDIF.
+      ENDLOOP.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_gs_head
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_gs_head .
+
+*-- Get gs_head
+  SELECT SINGLE orderid, cancel_deadline
+    FROM zc103sdt0006
+    WHERE orderid EQ @gs_ledit-orderid
+    INTO CORRESPONDING FIELDS OF @gs_head.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form calculate_price_byorderstat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM calculate_price_byorderstat .
+
+  DATA : lv_lprice       TYPE wrbtr,
+         lv_total        TYPE wrbtr,
+         lo_conv         TYPE REF TO zc103sdc_exrate_converter,
+         lv_conv_amt     TYPE wrbtr,
+         lv_amount       TYPE wrbtr,
+         lv_convert_desc TYPE string,
+         lv_char         TYPE char20,
+         lv_htabix       TYPE sy-tabix,
+         lv_ltabix       TYPE sy-tabix,
+         lv_drate        TYPE p DECIMALS 2.
+
+  CREATE OBJECT lo_conv.
+
+*-- Calculate Total Price
+  LOOP AT gt_line INTO gs_line WHERE order_status EQ 'N'.
+    lv_lprice = ( gs_line-ticket_quantity * gs_line-unit_price ).
+*-- Convert to KRW
+    " 1. 문자형 금액 → 숫자 변환
+    lv_char = lv_lprice.
+    REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+    lv_amount = lv_char.
+
+    lo_conv->convert_amount(
+      EXPORTING
+        iv_amount = lv_amount
+        iv_from_curr = gs_line-currency
+        iv_to_curr = 'KRW'
+        iv_date = gs_head-order_date
+      IMPORTING
+        ev_local_amt = lv_conv_amt
+        ev_desc = lv_convert_desc ).
+*-- Add Total Price
+    lv_total += lv_conv_amt.
+  ENDLOOP.
+
+*-- Convert Total Price to Head Currency Type
+  READ TABLE gt_head INTO gs_head WITH KEY orderid = gs_line-orderid.
+  lv_htabix = sy-tabix.
+
+  READ TABLE gt_hdisplay INTO gs_hdisplay WITH KEY orderid = gs_line-orderid.
+  lv_ltabix = sy-tabix.
+
+  lv_char = lv_total.
+  REPLACE ALL OCCURRENCES OF ',' IN lv_char WITH ''.
+  lv_amount = lv_char.
+
+  lo_conv->convert_amount(
+    EXPORTING
+      iv_amount = lv_amount
+      iv_from_curr = 'KRW'
+      iv_to_curr = gs_head-currency
+      iv_date = gs_head-order_date
+    IMPORTING
+      ev_local_amt = lv_conv_amt
+      ev_desc = lv_convert_desc ).
+
+  IF sy-subrc EQ 0.
+    IF lv_conv_amt EQ 0.
+      gs_head-order_status = 'C'.
+      gs_hdisplay-order_status = 'C'.
+    ELSE.
+      gs_head-order_status = 'N'.
+      gs_hdisplay-order_status = 'N'.
+    ENDIF.
+
+*-- Get discount condition
+    PERFORM get_discount_rate CHANGING lv_drate.
+
+    gs_head-total_amount = ( lv_conv_amt * lv_drate ) + ( ( lv_conv_amt * lv_drate ) / 10 ).
+    MODIFY gt_head FROM gs_head INDEX lv_htabix TRANSPORTING total_amount order_status.
+
+*-- For display head
+    gs_hdisplay-total_amount = ( lv_conv_amt * lv_drate ) + ( ( lv_conv_amt * lv_drate ) / 10 ).
+    MODIFY gt_hdisplay FROM gs_hdisplay INDEX lv_ltabix TRANSPORTING total_amount order_status.
+
+*-- Update DB Table
+    UPDATE zc103sdt0006
+      SET total_amount = gs_hdisplay-total_amount
+          aedat = sy-datum
+          aenam = sy-uname
+          aezet = sy-uzeit
+      WHERE orderid = gs_hdisplay-orderid.
+
+    IF sy-subrc = 0.
+      COMMIT WORK.
+    ELSE.
+      ROLLBACK WORK.
+    ENDIF.
+  ENDIF.
+  PERFORM set_head_text_field.
+  PERFORM set_line_text_field.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_head_text_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_head_text_field .
+
+*-- SET Line Text FIELD
+  LOOP AT gt_hdisplay ASSIGNING FIELD-SYMBOL(<fs_hdis>).
+*-- For Order Type
+    CASE <fs_hdis>-order_type.
+      WHEN 'T'.
+        <fs_hdis>-order_type = '여행사'.
+      WHEN 'B'.
+        <fs_hdis>-order_type = '계약 화물사'.
+      WHEN 'NB'.
+        <fs_hdis>-order_type = '미계약 화물사'.
+      WHEN 'C'.
+        <fs_hdis>-order_type = '일반 고객'.
+    ENDCASE.
+*-- For Order Status
+    CASE <fs_hdis>-order_status.
+      WHEN 'Y'.
+        <fs_hdis>-order_status = '결제 완료'.
+      WHEN 'N'.
+        <fs_hdis>-order_status = '미결제'.
+      WHEN 'C'.
+        <fs_hdis>-order_status = '결제 취소'.
+    ENDCASE.
+*-- For Billing Status
+    CASE <fs_hdis>-billing_status.
+      WHEN 'Y'.
+        <fs_hdis>-billing_status = '대금청구 완료'.
+      WHEN 'N'.
+        <fs_hdis>-billing_status = '대금청구 미완료'.
+      WHEN 'X'.
+        <fs_hdis>-billing_status = '일반 고객(B2C, 청구 불필요)'.
+    ENDCASE.
+*-- For Service end status
+    CASE <fs_hdis>-srv_end_status.
+      WHEN 'Y'.
+        <fs_hdis>-srv_end_status = '서비스 종료'.
+      WHEN 'N'.
+        <fs_hdis>-srv_end_status = '서비스 미종료'.
+      WHEN 'X'.
+        <fs_hdis>-srv_end_status = '일반고객(B2C, 청구 불필요)'.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_discount_rate
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_discount_rate CHANGING pv_drate .
+
+  DATA : lv_rate TYPE p DECIMALS 2.
+
+*-- Get discount Rate
+  SELECT SINGLE discountrate
+    FROM zc103sdt0003
+    WHERE conditionid EQ @gs_head-conditionid
+    INTO ( @lv_rate ).
+
+  pv_drate = ( 100 - lv_rate ) / 100.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_billing_text_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_billing_text_field .
+
+  LOOP AT gt_bill ASSIGNING FIELD-SYMBOL(<fs_bdis>).
+*-- Set order_status
+    CASE <fs_bdis>-order_status.
+      WHEN 'Y'.
+        <fs_bdis>-order_status = '결제 완료'.
+      WHEN 'N'.
+        <fs_bdis>-order_status = '미결제'.
+      WHEN 'C'.
+        <fs_bdis>-order_status = '결제 취소'.
+    ENDCASE.
+*-- Set order_type
+    CASE <fs_bdis>-order_type.
+      WHEN 'T'.
+        <fs_bdis>-order_type = '여행사'.
+      WHEN 'B'.
+        <fs_bdis>-order_type = '계약 화물사'.
+      WHEN 'NB'.
+        <fs_bdis>-order_type = '미계약 화물사'.
+      WHEN 'C'.
+        <fs_bdis>-order_type = '일반 고객'.
+    ENDCASE.
+*-- Set billing_status
+    CASE <fs_bdis>-billing_status.
+      WHEN 'Y'.
+        <fs_bdis>-billing_status = '대금청구 완료'.
+      WHEN 'N'.
+        <fs_bdis>-billing_status = '대금청구 미완료'.
+      WHEN 'X'.
+        <fs_bdis>-billing_status = '일반고객(B2C, 청구 불필요)'.
+    ENDCASE.
+*-- Set srv_end_status
+    CASE <fs_bdis>-srv_end_status.
+      WHEN 'Y'.
+        <fs_bdis>-srv_end_status = '서비스 종료'.
+      WHEN 'N'.
+        <fs_bdis>-srv_end_status = '서비스 미종료'.
+      WHEN 'X'.
+        <fs_bdis>-srv_end_status = '일반고객(B2C, 청구 불필요)'.
+    ENDCASE.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_billing_value_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_billing_value_field .
+  LOOP AT gt_bill ASSIGNING FIELD-SYMBOL(<fs_bdis>).
+*-- Set order_status
+    CASE <fs_bdis>-order_status.
+      WHEN '결제 완료'.
+        <fs_bdis>-order_status = 'Y'.
+      WHEN '미결제'.
+        <fs_bdis>-order_status = 'N'.
+      WHEN '결제 취소'.
+        <fs_bdis>-order_status = 'C'.
+    ENDCASE.
+*-- Set order_type
+    CASE <fs_bdis>-order_type.
+      WHEN '여행사'.
+        <fs_bdis>-order_type = 'T'.
+      WHEN '계약 화물사'.
+        <fs_bdis>-order_type = 'B'.
+      WHEN '미계약 화물사'.
+        <fs_bdis>-order_type = 'NB'.
+      WHEN '일반 고객'.
+        <fs_bdis>-order_type = 'C'.
+    ENDCASE.
+*-- Set billing_status
+    CASE <fs_bdis>-billing_status.
+      WHEN '대금청구 완료'.
+        <fs_bdis>-billing_status = 'Y'.
+      WHEN '대금청구 미완료'.
+        <fs_bdis>-billing_status = 'N'.
+      WHEN '일반고객(B2C, 청구 불필요)'.
+        <fs_bdis>-billing_status = 'X'.
+    ENDCASE.
+*-- Set srv_end_status
+    CASE <fs_bdis>-srv_end_status.
+      WHEN '서비스 종료'.
+        <fs_bdis>-srv_end_status = 'Y'.
+      WHEN '서비스 미종료'.
+        <fs_bdis>-srv_end_status = 'N'.
+      WHEN '일반고객(B2C, 청구 불필요)'.
+        <fs_bdis>-srv_end_status = 'X'.
+    ENDCASE.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_mileage_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_mileage_data .
+
+  DATA : BEGIN OF ls_line,
+           orderid   TYPE zc103sdt0007-orderid,
+           bookingid TYPE zc103sdt0007-bookingid,
+         END OF ls_line,
+         lt_line LIKE TABLE OF ls_line.
+
+  DATA : BEGIN OF ls_mile,
+           bookingid  TYPE zc103sdt0010-bookingid,
+           mile_total TYPE zc103sdt0010-mile_total,
+         END OF ls_mile,
+         lt_mile LIKE TABLE OF ls_mile.
+
+*-- Get line data
+  SELECT orderid, bookingid
+    FROM zc103sdt0007
+    WHERE orderid EQ @gs_hedit-orderid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_line.
+
+  READ TABLE lt_line INTO ls_line INDEX 1.
+
+*-- Get mile data
+  SELECT bookingid, mile_total
+    FROM zc103sdt0010
+    WHERE bookingid EQ @ls_line-bookingid
+    INTO CORRESPONDING FIELDS OF TABLE @lt_mile.
+
+  READ TABLE lt_mile INTO ls_mile INDEX 1.
+
+*-- Update DB Table
+  UPDATE zc103sdt0010 SET event_type = 'C'
+                          mile_amount = ls_mile-mile_total
+                          balance_after = 0
+                      WHERE bookingid = ls_line-bookingid.
+
+  IF sy-subrc = 0.
+    COMMIT WORK.
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+  CLEAR : gs_hedit.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_bptype
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LV_BPTYPE
+*&---------------------------------------------------------------------*
+FORM check_bptype  CHANGING pv_bptype.
+
+  DATA : lv_order_type TYPE zc103sdt0006-order_type,
+         lt_bp         TYPE TABLE OF zc103sdt0006.
+
+*-- Check bptype
+  SELECT SINGLE order_type
+    FROM zc103sdt0006
+    WHERE orderid EQ @gs_bill-orderid
+    INTO ( @lv_order_type ).
+
+  IF ( lv_order_type EQ 'T' ).
+    pv_bptype = 'B'.
+  ELSEIF ( lv_order_type EQ 'B' ) OR
+         ( lv_order_type EQ 'NB' ).
+    pv_bptype = 'T'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form bpid_f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM bpid_f4_control .
+
+  DATA: lt_return TYPE TABLE OF ddshretval,
+        lt_dynp   TYPE TABLE OF dynpread,
+        lv_rbg    TYPE c LENGTH 10.
+
+  TYPES: BEGIN OF ty_bplist,
+           bpid   TYPE zc103sdt0001-bpid,
+           bpname TYPE zc103sdt0001-bpname,
+         END OF ty_bplist.
+
+  DATA: lt_bplist TYPE TABLE OF ty_bplist,
+        ls_bplist TYPE ty_bplist.
+
+*-- 라디오 버튼 상태 읽기
+  APPEND VALUE #( fieldname = 'GS_RBG-TBP' ) TO lt_dynp.
+  APPEND VALUE #( fieldname = 'GS_RBG-CYBP' ) TO lt_dynp.
+  APPEND VALUE #( fieldname = 'GS_RBG-CNBP' ) TO lt_dynp.
+  APPEND VALUE #( fieldname = 'GS_RBG-CUS' ) TO lt_dynp.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-cprog
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_dynp.
+
+*-- 체크 순서 중요: 선택된 라디오버튼이 'X' 값을 가짐
+  READ TABLE lt_dynp INTO DATA(ls_rbg) WITH KEY fieldname = 'GS_RBG-TBP'.
+  IF ls_rbg-fieldvalue = 'X'.
+    lv_rbg = 'TBP'.
+  ENDIF.
+
+  READ TABLE lt_dynp INTO ls_rbg WITH KEY fieldname = 'GS_RBG-CYBP'.
+  IF ls_rbg-fieldvalue = 'X'.
+    lv_rbg = 'CYBP'.
+  ENDIF.
+
+  READ TABLE lt_dynp INTO ls_rbg WITH KEY fieldname = 'GS_RBG-CNBP'.
+  IF ls_rbg-fieldvalue = 'X'.
+    lv_rbg = 'CNBP'.
+  ENDIF.
+
+  READ TABLE lt_dynp INTO ls_rbg WITH KEY fieldname = 'GS_RBG-CUS'.
+  IF ls_rbg-fieldvalue = 'X'.
+    lv_rbg = 'CUS'.
+  ENDIF.
+
+*-- 조건 분기
+  CLEAR lt_bplist.
+
+  CASE lv_rbg.
+    WHEN 'TBP'. " 여행사
+      SELECT bpid bpname
+        INTO CORRESPONDING FIELDS OF TABLE lt_bplist
+        FROM zc103sdt0001
+        WHERE bptype = 'T'.
+
+    WHEN 'CYBP'. " 화물 계약사
+      SELECT bpid bpname
+        INTO CORRESPONDING FIELDS OF TABLE lt_bplist
+        FROM zc103sdt0001
+        WHERE bptype = 'B'.
+
+    WHEN 'CNBP'. " 화물 미계약사
+      SELECT bpid bpname
+        INTO CORRESPONDING FIELDS OF TABLE lt_bplist
+        FROM zc103sdt0001
+        WHERE bptype = 'NB'.
+
+  ENDCASE.
+
+*-- F4 팝업
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'BPID'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_BPID'
+      window_title    = 'BPID'
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_bplist
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDFORM.

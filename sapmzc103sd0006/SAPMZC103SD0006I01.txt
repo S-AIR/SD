@@ -1,0 +1,23 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0006I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  100_EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE 100_exit INPUT.
+  CALL METHOD : go_left_grid->free, go_right_grid->free,
+                go_left_cont->free, go_right_cont->free,
+                go_split_main->free, go_container->free,
+                go_alv_grid2->free, go_container2->free.
+
+  FREE : go_left_grid, go_right_grid,
+         go_left_cont, go_right_cont,
+         go_split_main, go_container,
+         go_container2, go_alv_grid2.
+
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.

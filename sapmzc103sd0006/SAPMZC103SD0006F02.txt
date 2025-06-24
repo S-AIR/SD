@@ -1,0 +1,222 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0006F02
+*&---------------------------------------------------------------------*
+"FOR THE DATA INTEGRATION.
+*&---------------------------------------------------------------------*
+*& Form submit_full_save
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> <FS_ORD>_TRANSPORTID
+*&---------------------------------------------------------------------*
+FORM submit_full_save  USING p_docid TYPE zc103sdt0017-transportid.
+
+
+" 데이터 선언
+DATA: ls_0017   TYPE zc103sdt0017,
+      ls_0026   like gs_sched,
+      ls_0020   TYPE zc103sdt0020,
+      ls_0022   TYPE zc103sdt0022,
+      ls_0030   TYPE zc103sdt0030,
+      ls_0031   TYPE zc103sdt0031,
+      ls_0032   TYPE zc103sdt0032,
+      ls_bp     like gs_bpinfo.
+
+DATA: lv_today      TYPE sy-datum,
+      lv_clear_date TYPE sy-datum,
+      lv_due_date   TYPE sy-datum,
+      lv_price      TYPE zc103sdt0017-price.
+
+lv_today      = sy-datum.
+lv_clear_date = lv_today + 2.
+lv_due_date   = lv_today + 5.
+
+*--- 1. READ ZC103SDT0017
+SELECT SINGLE * INTO ls_0017 FROM zc103sdt0017 WHERE transportid = p_docid.
+IF sy-subrc <> 0.
+  WRITE: / '0017 데이터 없음:', p_docid.
+  EXIT.
+ENDIF.
+
+*--- 2. READ ZC103SDT0026 (스케줄)
+SELECT SINGLE scheduleid weight_avail flightid DEPARTDATE countryfrom countryto
+  INTO ls_0026
+  FROM zc103sdt0026
+  WHERE scheduleid = ls_0017-scheduleid.
+
+*--- 3. READ ZC103SDT0001 (BP정보)
+SELECT SINGLE bpid bpname brnum paymentterm email INTO ls_bp
+  FROM zc103sdt0001
+  WHERE bpid = ls_0017-bpid.
+
+lv_price = ls_0017-price.
+
+*----------------------------------------------------------------------
+* ZC103SDT0022 삽입 (하기적재결과보고서)
+*----------------------------------------------------------------------
+ls_0022-cargo_id         = p_docid.
+ls_0022-scheduleid       = ls_0017-scheduleid.
+ls_0022-departure_date   = ls_0017-tdate.
+ls_0022-handling_co      = 'S-AIR'.
+ls_0022-mawb_no          = p_docid.
+ls_0022-cargo_item_id    = ls_0017-matid.
+ls_0022-flightid         = ls_0026-flightid.
+ls_0022-depart_date      = ls_0017-tdate.
+ls_0022-strid            = 'STLO0004'.
+ls_0022-package_count    = 1.
+ls_0022-weight           = ls_0017-weight.
+ls_0022-ship_count       = 1.
+ls_0022-load_result      = '이상 없음'.
+ls_0022-country_of_exit  = ls_0017-countryfrom.
+ls_0022-bpname           = 'S-AIR소속'.
+ls_0022-bpid             = ls_0017-bpid.
+ls_0022-company_addr     = '삼만리 항공'.
+ls_0022-submit_date      = lv_today.
+ls_0022-position_s_air   = '차장'.
+ls_0022-empname          = '김영훈'.
+
+INSERT zc103sdt0022 FROM ls_0022.
+
+*----------------------------------------------------------------------
+* ZC103SDT0030 삽입 (수출신고필증 - 적재전)
+*----------------------------------------------------------------------
+ls_0030-docid              = p_docid.
+ls_0030-bpid               = ls_0017-bpid.
+ls_0030-declarant_name     = 'S-AIR'.
+ls_0030-customs_dept       = '인천세관 제1과'.
+ls_0030-declaration_date   = ls_0017-tdate.
+ls_0030-declaration_type   = '일반'.
+ls_0030-cs_type            = 'C'.
+ls_0030-agent_name         = ls_bp-bpname.
+ls_0030-exporter_type      = '위탁'.
+ls_0030-trade_type         = '01'.
+ls_0030-export_type        = '일반수출'.
+ls_0030-payment_method     = ls_bp-paymentterm.
+ls_0030-shipper_name       = ls_0017-bpid.
+ls_0030-dest_country       = ls_0017-countryto.
+ls_0030-port_of_loading    = ls_0017-countryfrom.
+ls_0030-carrier_name       = ls_0017-flightid.
+ls_0030-exporter_id        = |EX{ p_docid }|.
+ls_0030-exporter_addr      = '서울특별시 강서구'.
+ls_0030-flight_no          = ls_0017-scheduleid.
+ls_0030-departure_date     = ls_0017-tdate.
+ls_0030-bond_zone          = '인천 3보세'.
+ls_0030-ceo_name           = '김영훈'.
+ls_0030-exporter_loc       = '서울특별시 강서구 마곡중앙로'.
+ls_0030-transport_type     = '항공'.
+ls_0030-inspection_date    = ls_0017-tdate.
+ls_0030-item_loc           = ls_0017-matid.
+ls_0030-exporter_biznum    = ls_bp-brnum.
+ls_0030-manufacturer       = '삼만리항공'.
+ls_0030-lc_no              = |LC2025-KOR-{ p_docid }|.
+ls_0030-item_status        = '정상'.
+ls_0030-manu_id            = |TG-{ p_docid }|.
+ls_0030-notify_flag        = 'N'.
+ls_0030-return_reason      = '없음'.
+ls_0030-manu_place         = '해당 없음'.
+ls_0030-ind_area_code      = 'SMP123456'.
+ls_0030-refund_applier     = '없음'.
+ls_0030-buyer_name         = ls_bp-bpname.
+ls_0030-buyer_id           = ls_0017-bpid.
+ls_0030-model_spec         = 'SM-2025-V1'.
+ls_0030-component          = '일반 항목'.
+ls_0030-qty_unit           = 'EA'.
+ls_0030-unit_price         = lv_price.
+ls_0030-amount             = lv_price.
+ls_0030-hs_code            = '8501.10.2000'.
+ls_0030-weight_net         = ls_0017-weight.
+ls_0030-item_qty           = '1'.
+ls_0030-invoice_no         = |INV{ p_docid }|.
+ls_0030-import_decl_no     = |ICN2025-{ p_docid }|.
+ls_0030-decl_price         = lv_price.
+ls_0030-req_doc            = '삼만리항공(S-AIR)'.
+ls_0030-gross_weight       = ls_0017-weight.
+ls_0030-total_decl_price   = lv_price.
+ls_0030-payment_total      = lv_price.
+ls_0030-import_ctrl_no     = p_docid.
+ls_0030-pallet_no          = ls_0017-matid.
+ls_0030-decl_note          = '김영훈 / 차장 / S-AIR'.
+ls_0030-customs_note       = '세관접수 확인'.
+ls_0030-carrier_decl       = '김영훈'.
+ls_0030-period             = ls_0017-tdate.
+ls_0030-load_due_date      = lv_due_date.
+ls_0030-declarant_staff    = '김영훈'.
+ls_0030-clear_date         = lv_clear_date.
+ls_0030-currency           = ls_0017-currency.
+ls_0030-weight_unit        = ls_0017-weight_unit.
+
+INSERT zc103sdt0030 FROM ls_0030.
+
+*----------------------------------------------------------------------
+* ZC103SDT0032 삽입 (수출신고필증 - 적재후, CLEAR_DATE 공란)
+*----------------------------------------------------------------------
+MOVE-CORRESPONDING ls_0030 TO ls_0032.
+CLEAR ls_0032-clear_date.
+
+INSERT zc103sdt0032 FROM ls_0032.
+
+*----------------------------------------------------------------------
+* ZC103SDT0031 삽입 (AWB)
+*----------------------------------------------------------------------
+CLEAR ls_0031.
+ls_0031-transportid          = p_docid.
+ls_0031-sender               = ls_bp-bpname.
+ls_0031-receiver             = '삼만리 항공'.
+ls_0031-account_no_1         = ls_bp-email.
+ls_0031-account_no_2         = '삼만리항공'.
+ls_0031-sender_info          = ls_bp-bpname.
+ls_0031-receiver_info        = '삼만리 항공 본사'.
+ls_0031-agency_name          = 'S-AIR'.
+ls_0031-city                 = 'ICN'.
+ls_0031-iata_code            = 'SML'.
+ls_0031-account_no_3         = '삼만리항공'.
+ls_0031-departure_airport    = ls_0017-countryfrom.
+ls_0031-carrier_address      = ls_bp-bpname.
+ls_0031-route_request        = |STLO0004 로 입고|.
+ls_0031-routing_to_1         = ls_0017-countryto.
+ls_0031-routing_by_1         = ls_0017-countryfrom.
+ls_0031-routing_to_2         = '해당없음'.
+ls_0031-routing_by_2         = '해당없음'.
+ls_0031-routing_to_3         = '해당없음'.
+ls_0031-routing_by_3         = '해당없음'.
+ls_0031-arrival_airport      = ls_0017-countryto.
+ls_0031-goods_count          = 1.
+ls_0031-package_type         = 'PLT'.
+ls_0031-item_no              = ls_0017-matid.
+ls_0031-description          = '특이사항 없음'.
+ls_0031-rate_class           = 'N'.
+ls_0031-gross_weight         = ls_0017-weight.
+ls_0031-chargeable_weight    = ls_0026-weight_avail.
+ls_0031-rate                 = lv_price.
+ls_0031-amount               = lv_price.
+ls_0031-gross_wt_charge      = lv_price.
+ls_0031-total_amount         = lv_price.
+ls_0031-scheduleid           = ls_0017-scheduleid.
+ls_0031-departure_date       = ls_0017-tdate.
+ls_0031-special_instruction  = 'X'.
+ls_0031-account_info         = 'CC'.
+ls_0031-handling_info        = 'GENERAL CARGO'.
+
+CLEAR: ls_0031-prepaid_1, ls_0031-prepaid_2, ls_0031-prepaid_3,
+       ls_0031-prepaid_4, ls_0031-prepaid_5, ls_0031-prepaid_6,
+       ls_0031-collect_1, ls_0031-collect_2, ls_0031-collect_3,
+       ls_0031-collect_4, ls_0031-collect_5, ls_0031-collect_6.
+
+ls_0031-airline_total         = lv_price.
+ls_0031-grand_total           = lv_price.
+ls_0031-total_prepaid         = 0.
+ls_0031-total_collect         = lv_price.
+ls_0031-dest_currency_charge  = lv_price.
+ls_0031-dest_charge           = lv_price.
+ls_0031-total_collect_charge  = lv_price.
+ls_0031-issue_place           = 'S-AIR 삼만리 항공'.
+ls_0031-issue_date            = lv_today.
+ls_0031-weight_unit           = ls_0017-weight_unit.
+
+INSERT zc103sdt0031 FROM ls_0031.
+* 저장 이후 리포트로 화면 전환
+SUBMIT zc103sdr0006
+  WITH pa_trid = p_docid
+  AND RETURN.
+
+ENDFORM.

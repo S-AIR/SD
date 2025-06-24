@@ -1,0 +1,33 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0005O01
+*&---------------------------------------------------------------------*
+**********************************************************************
+* PBO Logic for Screen 100
+**********************************************************************
+
+MODULE status_0100 OUTPUT.
+  " — 화면의 PF-STATUS와 TitleBar 설정
+  SET PF-STATUS 'MENU100'.
+  SET TITLEBAR  'TITLE100'.
+ENDMODULE.
+**********************************************************************
+MODULE before_100_screen OUTPUT.
+
+  " ① 달력 객체 + 이벤트 등록
+  IF go_fr_con IS NOT BOUND.
+    PERFORM create_calendar_object.
+    PERFORM set_calendar_event.
+  ENDIF.
+
+  " ② 초기 날짜 세팅
+  PERFORM set_init_date.
+
+  " ③ 최초 진입 시 전체 조건 조회 + ALV 출력
+  PERFORM first_entry_process.
+
+ENDMODULE.
+
+
+MODULE conditiondata OUTPUT.
+  PERFORM conditiondata.
+ENDMODULE.

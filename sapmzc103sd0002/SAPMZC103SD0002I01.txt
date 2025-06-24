@@ -1,0 +1,182 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0002I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  100_EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE 100_exit INPUT.
+
+  CALL METHOD : go_top_alv_grid->free,
+                go_bottom_alv_grid->free,
+                go_top_container->free,
+                go_bottom_container->free,
+                go_split_container->free,
+                go_main_container->free,
+                go_calendar->free,
+                go_cale_container->free.
+
+  FREE : go_top_alv_grid, go_bottom_alv_grid, go_top_container,
+         go_bottom_container, go_split_container, go_main_container, go_calendar, go_cale_container.
+
+*-- Free Excel Object
+  FREE OBJECT : sheets,
+                books,
+                excel,
+                sheet,
+                book,
+                workbook,
+                cells,
+                cell,
+                row,
+                buffer,
+                activesheet.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+*    WHEN 'SAVE'.
+*      PERFORM set_save_button.
+    WHEN 'SRCH'.
+      PERFORM set_search_button.
+    WHEN 'CTYP'.
+      PERFORM set_type.
+    WHEN 'DETE'.
+      PERFORM set_iofield_delete.
+    WHEN 'EXCL'.
+      PERFORM excel_download.
+    WHEN 'BILL'.
+      PERFORM create_billing_document.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  BPDATE_F4_CONTROL  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE bpdate_f4_control INPUT.
+
+  PERFORM bpdate_f4_control.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CUSDATE_F4_CONTROL  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE cusdate_f4_control INPUT.
+
+  PERFORM cusdate_f4_control.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  BSTAT_F4_CONTROL  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE bstat_f4_control INPUT.
+
+  PERFORM bstat_f4_control.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CSTAT_F4_CONTROL  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE cstat_f4_control INPUT.
+
+  PERFORM cstat_f4_control.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  110_EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE 110_exit INPUT.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0110  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0110 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SAVE'.
+      PERFORM set_pop_save_button.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  120_EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE 120_exit INPUT.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0120  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0120 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SAVE'.
+      PERFORM set_line_save_button.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0130  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0130 INPUT.
+  CASE gv_okcode.
+    WHEN 'BLSD'.
+      PERFORM send_billing_docu_data.
+    WHEN 'SECH'.
+      PERFORM get_so_head_data.
+    WHEN 'MVBL'.
+      PERFORM move_billing_screen.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  COMPNAME_F4_CONTROL  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE compname_f4_control INPUT.
+
+  PERFORM compname_f4_control.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  BPID_F4_CONTROL  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE bpid_f4_control INPUT.
+
+  PERFORM bpid_f4_control.
+
+ENDMODULE.

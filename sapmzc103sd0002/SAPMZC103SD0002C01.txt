@@ -1,0 +1,78 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0002C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+
+  PUBLIC SECTION.
+
+    CLASS-METHODS : modify_value_head FOR EVENT data_changed_finished
+                                      OF cl_gui_alv_grid
+                                      IMPORTING e_modified et_good_cells,
+                    modify_value_line FOR EVENT data_changed_finished
+                                       OF cl_gui_alv_grid
+                                       IMPORTING e_modified et_good_cells,
+                    edit_toolbar_head FOR EVENT toolbar
+                                      OF cl_gui_alv_grid
+                                       IMPORTING e_object e_interactive,
+                    edit_toolbar_line FOR EVENT toolbar
+                                      OF cl_gui_alv_grid
+                                      IMPORTING e_object e_interactive,
+                    user_command FOR EVENT user_command
+                                 OF cl_gui_alv_grid
+                                 IMPORTING e_ucomm,
+                    double_click FOR EVENT double_click
+                                  OF cl_gui_alv_grid
+                                  IMPORTING e_row e_column,
+                    on_date_selected FOR EVENT date_selected
+                                      OF cl_gui_calendar
+                                      IMPORTING date_begin date_end sender,
+                    double_click_billing FOR EVENT double_click
+                                         OF cl_gui_alv_grid
+                                         IMPORTING e_row e_column.
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Class (Implementation) lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD modify_value_head.
+    PERFORM modify_value_head USING e_modified et_good_cells.
+  ENDMETHOD.
+
+  METHOD modify_value_line.
+    PERFORM modify_value_line USING e_modified et_good_cells.
+  ENDMETHOD.
+
+  METHOD edit_toolbar_head.
+    PERFORM edit_toolbar_head USING e_object e_interactive.
+  ENDMETHOD.
+
+  METHOD edit_toolbar_line.
+    PERFORM edit_toolbar_line USING e_object e_interactive.
+  ENDMETHOD.
+
+  METHOD user_command.
+    PERFORM user_command USING e_ucomm.
+  ENDMETHOD.
+
+  METHOD double_click.
+    PERFORM double_click USING e_row e_column.
+  ENDMETHOD.
+
+  METHOD on_date_selected.
+    PERFORM on_date_selected USING date_begin sender.
+  ENDMETHOD.
+
+  METHOD double_click_billing.
+    PERFORM double_click_billing USING e_row e_column.
+  ENDMETHOD.
+
+ENDCLASS.

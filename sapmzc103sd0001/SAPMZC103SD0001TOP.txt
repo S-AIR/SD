@@ -1,0 +1,172 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZC103SD0001TOP                       - Module Pool      SAPMZC103SD0001
+*&---------------------------------------------------------------------*
+PROGRAM sapmzc103sd0001 MESSAGE-ID zmsgc103.
+
+**********************************************************************
+* TABLES
+**********************************************************************
+TABLES : zc103sdt0002, zc103sdt0010.
+
+**********************************************************************
+* Macro
+**********************************************************************
+DEFINE _init.
+  REFRESH &1.
+  CLEAR &1.
+END-OF-DEFINITION.
+
+**********************************************************************
+* Class Instance
+**********************************************************************
+DATA : go_container     TYPE REF TO cl_gui_custom_container,
+       go_alv_grid      TYPE REF TO cl_gui_alv_grid,
+       go_110_container TYPE REF TO cl_gui_custom_container,
+       go_110_alv_grid  TYPE REF TO cl_gui_alv_grid.
+
+**********************************************************************
+* ITab and WA
+**********************************************************************
+DATA : BEGIN OF gs_body,
+         custid       TYPE zc103e_sd_custid,
+         name         TYPE zc103e_sd_name,
+         email        TYPE zc103e_sd_email,
+         phone        TYPE zc103e_sd_phone,
+         nation       TYPE zc103e_sd_nation,
+         mile_balance TYPE zc103e_sd_mileb,
+         currency     TYPE zc103sdt0002-currency,
+         erdat        TYPE erdat,
+         erzet        TYPE erzet,
+         ernam        TYPE ernam,
+         aedat        TYPE aedat,
+         aezet        TYPE aezet,
+         aenam        TYPE aenam,
+         modi_yn(1),
+         style        TYPE lvc_t_styl.
+DATA : END OF gs_body,
+gt_body LIKE TABLE OF gs_body.
+
+*-- Mileage Base Data
+DATA : gs_mbase TYPE zc103sdt0010,
+       gt_mbase LIKE TABLE OF gs_mbase.
+
+*-- Mileage Data
+DATA : BEGIN OF gs_mile,
+         mileage_id    TYPE zc103sdt0010-mileage_id,
+         custid        TYPE zc103sdt0010-custid,
+         occur_date    TYPE zc103sdt0010-occur_date,
+         expire_date   TYPE zc103sdt0010-expire_date,
+         event_type    TYPE string,
+         bookingid     TYPE zc103sdt0010-bookingid,
+         mile_amount   TYPE zc103sdt0010-mile_amount,
+         balance_after TYPE zc103sdt0010-balance_after,
+         mile_total    TYPE zc103sdt0010-mile_total,
+         currency      TYPE zc103sdt0010-currency,
+       END OF gs_mile,
+       gt_mile LIKE TABLE OF gs_mile.
+
+*-- Using Date Search
+DATA : BEGIN OF gs_submile,
+         mileage_id    TYPE zc103sdt0010-mileage_id,
+         custid        TYPE zc103sdt0010-custid,
+         occur_date    TYPE zc103sdt0010-occur_date,
+         expire_date   TYPE zc103sdt0010-expire_date,
+         event_type    TYPE string,
+         bookingid     TYPE zc103sdt0010-bookingid,
+         mile_amount   TYPE zc103sdt0010-mile_amount,
+         balance_after TYPE zc103sdt0010-balance_after,
+         mile_total    TYPE zc103sdt0010-mile_total,
+         currency      TYPE zc103sdt0010-currency,
+         erdat         TYPE erdat,
+         erzet         TYPE erzet,
+         ernam         TYPE ernam,
+         aedat         TYPE aedat,
+         aezet         TYPE aezet,
+         aenam         TYPE aenam,
+         modi_yn(1),
+         style         TYPE lvc_s_styl,
+       END OF gs_submile,
+       gt_submile LIKE TABLE OF gs_submile.
+
+*-- Edit Pop-up(Mileage)
+DATA : BEGIN OF gs_popmile,
+         mandt         TYPE zc103sdt0010-mandt,
+         mileage_id    TYPE zc103sdt0010-mileage_id,
+         custid        TYPE zc103sdt0010-custid,
+         occur_date    TYPE zc103sdt0010-occur_date,
+         expire_date   TYPE zc103sdt0010-expire_date,
+         event_type    TYPE zc103sdt0010-event_type,
+         bookingid     TYPE zc103sdt0010-bookingid,
+         mile_amount   TYPE zc103sdt0010-mile_amount,
+         balance_after TYPE zc103sdt0010-balance_after,
+         mile_total    TYPE zc103sdt0010-mile_total,
+         currency      TYPE zc103sdt0010-currency,
+         erdat         TYPE erdat,
+         erzet         TYPE erzet,
+         ernam         TYPE ernam,
+         aedat         TYPE aedat,
+         aezet         TYPE aezet,
+         aenam         TYPE aenam,
+       END OF gs_popmile.
+
+*-- For Search Help
+DATA : BEGIN OF gs_expdf4,
+         custid      TYPE zc103sdt0002-custid,
+         expire_date TYPE zc103sdt0010-expire_date,
+       END OF gs_expdf4,
+       gt_expdf4 LIKE TABLE OF gs_expdf4.
+
+*-- For ALV Search Help
+DATA : BEGIN OF gs_nation,
+         country_name TYPE zc103sdt0019-country_name,
+       END OF gs_nation,
+       gt_nation LIKE TABLE OF gs_nation.
+
+*-- For Update customer Mileage
+DATA : gs_emile TYPE zc103sdt0010,
+       gt_emile LIKE TABLE OF gs_emile.
+
+*-- For Screen 100 ALV
+DATA : gs_fcat    TYPE lvc_s_fcat,
+       gt_fcat    TYPE lvc_t_fcat,
+       gs_layout  TYPE lvc_s_layo,
+       gs_variant TYPE disvariant.
+
+*-- For Screen 110 ALV
+DATA : gs_110_fcat    TYPE lvc_s_fcat,
+       gt_110_fcat    TYPE lvc_t_fcat,
+       gs_110_layout  TYPE lvc_s_layo,
+       gs_110_variant TYPE disvariant.
+
+*-- For Exclude
+DATA : gt_ui_functions TYPE ui_functions.
+
+*-- For Delete
+DATA : gs_delete TYPE zc103sdt0002,
+       gt_delete LIKE TABLE OF gs_delete.
+
+*-- For Check Insert
+DATA : gs_insert TYPE zc103sdt0002,
+       gt_insert LIKE TABLE OF gs_insert.
+
+*-- For F4 Function
+DATA : BEGIN OF gs_cusf4,
+         name  TYPE zc103sdt0002-name,
+         custid TYPE zc103sdt0002-custid,
+       END OF gs_cusf4,
+       gt_cusf4 LIKE TABLE OF gs_cusf4.
+
+**********************************************************************
+* Common Variable
+**********************************************************************
+DATA : gv_okcode TYPE sy-ucomm,
+       gv_mode   VALUE 'D'.
+
+****************************s******************************************
+* Screen Field
+**********************************************************************
+DATA : gv_name     TYPE zc103sdt0002-name,
+       gv_cusid    TYPE zc103sdt0002-custid,
+       gv_date_fr  TYPE zc103sdt0010-occur_date,
+       gv_date_to  TYPE zc103sdt0010-occur_date,
+       gv_exp_date TYPE zc103sdt0010-expire_date.

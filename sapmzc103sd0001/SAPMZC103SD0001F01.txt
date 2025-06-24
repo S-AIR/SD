@@ -1,0 +1,1385 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0001F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form modify_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_MODIFIED
+*&      --> ET_GOOD_CELLS
+*&---------------------------------------------------------------------*
+FORM modify_value  USING    pv_modified
+                            pt_good_cells TYPE lvc_t_modi.
+  DATA : ls_good_cells TYPE lvc_s_modi.
+
+  CHECK pv_modified IS NOT INITIAL.
+
+  LOOP AT pt_good_cells INTO ls_good_cells.
+
+    gs_body-modi_yn = abap_true.
+
+    MODIFY gt_body FROM gs_body INDEX ls_good_cells-row_id
+                                TRANSPORTING modi_yn.
+  ENDLOOP.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form edit_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&      --> E_INTERACTIVE
+*&---------------------------------------------------------------------*
+FORM edit_toolbar  USING    po_object TYPE REF TO cl_alv_event_toolbar_set
+                            pv_interactive.
+
+  DATA : lv_disabled,
+       ls_button TYPE stb_button.
+
+  IF gv_mode EQ 'D'.
+    lv_disabled = abap_true.
+  ENDIF.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'TOGL'.
+  ls_button-icon = icon_toggle_display_change.
+  ls_button-quickinfo = 'Display <-> Edit'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-butn_type = '3'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'IROW'.
+  ls_button-disabled = lv_disabled.
+  ls_button-icon = icon_insert_row.
+  ls_button-quickinfo = 'Insert Row'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+  CLEAR : ls_button.
+  ls_button-function = 'DROW'.
+  ls_button-disabled = lv_disabled.
+  ls_button-icon = icon_delete_row.
+  ls_button-quickinfo = 'Delete Row'.
+  APPEND ls_button TO po_object->mt_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM user_command  USING    pv_ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'TOGL'.
+      PERFORM set_toggle.
+    WHEN 'IROW'.
+      PERFORM set_insert.
+    WHEN 'DROW'.
+      PERFORM set_delete.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_toggle
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_toggle .
+
+  CASE gv_mode.
+    WHEN 'E'.
+      gv_mode = 'D'.
+      CALL METHOD go_alv_grid->set_ready_for_input
+        EXPORTING
+          i_ready_for_input = 0.
+
+    WHEN 'D'.
+      gv_mode = 'E'.
+      CALL METHOD go_alv_grid->set_ready_for_input
+        EXPORTING
+          i_ready_for_input = 1.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_insert
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_insert .
+
+  DATA : ls_style TYPE lvc_s_styl.
+
+  CLEAR : gs_body, ls_style.
+
+  ls_style-style = cl_gui_alv_grid=>mc_style_enabled.
+
+  INSERT ls_style INTO TABLE gs_body-style.
+
+*-- Block Mileage Field
+  PERFORM set_style_detail USING : 'CUSTID' 'D' CHANGING gs_body-style,
+                                   'MILE_BALANCE' 'D' CHANGING gs_body-style,
+                                   'LAST_MILE_UPDATE' 'D' CHANGING gs_body-style.
+
+  APPEND gs_body TO gt_body.
+
+  PERFORM refresh_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_delete
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_delete .
+
+  DATA : lt_roid TYPE lvc_t_roid,
+         ls_roid TYPE lvc_s_roid.
+
+  CALL METHOD go_alv_grid->get_selected_rows
+    IMPORTING
+      et_row_no = lt_roid.
+
+  IF lt_roid IS INITIAL.
+    MESSAGE i001 WITH TEXT-w01 DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  SORT : lt_roid BY row_id DESCENDING.
+
+  LOOP AT lt_roid INTO ls_roid.
+
+    READ TABLE gt_body INTO gs_body INDEX ls_roid-row_id.
+    gs_delete = CORRESPONDING #( gs_body ).
+    APPEND gs_delete TO gt_delete.
+
+    DELETE gt_body INDEX ls_roid-row_id.
+
+  ENDLOOP.
+
+  PERFORM refresh_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_table
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_alv_grid->refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_100_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_100_screen .
+
+  IF go_container IS INITIAL.
+
+    PERFORM set_100_field_catalog USING : 'X' 'CUSTID' 'ZC103SDT0002' ' ' ' ',
+                                          ' ' 'NAME' 'ZC103SDT0002' ' ' 'X',
+                                          ' ' 'EMAIL' 'ZC103SDT0002' ' ' 'X',
+                                          ' ' 'PHONE' 'ZC103SDT0002' ' ' 'X',
+                                          ' ' 'NATION' 'ZC103SDT0002' ' ' ' ',
+                                          ' ' 'MILE_BALANCE' 'ZC103SDT0002' ' ' ' '.
+
+    PERFORM set_layout.
+    PERFORM create_object.
+    PERFORM exclude_toolbar.
+
+    SET HANDLER : lcl_event_handler=>modify_value FOR go_alv_grid,
+                  lcl_event_handler=>edit_toolbar FOR go_alv_grid,
+                  lcl_event_handler=>user_command FOR go_alv_grid,
+                  lcl_event_handler=>hotspot_click FOR go_alv_grid,
+                  lcl_event_handler=>handle_search_help FOR go_alv_grid.
+
+    CALL METHOD go_alv_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_body
+        it_fieldcatalog      = gt_fcat.
+
+    PERFORM register_f4_field.
+
+  ENDIF.
+
+  PERFORM refresh_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_100_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_100_field_catalog  USING  pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat-key = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-ref_table = pv_table.
+  gs_fcat-just = pv_just.
+  gs_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'MILE_BALANCE'.
+      gs_fcat-hotspot = abap_true.
+      gs_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'NATION'.
+      gs_fcat-f4availabl  = abap_true.
+      gs_fcat-ref_field   = 'COUNTRY_NAME'.
+      gs_fcat-ref_table   = 'ZC103SDT0019'.
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR : gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_layout .
+
+*-- Set layout
+  gs_layout-zebra = abap_true.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode = 'D'.
+  gs_layout-stylefname = 'STYLE'.
+
+*-- Set Variant
+  gs_variant-report = sy-repid.
+  gs_variant-handle = 'ALV1'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  CREATE OBJECT go_container
+    EXPORTING
+      container_name = 'MAIN_CONT'.
+
+  CREATE OBJECT go_alv_grid
+    EXPORTING
+      i_parent = go_container.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form exclude_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM exclude_toolbar .
+
+  DATA : ls_ui_functions TYPE ui_func.
+
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_undo.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_copy_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_cut.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_delete_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_insert_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_append_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_loc_paste_new_row.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_refresh.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_auf.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_average.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_print.
+  APPEND ls_ui_functions TO gt_ui_functions.
+  ls_ui_functions = cl_gui_alv_grid=>mc_fc_graph.
+  APPEND ls_ui_functions TO gt_ui_functions.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_save
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_save .
+
+  DATA : lt_save         TYPE TABLE OF zc103sdt0002,
+         ls_save         TYPE zc103sdt0002,
+         lv_tabix        TYPE sy-tabix,
+         lv_answer,
+         lv_number       TYPE n LENGTH 7,
+         lv_phone        TYPE string,
+         lv_char         TYPE c,
+         lv_offset       TYPE i,
+         lv_country_name TYPE zc103sdt0019-country_name.
+
+
+*-- Check changed
+  CALL METHOD go_alv_grid->check_changed_data.
+
+  CLEAR : gs_body.
+  READ TABLE gt_body INTO gs_body WITH KEY modi_yn = abap_true.
+
+  IF ( sy-subrc NE 0 ) AND
+     ( gt_insert IS INITIAL ) AND
+     ( gt_delete IS INITIAL ).
+    MESSAGE i000 WITH TEXT-t03 DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+*-- Pop up Dialog
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+*-- Set Time Stamp & CustID
+  LOOP AT gt_body INTO gs_body WHERE modi_yn EQ abap_true.
+*-- Check Email Valid
+    IF ( gs_body-email IS NOT INITIAL ) AND
+       ( gs_body-email NA '@' ).
+      MESSAGE i001 WITH gs_body-name TEXT-e01 DISPLAY LIKE 'E'.
+      LEAVE TO SCREEN 100.
+    ELSEIF ( gs_body-email IS INITIAL ).
+      MESSAGE i001 WITH gs_body-name TEXT-e02 DISPLAY LIKE 'E'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+*-- Check Phone Num Valid
+    lv_phone = gs_body-phone.
+    CONDENSE lv_phone NO-GAPS.
+
+    DATA(lv_valid) = abap_true.
+
+    DO strlen( lv_phone ) TIMES.
+      lv_offset = sy-index - 1.                     " ← 먼저 계산
+      lv_char = lv_phone+lv_offset(1).              " ← 계산된 offset 사용
+      IF lv_char CO '0123456789-+'.
+        CONTINUE.
+      ELSE.
+        lv_valid = abap_false.
+        EXIT.
+      ENDIF.
+    ENDDO.
+
+    IF ( lv_phone IS INITIAL ).
+      MESSAGE i001 WITH gs_body-name TEXT-e04 DISPLAY LIKE 'E'.
+      LEAVE TO SCREEN 100.
+    ELSEIF lv_valid = abap_false OR
+       strlen( lv_phone ) < 7 OR strlen( lv_phone ) > 20.
+      MESSAGE i001 WITH gs_body-name TEXT-e03 DISPLAY LIKE 'E'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+*-- Check Country Valid
+    IF ( gs_body-nation IS INITIAL ).
+      MESSAGE i001 WITH gs_body-name TEXT-e06 DISPLAY LIKE 'E'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+    SELECT SINGLE country_name
+      FROM zc103sdt0019
+      INTO @lv_country_name
+      WHERE country_name = @gs_body-nation.
+
+    IF sy-subrc <> 0.
+      MESSAGE i001 WITH gs_body-name TEXT-e05 DISPLAY LIKE 'E'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+*-- CHECK Duplicate DATA
+    DATA : ls_check TYPE zc103sdt0002.
+
+    SELECT SINGLE name, email, phone, nation
+      FROM zc103sdt0002
+      WHERE name EQ @gs_body-name
+        AND email EQ @gs_body-email
+        AND phone EQ @gs_body-phone
+        AND nation EQ @gs_body-nation
+      INTO CORRESPONDING FIELDS OF @ls_check.
+
+    IF ( ls_check IS NOT INITIAL ).
+      DELETE gt_body WHERE custid EQ ''
+                       AND name EQ gs_body-name
+                       AND email EQ gs_body-email
+                       AND phone EQ gs_body-phone
+                       AND nation EQ gs_body-nation.
+      CLEAR : gs_body.
+      MESSAGE i000 WITH TEXT-e12 DISPLAY LIKE 'E'.
+      LEAVE TO SCREEN 100.
+    ENDIF.
+
+*-- Set CustID
+    IF gs_body-custid IS INITIAL.
+      CALL FUNCTION 'NUMBER_GET_NEXT'
+        EXPORTING
+          nr_range_nr = '01'
+          object      = 'ZCUSTID'
+        IMPORTING
+          number      = lv_number
+        EXCEPTIONS
+          OTHERS      = 1.
+
+      IF sy-subrc = 0.
+        CONCATENATE 'C' lv_number INTO gs_body-custid.
+      ELSE.
+        MESSAGE i001 WITH TEXT-t02 DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.
+    ENDIF.
+
+    lv_tabix = sy-tabix.
+
+    IF gs_body-erdat IS INITIAL.
+      gs_body-erdat = sy-datum.
+      gs_body-ernam = sy-uname.
+      gs_body-erzet = sy-uzeit.
+
+    ELSE.
+      gs_body-aedat = sy-datum.
+      gs_body-aenam = sy-uname.
+      gs_body-aezet = sy-uzeit.
+
+    ENDIF.
+
+    CLEAR : gs_body-modi_yn.
+
+    MODIFY gt_body FROM gs_body INDEX lv_tabix
+                                TRANSPORTING custid modi_yn erdat ernam erzet
+                                             aedat aenam aezet.
+
+  ENDLOOP.
+
+  lt_save = CORRESPONDING #( gt_body ).
+
+*-- Delete
+  IF gt_delete IS NOT INITIAL.
+    DELETE zc103sdt0002 FROM TABLE gt_delete.
+  ENDIF.
+
+  CLEAR : gt_delete, gs_delete.
+
+*-- Update
+  MODIFY zc103sdt0002 FROM TABLE lt_save.
+
+  IF sy-subrc EQ 0.
+    MESSAGE i001 WITH TEXT-t01 DISPLAY LIKE 'S'.
+    COMMIT WORK.
+
+  ELSE.
+    ROLLBACK WORK.
+  ENDIF.
+
+  PERFORM set_style.
+  PERFORM refresh_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_popup_to_confirm
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LV_ANSWER
+*&---------------------------------------------------------------------*
+FORM set_popup_to_confirm  CHANGING pv_answer.
+
+  CALL FUNCTION 'ZC1F030001'
+    EXPORTING
+      iv_action = '저장'
+    IMPORTING
+      ev_answer = pv_answer.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_style .
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  LOOP AT gt_body INTO gs_body.
+
+    lv_tabix = sy-tabix.
+
+    CLEAR : gs_body-style.
+
+    PERFORM set_style_detail USING : 'CUSTID' 'D' CHANGING gs_body-style,
+                                     'NAME' 'E' CHANGING gs_body-style,
+                                     'EMAIL' 'E' CHANGING gs_body-style,
+                                     'PHONE' 'E' CHANGING gs_body-style,
+                                     'NATION' 'E' CHANGING gs_body-style,
+                                     'MILE_BALANCE' 'D' CHANGING gs_body-style,
+                                     'LAST_MILE_UPDATE' 'D' CHANGING gs_body-style.
+
+    MODIFY gt_body FROM gs_body INDEX lv_tabix TRANSPORTING style.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style_detail
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_style_detail  USING  pv_field pv_status CHANGING pt_style TYPE lvc_t_styl.
+
+  DATA : ls_style TYPE lvc_s_styl.
+
+  CLEAR : ls_style.
+  ls_style-fieldname = pv_field.
+
+*-- D -> disabled, E -> Enabled
+  IF pv_status EQ 'D'.
+    ls_style-style = cl_gui_alv_grid=>mc_style_disabled.
+  ELSEIF pv_status EQ 'E'.
+    ls_style-style = cl_gui_alv_grid=>mc_style_enabled.
+  ENDIF.
+
+  INSERT ls_style INTO TABLE pt_style.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_search
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_search .
+
+  PERFORM set_customer_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_customer_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_customer_data .
+
+  CLEAR : gs_body, gt_body.
+
+*-- Set Customer Data
+  IF ( gv_name IS INITIAL ) AND
+     ( gv_cusid IS INITIAL ).
+    SELECT custid, name, email, phone, nation, mile_balance, currency,
+           erdat, ernam, erzet, aedat, aenam, aezet
+      FROM zc103sdt0002
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+  ELSEIF gv_name IS INITIAL.
+    SELECT custid, name, email, phone, nation, mile_balance, currency,
+           erdat, ernam, erzet, aedat, aenam, aezet
+      FROM zc103sdt0002
+      WHERE custid EQ @gv_cusid
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+  ELSEIF gv_cusid IS INITIAL.
+    SELECT custid, name, email, phone, nation, mile_balance, currency,
+           erdat, ernam, erzet, aedat, aenam, aezet
+      FROM zc103sdt0002
+      WHERE name EQ @gv_name
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+  ELSEIF ( gv_name IS NOT INITIAL ) AND
+         ( gv_cusid IS NOT INITIAL ).
+    SELECT custid, name, email, phone, nation, mile_balance, currency,
+           erdat, ernam, erzet, aedat, aenam, aezet
+      FROM zc103sdt0002
+      WHERE name EQ @gv_name
+       AND custid EQ @gv_cusid
+      INTO CORRESPONDING FIELDS OF TABLE @gt_body.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_base_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_base_data .
+
+*-- Mileage Counting
+  SUBMIT zc103sdr0004 AND RETURN.
+
+*-- Search Help Data
+  CLEAR : gt_nation, gs_nation.
+  SELECT country_name
+    FROM zc103sdt0019
+    INTO CORRESPONDING FIELDS OF TABLE @gt_nation.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM hotspot_click  USING    pv_row_id
+                             pv_column_id.
+
+  CLEAR : gs_body, gt_mile, gs_mile, gt_mbase, gs_mbase, gt_submile, gs_submile.
+
+  READ TABLE gt_body INTO gs_body INDEX pv_row_id.
+
+*-- Set Mileage Data
+  SELECT mileage_id, custid, occur_date, expire_date, event_type,
+         bookingid, mile_amount, balance_after, mile_total, currency,
+         erdat, ernam, erzet, aedat, aenam, aezet
+    FROM zc103sdt0010
+    WHERE custid EQ @gs_body-custid
+    ORDER BY occur_date ASCENDING
+    INTO CORRESPONDING FIELDS OF TABLE @gt_mbase.
+
+*-- Set Event Type
+  LOOP AT gt_mbase INTO gs_mbase.
+
+    MOVE-CORRESPONDING gs_mbase TO gs_mile.
+
+    CASE gs_mbase-event_type.
+      WHEN 'A'.
+        gs_mile-event_type = '적립'.
+      WHEN 'B'.
+        gs_mile-event_type = '사용'.
+      WHEN 'C'.
+        gs_mile-event_type = '소멸'.
+    ENDCASE.
+
+    APPEND gs_mile TO gt_mile.
+
+  ENDLOOP.
+
+*-- Message
+  IF gt_mile IS INITIAL.
+    MESSAGE i001 WITH TEXT-w02 DISPLAY LIKE 'W'.
+  ELSE.
+
+*-- Pop-up Screen
+    CALL SCREEN 110 STARTING AT 05 10.
+  ENDIF.
+
+*-- Refresh 100 Screen
+  PERFORM refresh_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_110_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_110_screen .
+
+  IF go_110_container IS INITIAL.
+
+    CLEAR : gs_110_fcat, gt_110_fcat.
+
+    PERFORM set_110_field_catalog USING : 'X' 'MILEAGE_ID' 'ZC103SDT0010' ' ' ' ',
+                                          ' ' 'CUSTID' 'ZC103SDT0010' ' ' ' ',
+                                          ' ' 'OCCUR_DATE' 'ZC103SDT0010' ' ' ' ',
+                                          ' ' 'EXPIRE_DATE' 'ZC103SDT0010' ' ' ' ',
+                                          ' ' 'EVENT_TYPE' 'ZC103SDT0010' ' ' 'X',
+                                          ' ' 'BOOKINGID' 'ZC103SDT0010' ' ' ' ',
+                                          ' ' 'MILE_AMOUNT' 'ZC103SDT0010' ' ' ' ',
+                                          ' ' 'BALANCE_AFTER' 'ZC103SDT0010' ' ' ' ',
+                                          ' ' 'MILE_TOTAL' 'ZC103SDT0010' ' ' ' '.
+
+    PERFORM set_110_layout.
+    PERFORM create_110_object.
+
+    SET HANDLER : lcl_event_handler=>double_click FOR go_110_alv_grid.
+
+    CALL METHOD go_110_alv_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_110_variant
+        i_save               = 'A'
+        i_default            = 'X'
+        is_layout            = gs_110_layout
+        it_toolbar_excluding = gt_ui_functions
+      CHANGING
+        it_outtab            = gt_submile
+        it_fieldcatalog      = gt_110_fcat.
+  ENDIF.
+
+  PERFORM refresh_110_table.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_110_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_110_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_110_fcat-key = pv_key.
+  gs_110_fcat-fieldname = pv_field.
+  gs_110_fcat-ref_table = pv_table.
+  gs_110_fcat-just = pv_just.
+  gs_110_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'MILE_AMOUNT'.
+      gs_110_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'BALANCE_AFTER'.
+      gs_110_fcat-cfieldname = 'CURRENCY'.
+    WHEN 'MILE_TOTAL'.
+      gs_110_fcat-cfieldname = 'CURRENCY'.
+  ENDCASE.
+
+  APPEND gs_110_fcat TO gt_110_fcat.
+  CLEAR : gs_110_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_110_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_110_layout .
+
+*-- Set Layout
+  gs_110_layout-zebra = abap_true.
+  gs_110_layout-cwidth_opt = 'A'.
+  gs_110_layout-sel_mode = 'D'.
+
+*-- Set Variant
+  gs_110_variant-report = sy-repid.
+  gs_110_variant-handle = 'POP1'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_110_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_110_object .
+
+  CREATE OBJECT go_110_container
+    EXPORTING
+      container_name = 'POP_CONT'.
+
+
+  CREATE OBJECT go_110_alv_grid
+    EXPORTING
+      i_parent = go_110_container.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_odate_search
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_odate_search .
+
+  CLEAR : gt_submile, gs_submile.
+
+*-- Set Mileage Data(Occur Date)
+  IF ( gv_date_fr IS NOT INITIAL ) AND
+     ( gv_date_to IS INITIAL ).
+    LOOP AT gt_mile INTO gs_mile WHERE occur_date GE gv_date_fr.
+      gs_submile = CORRESPONDING #( gs_mile ).
+      APPEND gs_submile TO gt_submile.
+    ENDLOOP.
+
+  ELSEIF ( gv_date_fr IS INITIAL ) AND
+         ( gv_date_to IS NOT INITIAL ).
+    LOOP AT gt_mile INTO gs_mile WHERE occur_date LE gv_date_to.
+      gs_submile = CORRESPONDING #( gs_mile ).
+      APPEND gs_submile TO gt_submile.
+    ENDLOOP.
+
+  ELSEIF ( gv_date_fr IS NOT INITIAL ) AND
+         ( gv_date_to IS NOT INITIAL ).
+    LOOP AT gt_mile INTO gs_mile WHERE occur_date
+                               BETWEEN gv_date_fr AND gv_date_to.
+
+      gs_submile = CORRESPONDING #( gs_mile ).
+      APPEND gs_submile TO gt_submile.
+    ENDLOOP.
+  ENDIF.
+
+  IF gt_submile IS INITIAL.
+    MESSAGE i001 WITH TEXT-w03 DISPLAY LIKE 'W'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_mile_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_mile_data .
+
+  IF gt_submile IS INITIAL.
+
+*-- SET Base Mile DATA
+    LOOP AT gt_mile INTO gs_mile.
+      gs_submile = CORRESPONDING #( gs_mile ).
+      APPEND gs_submile TO gt_submile.
+    ENDLOOP.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_110_table
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_110_table .
+
+  DATA : ls_stable TYPE lvc_s_stbl.
+
+  ls_stable-row = abap_true.
+  ls_stable-col = abap_true.
+
+  CALL METHOD go_110_alv_grid->refresh_table_display
+    EXPORTING
+      is_stable = ls_stable.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_edata_search
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_edata_search .
+
+  CLEAR : gt_submile, gs_submile.
+
+*-- Set Mileage Data(Expire Date)
+  LOOP AT gt_mile INTO gs_mile WHERE expire_date EQ gv_exp_date.
+
+    gs_submile = CORRESPONDING #( gs_mile ).
+    APPEND gs_submile TO gt_submile.
+
+  ENDLOOP.
+
+  IF gt_submile IS INITIAL.
+    MESSAGE i001 WITH TEXT-w03 DISPLAY LIKE 'W'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_COLUMN
+*&      --> E_ROW
+*&---------------------------------------------------------------------*
+FORM double_click  USING    pv_column
+                            pv_row.
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  CLEAR : gs_popmile.
+  READ TABLE gt_submile INTO gs_submile INDEX pv_row.
+
+*-- Get Mileage Data
+  SELECT SINGLE mileage_id, custid, occur_date, expire_date,
+                event_type, bookingid, mile_amount, balance_after, currency,
+                mile_total, erdat, erzet, ernam, aedat, aezet, aenam
+    FROM zc103sdt0010
+    WHERE mileage_id EQ @gs_submile-mileage_id
+    INTO CORRESPONDING FIELDS OF @gs_popmile.
+
+*-- Message
+  IF gs_popmile IS INITIAL.
+    MESSAGE i001 WITH TEXT-w04 DISPLAY LIKE 'W'.
+  ENDIF.
+
+  CALL SCREEN 120 STARTING AT 15 10.
+
+*-- REFRESH Table(110)
+  PERFORM refresh_110_table.
+
+*-- SET Customer Mileage DATA
+  PERFORM set_cus_mile_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form change_mileage_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM change_mileage_data .
+
+  DATA : lv_echeck TYPE string,
+         lv_answer.
+
+*-- Pop-up Dialog
+  PERFORM set_popup_to_confirm CHANGING lv_answer.
+
+  CHECK lv_answer EQ '1'.
+
+*-- Check Mileage type Valid
+  IF ( gs_popmile-event_type NE 'A' ) AND
+     ( gs_popmile-event_type NE 'B' ) AND
+     ( gs_popmile-event_type NE 'C' ).
+    MESSAGE i000 WITH TEXT-e07 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 120.
+  ENDIF.
+
+*-- Check Mileage Amount Valid
+  IF ( gs_popmile-mile_amount LT 0 ).
+    MESSAGE i000 WITH TEXT-e08 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 120.
+  ENDIF.
+
+  IF ( gs_popmile-mile_amount > gs_popmile-mile_total ).
+    MESSAGE i000 WITH TEXT-e10 DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN 120.
+  ENDIF.
+
+*-- Update Mileage Data(gt_submile)
+  CLEAR : lv_echeck.
+
+*-- Check Event type
+  CASE gs_popmile-event_type.
+    WHEN 'A'.
+      lv_echeck = '적립'.
+    WHEN 'B'.
+      lv_echeck = '사용'.
+    WHEN 'C'.
+      lv_echeck = '소멸'.
+  ENDCASE.
+
+*-- Check Changed
+  IF ( gs_submile-mileage_id EQ gs_popmile-mileage_id ) AND
+     ( gs_submile-occur_date EQ gs_popmile-occur_date ) AND
+     ( gs_submile-expire_date EQ gs_popmile-expire_date ) AND
+     ( gs_submile-mile_amount EQ gs_popmile-mile_amount ) AND
+     ( gs_submile-event_type EQ lv_echeck ).
+
+    MESSAGE i001 WITH TEXT-t03 DISPLAY LIKE 'W'.
+    LEAVE TO SCREEN 120.
+  ENDIF.
+
+*-- Change Mileage Data
+  CASE gs_popmile-event_type.
+    WHEN 'A'.
+      gs_popmile-mile_amount = 0.
+      gs_popmile-balance_after = gs_popmile-mile_total.
+    WHEN 'B'.
+      gs_popmile-balance_after = gs_popmile-mile_total - gs_popmile-mile_amount.
+      IF ( gs_popmile-balance_after EQ 0 ).
+        gs_popmile-event_type = 'C'.
+      ENDIF.
+    WHEN 'C'.
+      gs_popmile-balance_after = 0.
+      gs_popmile-mile_amount = gs_popmile-mile_total.
+  ENDCASE.
+
+  gs_submile = CORRESPONDING #( gs_popmile ).
+
+*-- Set Time Stamp
+  IF gs_submile-erdat IS INITIAL.
+    gs_submile-erdat = sy-datum.
+    gs_submile-ernam = sy-uname.
+    gs_submile-erzet = sy-uzeit.
+  ELSE.
+    gs_submile-aedat = sy-datum.
+    gs_submile-aenam = sy-uname.
+    gs_submile-aezet = sy-uzeit.
+  ENDIF.
+
+  gs_popmile = CORRESPONDING #( gs_submile ).
+
+*-- Change Event-type(Code -> String)
+  CASE gs_submile-event_type.
+    WHEN 'A'.
+      gs_submile-event_type = '적립'.
+    WHEN 'B'.
+      gs_submile-event_type = '사용'.
+    WHEN 'C'.
+      gs_submile-event_type = '소멸'.
+  ENDCASE.
+
+*-- MODIFY gt_submile
+  MODIFY gt_submile FROM gs_submile TRANSPORTING occur_date expire_date event_type mile_amount balance_after
+                                                 erdat ernam erzet aedat aenam aezet
+                                    WHERE mileage_id = gs_submile-mileage_id.
+
+*-- DB Update
+  UPDATE zc103sdt0010 FROM gs_popmile.
+
+*-- Message
+  IF sy-subrc EQ 0.
+    MESSAGE i001 WITH TEXT-t01 DISPLAY LIKE 'S'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_cus_mile_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_cus_mile_data .
+
+  PERFORM set_update_mile_data.
+
+  DATA : lv_total  TYPE i,
+         lv_tabix  TYPE sy-tabix,
+         ls_insert TYPE zc103sdt0002.
+
+*-- Set Customer Mileage Data
+  LOOP AT gt_body INTO gs_body.
+
+    CLEAR : lv_total, ls_insert.
+
+    lv_tabix = sy-tabix.
+
+    LOOP AT gt_emile INTO gs_emile WHERE custid = gs_body-custid.
+
+      lv_total += gs_emile-balance_after.
+
+    ENDLOOP.
+
+    gs_body-mile_balance = lv_total.
+
+    ls_insert = CORRESPONDING #( gs_body ).
+
+*-- Modify ALV Data
+    MODIFY gt_body FROM gs_body INDEX lv_tabix TRANSPORTING mile_balance.
+
+*-- Update DB Data
+    UPDATE zc103sdt0002 FROM ls_insert.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_update_mile_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_update_mile_data .
+
+*-- Set Mileage Data
+  SELECT mileage_id, custid, occur_date, expire_date, event_type,
+         bookingid, mile_amount, balance_after
+    FROM zc103sdt0010
+    INTO CORRESPONDING FIELDS OF TABLE @gt_emile.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_control .
+
+  DATA : lt_return LIKE TABLE OF ddshretval WITH HEADER LINE,
+         lt_dynp   TYPE TABLE OF dynpread   WITH HEADER LINE.
+
+  lt_dynp-fieldname = 'GV_CUSID'.
+  APPEND lt_dynp.
+
+*-- GET PARAMETER value
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-cprog
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_dynp.
+
+  lt_dynp = VALUE #( lt_dynp[ fieldname = 'GV_CUSID' ] OPTIONAL ).
+
+*-- GET select DATA by condition
+  CLEAR gt_cusf4.
+  SELECT * INTO CORRESPONDING FIELDS OF TABLE gt_cusf4
+    FROM zc103sdt0002
+    WHERE custid EQ lt_dynp-fieldvalue.
+
+  _init lt_return.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'NAME' " ALV 에 박히는 값
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_NAME'
+      window_title    = 'Customer Name'
+      value_org       = 'S'
+    TABLES
+      value_tab       = gt_cusf4
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_clear
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_clear .
+
+  CLEAR : gt_body, gs_body, gv_name, gv_cusid.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form exp_date_f4_control
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM exp_date_f4_control .
+
+  DATA: lt_return TYPE TABLE OF ddshretval.
+
+*-- Get gt_expdf4
+  SELECT custid, expire_date
+    FROM zc103sdt0010
+    WHERE custid EQ @gs_body-custid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_expdf4.
+
+*-- f4 팝업 호출
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield    = 'EXPIRE_DATE'
+      dynpprog    = sy-repid
+      dynpnr      = sy-dynnr
+      dynprofield = 'GV_EXP_DATE'
+      value_org   = 'S'
+    TABLES
+      value_tab   = gt_expdf4
+      return_tab  = lt_return
+    EXCEPTIONS
+      OTHERS      = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form onf4
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_FIELDNAME
+*&      --> E_FIELDVALUE
+*&      --> ES_ROW_NO
+*&      --> ER_EVENT_DATA
+*&      --> ET_BAD_CELLS
+*&      --> E_DISPLAY
+*&---------------------------------------------------------------------*
+FORM onf4  USING    p_fieldname TYPE lvc_fname
+                    p_fieldvalue TYPE lvc_value
+                    ps_row_no TYPE lvc_s_roid
+                    pi_event_data TYPE REF TO cl_alv_event_data
+                    pt_bad_cells TYPE lvc_t_modi
+                    p_display TYPE char01.
+
+  FIELD-SYMBOLS <fs_tab> TYPE STANDARD TABLE.
+
+  DATA: dynprog          LIKE sy-repid,
+        dynnr            LIKE sy-dynnr,
+        window_title(30) TYPE c,
+        l_row            TYPE p.
+
+  DATA : ls_body  LIKE gs_body,
+         lv_field TYPE dfies-fieldname,
+         lv_text  TYPE help_info-dynprofld,
+         lv_flag.
+
+  READ TABLE gt_body INTO ls_body INDEX ps_row_no-row_id.
+
+  DATA : lt_return LIKE TABLE OF ddshretval WITH HEADER LINE.
+  CLEAR : dynprog, dynnr, window_title.", ls_itab.
+
+  dynprog = sy-repid.
+  dynnr   = sy-dynnr.
+
+  CASE p_fieldname.
+    WHEN 'NATION'.
+      window_title = 'Customer Nation'.
+      lv_field = 'COUNTRY_NAME'.
+      lv_text = 'COUNTRY_NAME'.
+      ASSIGN gt_nation TO <fs_tab>.
+  ENDCASE.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = lv_field
+      dynpprog        = dynprog
+      dynpnr          = dynnr
+      dynprofield     = 'NATION'
+      window_title    = window_title
+      value_org       = 'S'
+    TABLES
+      value_tab       = <fs_tab>
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+  pi_event_data->m_event_handled = 'X'.
+
+  FIELD-SYMBOLS: <fs> TYPE lvc_t_modi.
+
+  DATA: ls_modi TYPE lvc_s_modi.
+
+  ASSIGN pi_event_data->m_data->* TO <fs>.
+
+  READ TABLE lt_return INDEX 1.
+  IF sy-subrc = 0.
+    ls_modi-row_id    = ps_row_no-row_id.
+    ls_modi-fieldname = p_fieldname.
+    ls_modi-value     = lt_return-fieldval.
+    APPEND ls_modi TO <fs>.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form register_f4_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM register_f4_field .
+
+  DATA: lt_f4 TYPE lvc_t_f4,
+        ls_f4 TYPE lvc_s_f4.
+
+  ls_f4-fieldname   = 'NATION'.
+  ls_f4-register    = abap_true.
+  ls_f4-getbefore   = abap_true.
+  ls_f4-chngeafter  = abap_true.
+  APPEND ls_f4 TO lt_f4.
+
+  CALL METHOD go_alv_grid->register_f4_for_fields
+    EXPORTING
+      it_f4 = lt_f4.
+
+ENDFORM.

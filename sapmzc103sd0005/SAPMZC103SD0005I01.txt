@@ -1,0 +1,113 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZC103SD0005I01
+*&---------------------------------------------------------------------*
+
+**********************************************************************
+* PAI Logic for Dynpro 100
+*  – PROCESS AFTER INPUT: MODULE USER_COMMAND_0100
+**********************************************************************
+
+MODULE user_command_0100 INPUT.
+
+  " 0) 매 PAI 때마다 화면의 시계 갱신
+  PERFORM update_clock.
+
+  " 1) 눌린 함수코드 저장
+  gv_okcode = sy-ucomm.
+
+  CASE gv_okcode.
+
+    WHEN 'SRCH'.            " 검색(F8) 버튼
+      PERFORM set_init_date.         " 날짜 초기화
+      gv_search_type = 'USER'.       " 사용자 직접 검색
+      PERFORM search_data.
+
+    WHEN 'RFSH'.            " 새로고침
+      PERFORM reset_screen.
+
+*   WHEN 'REFR'.            " (예비 기능)
+*     PERFORM reset_screen.
+
+    WHEN 'BACK'             " ← Back (F3)
+      OR 'EXIT'             " Exit (F12)
+      OR 'CANC'.            " Cancel (Ctrl+F3)
+
+      " → ALV · 컨테이너 해제
+      CALL METHOD go_left_grid->free.
+      CALL METHOD go_right_grid->free.
+      CALL METHOD go_left_cont->free.
+      CALL METHOD go_right_cont->free.
+      CALL METHOD go_split_main->free.
+      CALL METHOD go_container->free.
+      CALL METHOD : go_alv_grid2->free,
+                    go_container2->free.
+
+      " → 참조 변수 메모리 해제
+      FREE: go_left_grid,
+            go_right_grid,
+            go_left_cont,
+            go_right_cont,
+            go_split_main,
+            go_container,
+            go_container2,
+            go_alv_grid2.
+
+      " → 프로그램 종료
+      LEAVE TO SCREEN 0.
+
+  ENDCASE.
+
+ENDMODULE.  " user_command_0100
+
+
+*&---------------------------------------------------------------------*
+*&      Module  F4_EVENT_HELP  INPUT
+*&---------------------------------------------------------------------*
+*       F4 Help for 이벤트명(GV_EVENT)
+*&---------------------------------------------------------------------*
+MODULE f4_event_help INPUT.
+
+  DATA: lt_return TYPE TABLE OF ddshretval WITH HEADER LINE,
+        lt_dynp   TYPE TABLE OF dynpread   WITH HEADER LINE.
+
+  " 1. 화면에서 GV_EVENT 값을 읽어옴
+  lt_dynp-fieldname = 'GV_EVENT'.
+  APPEND lt_dynp.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-cprog
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_dynp.
+
+  lt_dynp = VALUE #( lt_dynp[ fieldname = 'GV_EVENT' ] OPTIONAL ).
+
+  " 2. 조건 유형(이벤트명) 기준 데이터 조회
+  DATA: gt_evt4 TYPE TABLE OF zc103sdt0003 WITH EMPTY KEY.  " 결과 저장 테이블
+
+  CLEAR gt_evt4.
+  SELECT DISTINCT conditiontype
+    INTO CORRESPONDING FIELDS OF TABLE gt_evt4
+    FROM zc103sdt0003
+    WHERE conditiontype LIKE lt_dynp-fieldvalue.
+
+  " 3. F4 팝업 호출
+  CLEAR lt_return.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'CONDITIONTYPE'        " 선택되는 필드
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_EVENT'
+      window_title    = '이벤트명 선택'
+      value_org       = 'S'
+    TABLES
+      value_tab       = gt_evt4
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDMODULE.
