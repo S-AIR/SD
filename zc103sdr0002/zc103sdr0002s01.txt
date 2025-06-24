@@ -1,0 +1,82 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0002S01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0002S01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0002S01
+*&---------------------------------------------------------------------*
+
+SELECTION-SCREEN BEGIN OF BLOCK pa1 WITH FRAME TITLE TEXT-t01.
+
+* 출발일자 (필수)
+PARAMETERS: pa_date TYPE zc103e_sd_date OBLIGATORY DEFAULT '20230101'.
+
+SELECTION-SCREEN END OF BLOCK pa1.
+
+**********************************************************************
+* Search Help (F4 캘린더)
+**********************************************************************
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_date.
+
+  DATA: lv_sel_date   TYPE sy-datum,
+        lt_dynpfields TYPE TABLE OF dynpread,
+        ls_dynpfield  TYPE dynpread.
+
+  CALL FUNCTION 'F4_DATE'
+    IMPORTING
+      select_date = lv_sel_date.
+
+  IF lv_sel_date IS NOT INITIAL.
+    CLEAR ls_dynpfield.
+    ls_dynpfield-fieldname  = 'PA_DATE'.  " 꼭 대문자로!
+    ls_dynpfield-fieldvalue = lv_sel_date. " YYYYMMDD 형식으로 들어감
+    APPEND ls_dynpfield TO lt_dynpfields.
+
+    CALL FUNCTION 'DYNP_VALUES_UPDATE'
+      EXPORTING
+        dyname     = sy-cprog
+        dynumb     = sy-dynnr
+      TABLES
+        dynpfields = lt_dynpfields.
+  ENDIF.
+
+**********************************************************************
+* 유효성 검사
+**********************************************************************
+AT SELECTION-SCREEN ON pa_date.
+
+  DATA: lv_input TYPE string,
+        lv_date  TYPE sy-datum.
+
+  lv_input = pa_date.
+
+  " 최소 길이 체크 먼저
+  IF strlen( lv_input ) < 8.
+    MESSAGE '허용된 날짜 형식만 입력하세요: YYYYMMDD, YYYY/MM/DD, YYYY.MM.DD, 00000000' TYPE 'E'.
+  ENDIF.
+
+  " 허용되는 형식만 명확히 체크
+  IF lv_input = '00000000'
+     OR ( lv_input CO '0123456789' AND strlen( lv_input ) = 8 )
+     OR ( strlen( lv_input ) = 10 AND
+          ( ( lv_input+4(1) = '/' AND lv_input+7(1) = '/' )
+         OR ( lv_input+4(1) = '.' AND lv_input+7(1) = '.' ) ) AND
+          lv_input+0(4) CO '0123456789' AND
+          lv_input+5(2) CO '0123456789' AND
+          lv_input+8(2) CO '0123456789' ).
+
+    " 구분자 제거
+    REPLACE ALL OCCURRENCES OF '/' IN lv_input WITH ''.
+    REPLACE ALL OCCURRENCES OF '.' IN lv_input WITH ''.
+
+    lv_date = lv_input.
+    pa_date = lv_date.  " <-- 변환 후 다시 입력값 세팅
+
+  ELSE.
+    MESSAGE '허용된 날짜 형식만 입력하세요: YYYYMMDD, YYYY/MM/DD, YYYY.MM.DD' TYPE 'E'.
+  ENDIF.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

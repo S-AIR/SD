@@ -1,0 +1,25 @@
+* regenerated at 2025.04.11 10:06:15
+FUNCTION-POOL zc1fg03pp0001              MESSAGE-ID sv.
+
+* INCLUDE LZC1FG03PP0001D...                 " Local class definition
+INCLUDE lsvimdat                                . "general data decl.
+INCLUDE lzc1fg03pp0001t00                       . "view rel. data dcl.
+
+DATA : go_text_con  TYPE REF TO cl_gui_custom_container,
+       go_text_edit TYPE REF TO cl_gui_textedit.
+
+DATA: BEGIN OF gs_text,
+        tdline(200),
+      END OF gs_text,
+      gt_text LIKE TABLE OF gs_text.
+DATA : gv_answer,
+       gv_title   TYPE string,
+       gv_empno   TYPE zc103e_fi_empno,
+       gv_result  TYPE zc103e_fi_empno,
+       gv_empname TYPE zc103e_fi_ename,
+       gv_str     TYPE zc103e_fi_checkcm.
+
+INCLUDE lzc1fg03pp0001d01.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

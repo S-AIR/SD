@@ -1,0 +1,28 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZC103SD0005
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE sapmzc103sd0005top                      .    " Global Data
+INCLUDE sapmzc103sd0005c01                      .
+INCLUDE sapmzc103sd0005o01                      .  " PBO-Modules
+INCLUDE sapmzc103sd0005i01                      .  " PAI-Modules
+INCLUDE sapmzc103sd0005f01                      .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* TITLE100 --> 가격조건항목 조회
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: Hard coded
+*   조건 ID가 없습니다.
+*
+* Message class: ZMSGC103
+*008   &건을 조회했습니다.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

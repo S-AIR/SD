@@ -1,0 +1,16 @@
+*&---------------------------------------------------------------------*
+*& Include ZC103SDR0004TOP                          - Report ZC103SDR0004
+*&---------------------------------------------------------------------*
+REPORT zc103sdr0004 MESSAGE-ID zmsgc103.
+
+**********************************************************************
+* ITab and WA
+**********************************************************************
+DATA : gs_body TYPE zc103sdt0010,
+       gt_body LIKE TABLE OF gs_body.
+
+DATA : gs_cusmile TYPE zc103sdt0002,
+       gt_cusmile LIKE TABLE OF gs_cusmile.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

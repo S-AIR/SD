@@ -1,0 +1,84 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0002C01
+*&---------------------------------------------------------------------*
+*& Event Handler Class Definition & Implementation
+*&---------------------------------------------------------------------*
+
+CLASS lcl_event_handler DEFINITION FINAL.
+  PUBLIC SECTION.
+    CLASS-METHODS:
+
+      double_click         FOR EVENT double_click OF cl_gui_alv_grid
+        IMPORTING e_row e_column,
+
+      handle_toolbar       FOR EVENT toolbar OF cl_gui_alv_grid
+        IMPORTING e_object e_interactive sender,
+
+      handle_user_command  FOR EVENT user_command OF cl_gui_alv_grid
+        IMPORTING e_ucomm,
+
+      top_of_page       FOR EVENT top_of_page OF cl_gui_alv_grid.
+ENDCLASS.
+
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD double_click.
+    PERFORM handle_double_click USING e_row e_column.
+  ENDMETHOD.
+
+  METHOD handle_toolbar.
+    DATA ls_button TYPE stb_button.
+
+    " ▶ 기내식 탑승자 목록 ALV용 버튼 (우측 상단)
+    IF sender = go_bottom_grid.
+      CLEAR ls_button.
+      ls_button-function  = 'SAVE_MEAL'.
+      ls_button-icon      = icon_system_save.
+      ls_button-text      = ' 판매오더 전환'.
+      ls_button-butn_type = 0.
+      APPEND ls_button TO e_object->mt_toolbar.
+
+*      CLEAR ls_button.
+*      ls_button-function  = 'UPDMEAL'.
+*      ls_button-icon      = icon_change.
+*      ls_button-text      = '제공횟수 업데이트'.
+*      ls_button-butn_type = 0.
+*      APPEND ls_button TO e_object->mt_toolbar.
+
+      " ▶ 기내식 요약 ALV용 버튼 (우측 하단)
+    ELSEIF sender = go_right_bot_grid.
+      CLEAR ls_button.
+      ls_button-function  = 'SEND_MM'.
+      ls_button-icon      = icon_export.
+      ls_button-text      = ' 구매 요청'.
+      ls_button-butn_type = 0.
+      APPEND ls_button TO e_object->mt_toolbar.
+
+      CLEAR ls_button.
+      ls_button-function  = 'EXCEL_TEMPLATE'.
+      ls_button-icon      = icon_export.
+      ls_button-text      = ' 엑셀 저장'.
+      ls_button-butn_type = 0.
+      APPEND ls_button TO e_object->mt_toolbar.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD handle_user_command.
+    CASE e_ucomm.
+      WHEN 'SAVE_MEAL'.
+        PERFORM update_mealcount_data.
+        PERFORM update_mealcount.
+      WHEN 'SEND_MM'.
+        PERFORM send_to_mm.
+      WHEN 'EXCEL_TEMPLATE'.
+        PERFORM export_excel_template.
+    ENDCASE.
+  ENDMETHOD.
+   METHOD top_of_page.
+    PERFORM handle_top_of_page.
+  ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

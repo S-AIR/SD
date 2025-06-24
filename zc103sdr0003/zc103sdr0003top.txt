@@ -1,0 +1,224 @@
+*&---------------------------------------------------------------------*
+*& Include ZC103SDR0003TOP                          - Report ZC103SDR0003
+*&---------------------------------------------------------------------*
+REPORT zc103sdr0003 MESSAGE-ID zmsgc103.
+
+**********************************************************************
+* TABLES
+**********************************************************************
+TABLES : zc103sdt0004, zc103sdt0005.
+
+**********************************************************************
+* Macro
+**********************************************************************
+DEFINE _init.
+
+  REFRESH &1.
+  CLEAR &1.
+
+END-OF-DEFINITION.
+DEFINE _msg_build.
+
+  CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+    EXPORTING
+      msgid               = &1
+      msgnr               = &2
+      msgv1               = &3
+      msgv2               = &4
+      msgv3               = &5
+      msgv4               = &6
+    IMPORTING
+      message_text_output = &7.
+
+END-OF-DEFINITION.
+
+**********************************************************************
+* Class Instance
+**********************************************************************
+DATA : go_main_container    TYPE REF TO cl_gui_docking_container,
+       go_msplit_container  TYPE REF TO cl_gui_splitter_container,
+       go_left_container    TYPE REF TO cl_gui_container,
+       go_right_container   TYPE REF TO cl_gui_container,
+       go_ssplit_container  TYPE REF TO cl_gui_splitter_container,
+       go_stop_container    TYPE REF TO cl_gui_container,
+       go_sbottom_container TYPE REF TO cl_gui_container,
+
+       go_tree_grid         TYPE REF TO cl_gui_alv_grid,
+       go_stop_alv_grid     TYPE REF TO cl_gui_alv_grid,
+       go_sbottom_alv_grid  TYPE REF TO cl_gui_alv_grid,
+       go_tree              TYPE REF TO cl_gui_simple_tree.
+
+*-- For Top-of-page
+DATA : go_topp_container TYPE REF TO cl_gui_docking_container,
+       go_dyndoc_id      TYPE REF TO cl_dd_document,
+       go_html_cntrl     TYPE REF TO cl_gui_html_viewer.
+
+**********************************************************************
+* ITab and WA
+**********************************************************************
+*-- For Billing Header
+DATA : BEGIN OF gs_head.
+         INCLUDE STRUCTURE zc103sdt0004.
+DATA :   status           TYPE icon-id,
+         icon_mail_status TYPE icon-id,
+         bptype           TYPE zc103sdt0001-bptype,
+       END OF gs_head,
+       gt_head LIKE TABLE OF gs_head.
+
+DATA : BEGIN OF gs_hdisplay,
+         billnum            TYPE zc103sdt0004-billnum,
+         orderid            TYPE zc103sdt0004-orderid,
+         belnr              TYPE zc103sdt0004-belnr,
+         gjahr              TYPE zc103sdt0004-gjahr,
+         bpid               TYPE zc103sdt0004-bpid,
+         bpname             TYPE zc103sdt0001-bpname,
+         bptype             TYPE zc103sdt0001-bptype,
+         total_amount       TYPE zc103sdt0004-total_amount,
+         tax_amount         TYPE zc103sdt0004-tax_amount,
+         currency           TYPE zc103sdt0004-currency,
+         billing_status(20),
+         mail_status(20),
+         credit_status      TYPE zc103sdt0004-credit_status,
+         doc_flag(20),
+         billing_date       TYPE zc103sdt0004-billing_date,
+         payment_date       TYPE zc103sdt0004-payment_date,
+         status             TYPE icon-id,
+         icon_mail_status   TYPE icon-id.
+         INCLUDE STRUCTURE zc103pps0001.
+DATA : END OF gs_hdisplay,
+gt_hdisplay LIKE TABLE OF gs_hdisplay.
+
+*-- For Billing Line Item
+DATA : BEGIN OF gs_line.
+         INCLUDE STRUCTURE zc103sdt0005.
+DATA : END OF gs_line,
+gt_line LIKE TABLE OF gs_line.
+
+DATA : BEGIN OF gs_ldisplay,
+         billnum              TYPE zc103sdt0005-billnum,
+         billitemno           TYPE zc103sdt0005-billitemno,
+         bookingid            TYPE zc103sdt0005-bookingid,
+         transportid          TYPE zc103sdt0005-transportid,
+         charged_item(20),
+         description          TYPE zc103sdt0005-description,
+         ticket_quantity      TYPE zc103sdt0005-ticket_quantity,
+         ticket_unit          TYPE zc103sdt0005-ticket_unit,
+         cargo_weight         TYPE zc103sdt0005-cargo_weight,
+         cargo_unit           TYPE zc103sdt0005-cargo_unit,
+         unit_price           TYPE zc103sdt0005-unit_price,
+         unit_discount_amount TYPE zc103sdt0005-unit_discount_amount,
+         unit_tax_amount      TYPE zc103sdt0005-unit_tax_amount,
+         currency             TYPE zc103sdt0005-currency.
+         INCLUDE STRUCTURE zc103pps0001.
+DATA : END OF gs_ldisplay,
+gt_ldisplay LIKE TABLE OF gs_ldisplay.
+
+*-- For BP Name
+DATA : BEGIN OF gs_bpname,
+         bpid   TYPE zc103sdt0001-bpid,
+         bpname TYPE zc103sdt0001-bpname,
+         bptype TYPE zc103sdt0001-bptype,
+       END OF gs_bpname,
+       gt_bpname LIKE TABLE OF gs_bpname.
+
+*-- For Tree
+DATA : BEGIN OF gs_tree,
+         bpid   TYPE zc103sdt0001-bpid,
+         bpname TYPE zc103sdt0001-bpname,
+         bptype TYPE zc103sdt0001-bptype,
+       END OF gs_tree,
+       gt_tree LIKE TABLE OF gs_tree.
+
+DATA : BEGIN OF gs_bptype,
+         bptype     TYPE zc103sdt0001-bptype,
+         bptypename TYPE string,
+       END OF gs_bptype,
+       gt_bptype LIKE TABLE OF gs_bptype.
+
+*-- For mail send
+DATA : doc_chng  LIKE sodocchgi1,
+       tab_lines LIKE sy-tabix,
+       objtxt    LIKE solisti1   OCCURS 0 WITH HEADER LINE,
+       objpack   LIKE sopcklsti1 OCCURS 0 WITH HEADER LINE,
+       objbin    LIKE solisti1   OCCURS 0 WITH HEADER LINE,
+       reclist   LIKE somlreci1  OCCURS 0 WITH HEADER LINE.
+
+*-- For Exclude
+DATA : gt_ui_functions TYPE ui_functions.
+
+*-- For ALV
+*-- Top Grid(Header)
+DATA : gt_tfcat    TYPE lvc_t_fcat,
+       gs_tfcat    TYPE lvc_s_fcat,
+       gs_tvariant TYPE disvariant,
+       gs_tlayout  TYPE lvc_s_layo,
+*-- Bottom Grid(Line Item)
+       gt_bfcat    TYPE lvc_t_fcat,
+       gs_bfcat    TYPE lvc_s_fcat,
+       gs_bvariant TYPE disvariant,
+       gs_blayout  TYPE lvc_s_layo.
+
+**********************************************************************
+* Declaration area for Node
+**********************************************************************
+TYPES : node_table_type LIKE STANDARD TABLE OF mtreesnode
+                        WITH DEFAULT KEY.
+
+DATA : node_table TYPE node_table_type.
+
+**********************************************************************
+* Declaration area for Tree Event
+**********************************************************************
+DATA : events TYPE cntl_simple_events,
+       event  TYPE cntl_simple_event.
+
+**********************************************************************
+* Common Variable
+**********************************************************************
+DATA : gv_okcode TYPE sy-ucomm.
+
+*-- For get bpname
+DATA : gv_id   TYPE zc103sdt0001-bpid,
+       gv_name TYPE zc103sdt0001-bpname.
+
+*-- For file browser
+DATA : objfile       TYPE REF TO cl_gui_frontend_services,
+       pickedfolder  TYPE string,
+       initialfolder TYPE string,
+       fullinfo      TYPE string,
+       pfolder       TYPE rlgrap-filename. "MEMORY ID mfolder.
+
+*-- For Excel
+DATA: gv_tot_page   LIKE sy-pagno,          " Total page
+      gv_percent(3) TYPE n,                 " Reading percent
+      gv_file       LIKE rlgrap-filename,  " File name
+      gv_pdf(1).
+
+DATA : gv_temp_filename     LIKE rlgrap-filename,
+       gv_temp_filename_pdf LIKE rlgrap-filename,
+       gv_mail_filename     LIKE rlgrap-filename,
+       gv_filename          LIKE rlgrap-filename,
+       gv_form(40).
+
+DATA: excel       TYPE ole2_object,
+      workbook    TYPE ole2_object,
+      books       TYPE ole2_object,
+      book        TYPE ole2_object,
+      sheets      TYPE ole2_object,
+      sheet       TYPE ole2_object,
+      activesheet TYPE ole2_object,
+      application TYPE ole2_object,
+      pagesetup   TYPE ole2_object,
+      cells       TYPE ole2_object,
+      cell        TYPE ole2_object,
+      row         TYPE ole2_object,
+      buffer      TYPE ole2_object,
+      font        TYPE ole2_object,
+      range       TYPE ole2_object,  " Range
+      borders     TYPE ole2_object.
+
+DATA: cell1 TYPE ole2_object,
+      cell2 TYPE ole2_object.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

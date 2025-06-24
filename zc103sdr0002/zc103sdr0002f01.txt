@@ -1,0 +1,1172 @@
+*&---------------------------------------------------------------------*
+*& Form set_init_value
+*&---------------------------------------------------------------------*
+*& 초기 기본값 세팅 (조회일자 등)
+*&---------------------------------------------------------------------*
+FORM set_init_value .
+
+  pa_date = '20230101'.
+
+  " ✅ TOP_OF_PAGE 초기 메시지 설정
+  gv_top_message = |항공편 스케줄을 선택하세요.|.
+
+  " 초기 메시지 출력
+  PERFORM handle_top_of_page.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form get_airline_master
+*&---------------------------------------------------------------------*
+*& 항공 스케줄 마스터 조회
+*&---------------------------------------------------------------------*
+FORM get_airline_master .
+
+  CLEAR gt_schedule_list.
+
+  SELECT scheduleid, flightid, countryfrom, countryto,
+         departdate, departtime, arrivedate, arrivetime, flighttime
+    INTO CORRESPONDING FIELDS OF TABLE @gt_schedule_list
+    FROM zc103sdt0008
+    WHERE departdate = @pa_date.
+
+  IF gt_schedule_list IS INITIAL.
+    MESSAGE s037(zmsgc103) DISPLAY LIKE 'E'. " ← 메시지 클래스 지정해줘야 안전
+    STOP.
+  ENDIF.
+
+  " 국가 코드 → 텍스트 매핑
+  SELECT domvalue_l, ddtext
+    INTO CORRESPONDING FIELDS OF TABLE @gt_dd07v
+    FROM dd07v
+    WHERE domname = 'ZC103D_FI_LAND'.
+
+  PERFORM set_data.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_data
+*&---------------------------------------------------------------------*
+*& 조회된 스케줄 데이터를 화면 출력용으로 변환
+*&---------------------------------------------------------------------*
+FORM set_data .
+
+  CLEAR gt_disp_sch.
+
+  LOOP AT gt_schedule_list ASSIGNING FIELD-SYMBOL(<fs_sched>).
+    CLEAR gs_disp_sch.
+
+    gs_disp_sch = VALUE #(
+      scheduleid   = <fs_sched>-scheduleid
+      flightid     = <fs_sched>-flightid
+      countryfrom  = gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryfrom ]-ddtext
+      countryto    = gt_dd07v[ KEY key domvalue_l = <fs_sched>-countryto ]-ddtext
+      departdate   = <fs_sched>-departdate
+      departtime   = <fs_sched>-departtime
+      arrivedate   = <fs_sched>-arrivedate
+      arrivetime   = <fs_sched>-arrivetime
+      flighttime   = <fs_sched>-flighttime
+    ).
+
+    APPEND gs_disp_sch TO gt_disp_sch.
+  ENDLOOP.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form display_screen
+*&---------------------------------------------------------------------*
+*& ALV 객체 초기화 및 출력 세팅
+*&---------------------------------------------------------------------*
+FORM display_screen .
+
+  IF go_container IS NOT BOUND.
+
+    CLEAR gt_tfcat.
+    PERFORM set_top_field_catalog USING :
+      'X' 'SCHEDULEID'  'ZC103SDT0008' 'C' ' ',
+      ' ' 'COUNTRYFROM' 'ZC103SDT0008' 'L' 'X',
+      ' ' 'COUNTRYTO'   'ZC103SDT0008' 'L' 'X',
+      ' ' 'DEPARTDATE'  'ZC103SDT0008' 'C' ' ',
+      ' ' 'DEPARTTIME'  'ZC103SDT0008' 'C' ' ',
+      ' ' 'ARRIVEDATE'  'ZC103SDT0008' 'C' ' ',
+      ' ' 'ARRIVETIME'  'ZC103SDT0008' 'C' ' ',
+      ' ' 'FLIGHTTIME'  'ZC103SDT0008' 'C' ' '.
+
+    CLEAR gt_bfcat.
+    PERFORM set_bot_field_catalog USING :
+      'X' 'TICKETID'        'ZC103SDT0013'  'C' ' ',
+      ' ' 'ICON'            'ICON'          ' ' ' ',
+      ' ' 'PASSENGERID'     'ZC103SDT0013'  ' ' ' ',
+      ' ' 'PASSENGERNAME'   'ZC103SDT0014'  ' ' ' ',
+      ' ' 'MEALTYPE'        'ZC103SDT0013'  ' ' ' ',
+      ' ' 'MEALCOUNT'       'ZC103SDT0013'  ' ' ' '.
+*      ' ' 'STATUS'          'ZC103SDT0013'  ' ' ' '.
+
+    PERFORM set_layout.
+    PERFORM create_object.
+
+    SET HANDLER:
+      lcl_event_handler=>handle_toolbar       FOR go_bottom_grid,
+      lcl_event_handler=>handle_user_command  FOR go_bottom_grid,
+      lcl_event_handler=>handle_toolbar       FOR go_right_bot_grid,
+      lcl_event_handler=>handle_user_command  FOR go_right_bot_grid,
+      lcl_event_handler=>double_click         FOR go_top_grid.
+    SET HANDLER lcl_event_handler=>top_of_page FOR go_bottom_grid.
+
+    CALL METHOD go_top_grid->set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout1
+      CHANGING
+        it_outtab       = gt_disp_sch
+        it_fieldcatalog = gt_tfcat.
+
+    CALL METHOD go_bottom_grid->set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout2
+      CHANGING
+        it_outtab       = gt_tisp_sch
+        it_fieldcatalog = gt_bfcat.
+
+    CLEAR gt_mfcat.
+    PERFORM set_meal_field USING:
+      'X' 'SCHEDULEID'        'ZC103MMT0001'   '' '',
+      ' ' 'MATID'             'ZC103MMT0001'   '' '',
+      ' ' 'MATNAME'           'ZC103MMT0001'   '' '',
+      ' ' 'TOTALCNT'          ' '              '' '',
+      ' ' 'MEINS'             'ZC103MMT0001'   '' '',
+      ' ' 'TOTALAMT_DISP'     ' '              '' '',
+      ' ' 'WAERS'             'ZC103MMT0001'   '' '',
+      ' ' 'STATUS'          'ZC103SDT0013'  ' ' ' '.
+
+    CALL METHOD go_right_bot_grid->set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout3
+      CHANGING
+        it_outtab       = gt_meal_summary
+        it_fieldcatalog = gt_mfcat.
+
+    gv_top_message = |항공편 스케줄을 선택하세요.|.
+    PERFORM handle_top_of_page.
+
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_top_field_catalog
+*&---------------------------------------------------------------------*
+FORM set_top_field_catalog USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_tfcat-key        = pv_key.
+  gs_tfcat-fieldname  = pv_field.
+  gs_tfcat-ref_table  = pv_table.
+  gs_tfcat-just       = pv_just.
+  gs_tfcat-emphasize  = pv_emph.
+
+  CASE pv_field.
+    WHEN 'DEPARTDATE'.  gs_tfcat-coltext = '출발날짜'.
+    WHEN 'DEPARTTIME'.  gs_tfcat-coltext = '출발시간'.
+    WHEN 'ARRIVEDATE'.  gs_tfcat-coltext = '도착날짜'.
+    WHEN 'ARRIVETIME'.  gs_tfcat-coltext = '도착시간'.
+    WHEN 'FLIGHTTIME'.  gs_tfcat-coltext = '비행시간'.
+  ENDCASE.
+
+  APPEND gs_tfcat TO gt_tfcat.
+  CLEAR gs_tfcat.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_bot_field_catalog
+*&---------------------------------------------------------------------*
+FORM set_bot_field_catalog USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_bfcat-key        = pv_key.
+  gs_bfcat-fieldname  = pv_field.
+  gs_bfcat-ref_table  = pv_table.
+  gs_bfcat-just       = pv_just.
+  gs_bfcat-emphasize  = pv_emph.
+
+  CASE pv_field.
+    WHEN 'PASSENGERNAME'. gs_bfcat-outputlen = 20.
+    WHEN 'MEALTYPE'.      gs_bfcat-outputlen = 15.
+    WHEN 'TICKETID'.      gs_bfcat-outputlen = 12.
+    WHEN 'STATUS'.        gs_bfcat-coltext   = '상태'. " ⬅️ 추가
+    WHEN 'ICON'.          gs_bfcat-coltext   = '상태'.
+  ENDCASE.
+
+  APPEND gs_bfcat TO gt_bfcat.
+  CLEAR gs_bfcat.
+
+ENDFORM.
+**********************************************************************
+FORM set_layout .
+  gs_layout1-zebra      = abap_true.
+  gs_layout1-cwidth_opt = 'A'.
+  gs_layout1-sel_mode   = 'D'.
+  gs_layout1-grid_title = '항공편 스케줄'.
+
+  gs_variant-report    = sy-repid.
+
+  gs_layout2 = CORRESPONDING #( gs_layout1 ).
+  gs_layout2 = VALUE #( BASE gs_layout2 stylefname = 'STYLE' ).
+  gs_layout2-grid_title = '기내식 주문 내역[개수 업데이트]'.
+
+  gs_layout3 = CORRESPONDING #( gs_layout1 ).
+  gs_layout3-grid_title = '개수 확정 및 구매요청'.
+  gs_layout3-totals_bef = abap_true.
+
+ENDFORM.
+
+FORM create_object .
+
+  " ✅ TOP_OF_PAGE용 문서 객체 먼저 생성
+  CREATE OBJECT go_dyndoc_id
+    EXPORTING
+      style = 'ALV_GRID'.
+
+  " ▶ 상단 메시지용 컨테이너 추가
+  CREATE OBJECT go_top_cont
+    EXPORTING
+      side      = cl_gui_docking_container=>dock_at_top
+      extension = 50.
+  CREATE OBJECT go_container
+    EXPORTING
+      side      = cl_gui_docking_container=>dock_at_left
+      extension = 5000.
+
+  CREATE OBJECT go_split_main
+    EXPORTING
+      parent  = go_container
+      rows    = 1
+      columns = 2.
+
+  CALL METHOD go_split_main->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_left_cont.
+
+  CALL METHOD go_split_main->get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = go_right_cont.
+
+  CREATE OBJECT go_split_right
+    EXPORTING
+      parent  = go_right_cont
+      rows    = 2
+      columns = 1.
+
+  CALL METHOD go_split_right->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_right_top_cont.
+
+  CALL METHOD go_split_right->get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = go_right_bot_cont.
+
+  CREATE OBJECT go_top_grid
+    EXPORTING
+      i_parent = go_left_cont.
+
+  CREATE OBJECT go_bottom_grid
+    EXPORTING
+      i_parent = go_right_top_cont.
+
+  " ✅ 우측 하단에도 동일한 ALV를 추가 생성
+  CREATE OBJECT go_right_bot_grid
+    EXPORTING
+      i_parent = go_right_bot_cont.
+
+  CALL METHOD go_bottom_grid->list_processing_events
+    EXPORTING
+      i_event_name = 'TOP_OF_PAGE'
+      i_dyndoc_id  = go_dyndoc_id.
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form handle_double_click
+*&---------------------------------------------------------------------*
+*& 스케줄 더블클릭 시 탑승자 + 기내식 데이터 조회
+*&---------------------------------------------------------------------*
+FORM handle_double_click USING pv_row pv_column.
+
+  READ TABLE gt_schedule_list INTO gs_schedule_list INDEX pv_row.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  gv_selected_scheduleid = gs_schedule_list-scheduleid.
+
+  CLEAR gt_passenger_list.
+
+  SELECT a~ticketid, a~passengerid, b~passengername,
+         a~mealtype, a~mealcount, a~status
+    INTO CORRESPONDING FIELDS OF TABLE @gt_passenger_list
+    FROM zc103sdt0013 AS a
+    INNER JOIN zc103sdt0014 AS b ON a~ticketid = b~ticketid
+    WHERE b~scheduleid = @gv_selected_scheduleid.
+
+  IF gt_passenger_list IS INITIAL.
+    MESSAGE s003(zmsgc103) DISPLAY LIKE 'E'.
+  ENDIF.
+
+  SELECT domvalue_l, ddtext
+    INTO CORRESPONDING FIELDS OF TABLE @gt_tt07v
+    FROM dd07v
+    WHERE domname = 'ZC103D_SD_MEALTYPE'.
+
+  PERFORM set_data_mealtype.
+  PERFORM build_meal_summary.
+
+  CALL METHOD go_bottom_grid->refresh_table_display.
+  CALL METHOD go_right_bot_grid->refresh_table_display.
+
+  DATA(lv_country_from) = gt_dd07v[ KEY key domvalue_l = gs_schedule_list-countryfrom ]-ddtext.
+  DATA(lv_country_to)   = gt_dd07v[ KEY key domvalue_l = gs_schedule_list-countryto ]-ddtext.
+
+  DATA(lv_summary_msg) = |해당 스케쥴은 { lv_country_from }에서 { lv_country_to }로 가는 항공편입니다.|.
+
+  gv_top_message = lv_summary_msg.
+
+  PERFORM handle_top_of_page.
+
+ENDFORM.
+
+
+
+**********************************************************************
+*&---------------------------------------------------------------------*
+*& Form set_data_mealtype
+*&---------------------------------------------------------------------*
+*& ALV 표시용 기내식 데이터 가공 + 상태 아이콘 설정
+*&---------------------------------------------------------------------*
+FORM set_data_mealtype .
+
+  CLEAR gt_tisp_sch.
+
+  READ TABLE gt_schedule_list INTO DATA(ls_schedule)
+       WITH KEY scheduleid = gv_selected_scheduleid.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  DATA(lv_flighttime) = ls_schedule-flighttime.
+
+  LOOP AT gt_passenger_list ASSIGNING FIELD-SYMBOL(<fs_pass>).
+    CLEAR gs_tisp_sch.
+
+    DATA(lv_expected_mealcount) = COND i(
+      WHEN lv_flighttime = 1 THEN 1
+      ELSE lv_flighttime DIV 5 ).
+
+    SELECT SINGLE mealcount INTO @DATA(lv_db_mealcount)
+      FROM zc103sdt0013
+      WHERE ticketid    = @<fs_pass>-ticketid
+        AND passengerid = @<fs_pass>-passengerid.
+
+    DATA(lv_disp_mealcount) = lv_db_mealcount.
+
+    " 스타일 설정
+    DATA(lt_style) = VALUE lvc_t_styl( ).
+    IF <fs_pass>-status = 'Y'.
+      APPEND VALUE lvc_s_styl( fieldname = 'TICKETID' style = 10 ) TO lt_style.
+      gs_tisp_sch = VALUE #( icon = '@5B@' ).
+    ELSE.
+      APPEND VALUE lvc_s_styl( fieldname = 'TICKETID' style = 7 ) TO lt_style.
+      gs_tisp_sch = VALUE #( icon = '@5D@' ).
+    ENDIF.
+
+    gs_tisp_sch = VALUE #( BASE gs_tisp_sch
+     ticketid        = <fs_pass>-ticketid
+     passengerid     = <fs_pass>-passengerid
+     passengername   = <fs_pass>-passengername
+     mealtype        = gt_tt07v[ KEY key domvalue_l = <fs_pass>-mealtype ]-ddtext
+     mealcount       = lv_disp_mealcount
+     style           = lt_style ).
+*      status          = <fs_pass>-status ).
+
+    APPEND gs_tisp_sch TO gt_tisp_sch.
+  ENDLOOP.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form update_mealcount_data
+*&---------------------------------------------------------------------*
+*& 기내식 제공횟수 DB 저장 + ALV 상태 갱신
+*&---------------------------------------------------------------------*
+FORM update_mealcount_data .
+
+  DATA: lv_updated TYPE abap_bool VALUE abap_false.
+
+  LOOP AT gt_passenger_list INTO gs_passenger_list.
+
+    SELECT SINGLE mealcount INTO @DATA(lv_current_mealcount)
+      FROM zc103sdt0013
+      WHERE ticketid    = @gs_passenger_list-ticketid
+        AND passengerid = @gs_passenger_list-passengerid.
+
+    IF sy-subrc = 0 AND lv_current_mealcount <> gs_passenger_list-mealcount.
+      UPDATE zc103sdt0013
+  SET mealcount = @gs_passenger_list-mealcount,
+      status    = 'Y'
+  WHERE ticketid    = @gs_passenger_list-ticketid
+    AND passengerid = @gs_passenger_list-passengerid.
+
+      gs_passenger_list-status = 'Y'. " 내부 테이블도 반영
+
+    ENDIF.
+
+  ENDLOOP.
+
+  IF lv_updated = abap_true.
+    COMMIT WORK.
+  ENDIF.
+
+  CALL METHOD go_bottom_grid->refresh_table_display.
+
+  IF lv_updated = abap_true.
+    MESSAGE '기내식 수량이 저장되었습니다.' TYPE 'S'.
+  ELSE.
+    MESSAGE '업데이트할 내역이 없습니다.' TYPE 'S'.
+  ENDIF.
+
+ENDFORM.
+
+**********************************************************************
+**********************************************************************
+FORM exit_program .
+
+  IF gv_screen_initialized = abap_true.
+
+    TRY.
+        " ALV Grid 해제
+        IF go_top_grid IS BOUND.
+          go_top_grid->free( ).
+          FREE go_top_grid.
+        ENDIF.
+
+        IF go_bottom_grid IS BOUND.
+          go_bottom_grid->free( ).
+          FREE go_bottom_grid.
+        ENDIF.
+
+        "  ✅ 우하단 ALV도 해제 (CNTL_ERROR 방지용 try-catch)
+        IF go_right_bot_grid IS BOUND.
+          TRY.
+              go_right_bot_grid->free( ).
+*              FREE go_right_bot_grid.
+            CATCH cx_root.
+              " 예외 무시
+          ENDTRY.
+        ENDIF.
+        IF go_right_top_cont IS BOUND.
+          TRY.
+              go_right_top_cont->free( ).
+              FREE go_right_top_cont.
+            CATCH cx_root.
+              " 무시
+          ENDTRY.
+        ENDIF.
+
+        " 컨테이너 해제
+        IF go_left_cont IS BOUND.
+          go_left_cont->free( ).
+          FREE go_left_cont.
+        ENDIF.
+
+        IF go_right_cont IS BOUND.
+          go_right_cont->free( ).
+          FREE go_right_cont.
+        ENDIF.
+
+        IF go_container IS BOUND.
+          IF cl_gui_container=>screen0 IS INITIAL.
+            MESSAGE '화면이 이미 닫힌 상태입니다. 컨테이너 해제를 건너뜁니다.' TYPE 'S'.
+          ELSE.
+            go_container->free( ).
+            FREE go_container.
+          ENDIF.
+        ENDIF.
+
+      CATCH cx_root INTO DATA(lx_err).
+        MESSAGE lx_err->get_text( ) TYPE 'I'.
+    ENDTRY.
+
+  ENDIF.
+
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form build_meal_summary
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM build_meal_summary .
+
+  CLEAR: gt_meal_summary, lt_summary.
+
+  " 자재별 상태 확인용 테이블
+  TYPES: BEGIN OF ty_status_check,
+           matid  TYPE zc103e_mm_matnr,
+           status TYPE zc103e_sd_status,
+         END OF ty_status_check.
+
+  DATA: lt_status_check TYPE STANDARD TABLE OF ty_status_check.
+
+  " 1단계: lt_summary와 상태 정보 수집
+  LOOP AT gt_passenger_list ASSIGNING FIELD-SYMBOL(<fs_passenger>).
+
+    DATA(lv_matid) = SWITCH zc103e_mm_matnr(
+        <fs_passenger>-mealtype
+        WHEN 'A' THEN gc_meal_map-a
+        WHEN 'B' THEN gc_meal_map-b
+        WHEN 'C' THEN gc_meal_map-c
+        WHEN 'D' THEN gc_meal_map-d
+        WHEN 'E' THEN gc_meal_map-e
+        WHEN 'F' THEN gc_meal_map-f
+        ELSE '' ).
+
+    IF lv_matid IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    " 요약 집계
+    ASSIGN lt_summary[ matid = lv_matid ] TO FIELD-SYMBOL(<fs_summary>).
+    IF sy-subrc = 0.
+      <fs_summary>-totalcnt += <fs_passenger>-mealcount.
+    ELSE.
+      APPEND VALUE ty_meal_summary(
+        matid    = lv_matid
+        totalcnt = <fs_passenger>-mealcount ) TO lt_summary.
+    ENDIF.
+
+    " 상태 확인용 목록
+    APPEND VALUE ty_status_check( matid = lv_matid status = <fs_passenger>-status ) TO lt_status_check.
+
+  ENDLOOP.
+
+  DATA lv_price TYPE p DECIMALS 2.
+
+  LOOP AT lt_summary INTO DATA(ls_sum).
+
+    CLEAR: gs_meal_summary, lv_price.
+
+    SELECT SINGLE matname, base_unit, price, currency
+      INTO (@gs_meal_summary-matname,
+            @gs_meal_summary-meins,
+            @lv_price,
+            @gs_meal_summary-waers)
+      FROM zc103mmt0001
+      WHERE matid = @ls_sum-matid.
+
+    IF sy-subrc = 0.
+      gs_meal_summary-matid         = ls_sum-matid.
+      gs_meal_summary-totalcnt      = ls_sum-totalcnt.
+      gs_meal_summary-totalamt      = lv_price * ls_sum-totalcnt.
+
+      CASE ls_sum-matid.
+        WHEN 'MAT00041' OR 'MAT00042' OR 'MAT00043' OR 'MAT00044'.
+          gs_meal_summary-totalamt_disp = gs_meal_summary-totalamt * 100.
+        WHEN 'MAT00045' OR 'MAT00046'.
+          gs_meal_summary-totalamt_disp = gs_meal_summary-totalamt * 100.
+        WHEN OTHERS.
+          gs_meal_summary-totalamt_disp = gs_meal_summary-totalamt.
+      ENDCASE.
+
+      gs_meal_summary-totalamt_disp = round( val = gs_meal_summary-totalamt_disp dec = 0 ).
+      gs_meal_summary-scheduleid    = gv_selected_scheduleid.
+
+      " 자재별 status 판단: 하나라도 'N'이면 'N', 아니면 'Y'
+*      DATA(lv_has_n) = REDUCE abap_bool( INIT x = abap_false
+*        FOR wa IN lt_status_check WHERE ( wa-matid = ls_sum-matid AND wa-status = 'N' )
+*        NEXT x = abap_true ).
+
+*      gs_meal_summary-status = COND #( WHEN lv_has_n = abap_true THEN 'N' ELSE 'Y' ).
+
+      APPEND gs_meal_summary TO gt_meal_summary.
+    ENDIF.
+
+  ENDLOOP.
+
+  " 이후 기존 유지
+  DATA: lt_sent_matid TYPE SORTED TABLE OF zc103e_mm_matnr WITH UNIQUE KEY table_line.
+
+*  lt_sent_matid = VALUE #( FOR wa IN gt_meal_summary
+*                           WHERE ( matid IS NOT INITIAL )
+*                           ( wa-matid ) ).
+
+  SELECT DISTINCT matid
+    INTO TABLE @DATA(lt_matid_sent)
+    FROM zc103mmt0008
+    FOR ALL ENTRIES IN @lt_sent_matid
+    WHERE matid = @lt_sent_matid-table_line.
+
+  SELECT DISTINCT scheduleid
+    INTO TABLE @DATA(lt_existing_sched)
+    FROM zc103mmt0007.
+
+  SELECT matid, quantity
+    INTO TABLE @DATA(lt_existing_items)
+    FROM zc103mmt0008.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_meal_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_meal_field_catalog .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form update_mealcount
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM update_mealcount .
+  READ TABLE gt_schedule_list INTO DATA(ls_schedule)
+         WITH KEY scheduleid = gv_selected_scheduleid.
+  IF sy-subrc <> 0.
+    MESSAGE '선택된 스케줄이 없습니다.' TYPE 'E'.
+    RETURN.
+  ENDIF.
+
+  DATA(lv_new_mealcount) = COND zc103e_sd_mealcnt(
+    WHEN ls_schedule-flighttime <= 9 THEN 1
+    WHEN ls_schedule-flighttime <= 14 THEN 2
+    ELSE 3 ).
+
+  LOOP AT gt_passenger_list ASSIGNING FIELD-SYMBOL(<fs_passenger>).
+
+    UPDATE zc103sdt0013
+    SET mealcount = @lv_new_mealcount,
+        status    = 'Y'
+    WHERE ticketid    = @<fs_passenger>-ticketid
+      AND passengerid = @<fs_passenger>-passengerid.
+
+    <fs_passenger>-mealcount = lv_new_mealcount.
+    <fs_passenger>-status    = 'Y'.  " ALV 동기화
+
+
+  ENDLOOP.
+
+  MESSAGE '기내식 수량이 비행시간 기준으로 업데이트되었습니다.' TYPE 'S'.
+
+  PERFORM set_data_mealtype.
+  PERFORM build_meal_summary.
+
+  CALL METHOD go_bottom_grid->refresh_table_display.
+  CALL METHOD go_right_bot_grid->refresh_table_display.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form send_to_mm
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+
+FORM send_to_mm .
+
+  TYPES: BEGIN OF ty_mm_item,
+           scheduleid TYPE zc103sdt0008-scheduleid,
+           matid      TYPE zc103mmt0001-matid,
+           quantity   TYPE i,
+           unit       TYPE zc103mmt0001-base_unit,
+           price      TYPE p DECIMALS 2,
+           currency   TYPE zc103sdt0012-currency,
+         END OF ty_mm_item.
+
+  DATA: lt_mm_items        TYPE STANDARD TABLE OF ty_mm_item,
+        ls_mm_item         TYPE ty_mm_item,
+        ls_mm_header       TYPE zc103mms0002,
+        lv_result          TYPE i,
+        lv_sched_id        TYPE zc103e_sd_scheduleid,
+        lv_answer          TYPE c,
+        lt_sched_range     TYPE RANGE OF zc103e_sd_scheduleid,
+        ls_sched_rng       LIKE LINE OF lt_sched_range,
+        lt_mm_items_casted TYPE zc103mmtt0002,
+        ls_mm_casted       TYPE LINE OF zc103mmtt0002.
+
+  READ TABLE gt_schedule_list INTO DATA(ls_schedule)
+    WITH KEY scheduleid = gv_selected_scheduleid.
+  IF sy-subrc <> 0.
+    MESSAGE '선택된 항공편이 없습니다.' TYPE 'E'.
+    RETURN.
+  ENDIF.
+
+  SELECT COUNT(*) INTO @DATA(lv_saved_cnt)
+    FROM zc103sdt0013
+    WHERE ticketid IN (
+        SELECT ticketid
+          FROM zc103sdt0014
+          WHERE scheduleid = @gv_selected_scheduleid )
+      AND mealcount > 0.
+
+  IF lv_saved_cnt = 0.
+    MESSAGE '기내식 제공 수량이 저장되지 않았습니다. 먼저 저장 후 구매요청하세요.' TYPE 'E'.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE
+    FROM zc103mmt0007
+    FIELDS scheduleid
+    WHERE scheduleid = @gv_selected_scheduleid
+    INTO @DATA(lv_sch).
+
+  IF lv_sch IS INITIAL .
+
+    CALL FUNCTION 'ZC1F030001'
+      EXPORTING
+        iv_action = '구매요청을 전송'
+      IMPORTING
+        ev_answer = lv_answer.
+
+    IF lv_answer = '2'.
+      RETURN.
+    ENDIF.
+
+    LOOP AT gt_meal_summary ASSIGNING FIELD-SYMBOL(<fs_summary>)
+      WHERE scheduleid = gv_selected_scheduleid.
+
+      DELETE FROM zc103mmt0008 WHERE matid = <fs_summary>-matid.
+
+      ls_mm_item = VALUE #(
+        scheduleid = <fs_summary>-scheduleid
+        matid      = <fs_summary>-matid
+        quantity   = <fs_summary>-totalcnt
+        unit       = <fs_summary>-meins
+        price      = <fs_summary>-totalamt
+        currency   = <fs_summary>-waers ).
+
+      APPEND ls_mm_item TO lt_mm_items.
+    ENDLOOP.
+*
+*    IF lt_mm_items IS INITIAL.
+*    ENDIF.
+
+    LOOP AT lt_mm_items INTO DATA(ls_src).
+      CLEAR ls_mm_casted.
+      ls_mm_casted-matid    = ls_src-matid.
+      ls_mm_casted-quantity = ls_src-quantity.
+      ls_mm_casted-unit     = ls_src-unit.
+      ls_mm_casted-price    = ls_src-price.
+      ls_mm_casted-currency = ls_src-currency.
+      APPEND ls_mm_casted TO lt_mm_items_casted.
+    ENDLOOP.
+
+    ls_mm_header = VALUE #(
+      request_date = sy-datum
+      receive_date = sy-datum
+      creator      = 'ADMIN018'
+      approval     = 'ADMIN018'
+      plnid        = 'PLNT0002'
+      strid        = 'STLO0003'
+      pr_status    = 'B'
+      estkz        = 'B'
+      scheduleid   = gv_selected_scheduleid ).
+
+    CALL FUNCTION 'ZC103MMFG0001'
+      EXPORTING
+        is_header = ls_mm_header
+        it_item   = lt_mm_items_casted
+      IMPORTING
+        ev_result = lv_result.
+
+    IF lv_result = 0.
+      MESSAGE '기내식 구매 요청을 성공적으로 전송했습니다.' TYPE 'S'.
+    ELSE.
+      MESSAGE '기내식 구매 요청 전송 중 오류가 발생했습니다.' TYPE 'E'.
+    ENDIF.
+
+    CALL METHOD go_right_bot_grid->refresh_table_display.
+
+  ELSE.
+    LOOP AT gt_disp_sch INTO DATA(ls).
+      CLEAR ls_sched_rng.
+      ls_sched_rng-sign = 'I'.
+      ls_sched_rng-option = 'EQ'.
+      ls_sched_rng-low = ls-scheduleid.
+      COLLECT ls_sched_rng INTO lt_sched_range.
+    ENDLOOP.
+
+    MESSAGE '이미 전송 완료했습니다. 구매 요청 프로그램으로 이동합니다.' TYPE 'I'.
+
+    SUBMIT zc103mmr0001
+      WITH so_schid IN lt_sched_range
+      AND RETURN.
+
+    RETURN.
+
+  ENDIF.
+ENDFORM.
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Form call_smartform
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LS_MM_HEADER_PRID
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Form export_excel_template
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM export_excel_template .
+
+  DATA: lv_dest_file TYPE rlgrap-filename,
+        lv_answer    TYPE c,
+        excel        TYPE ole2_object,
+        workbook     TYPE ole2_object,
+        sheet        TYPE ole2_object,
+        cell         TYPE ole2_object.
+
+  DATA: ls_wwwdata_item  TYPE wwwdatatab,
+        lv_row           TYPE i,
+        lv_req_date      TYPE sy-datum,
+        lv_quantity      TYPE i,
+        lv_unit_price    TYPE wrbtr,
+        lv_quantity_text TYPE string.
+  lv_dest_file = 'C:\Users\USER\Desktop\구매요청서_기내식.xlsx'.
+  CALL FUNCTION 'F4_FILENAME'
+    IMPORTING
+      file_name = lv_dest_file.
+
+  IF lv_dest_file IS INITIAL.
+    MESSAGE '파일 저장을 취소했습니다.' TYPE 'I'.
+    RETURN.
+  ENDIF.
+
+  " 확장자 자동 보정
+  IF lv_dest_file CP '*.xlsx'.
+    " 그대로
+  ELSE.
+    CONCATENATE lv_dest_file '.xlsx' INTO lv_dest_file.
+  ENDIF.
+
+  " 2. SMW0 오브젝트 다운로드
+  SELECT SINGLE * INTO CORRESPONDING FIELDS OF ls_wwwdata_item
+    FROM wwwdata
+    WHERE srtf2 = 0
+      AND relid = 'MI'
+      AND objid = 'ZS-AIR-MEAL'.
+
+  IF sy-subrc = 0.
+    CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+      EXPORTING
+        key         = ls_wwwdata_item
+        destination = lv_dest_file
+      EXCEPTIONS
+        OTHERS      = 1.
+
+    IF sy-subrc <> 0.
+      MESSAGE '엑셀 템플릿 다운로드 실패' TYPE 'E'.
+      RETURN.
+    ENDIF.
+  ELSE.
+    MESSAGE 'SMW0 오브젝트를 찾을 수 없습니다.' TYPE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 3. 엑셀 파일 열기
+  CREATE OBJECT excel 'EXCEL.APPLICATION'.
+  SET PROPERTY OF excel 'Visible' = 1.
+
+  CALL METHOD OF excel 'Workbooks' = workbook.
+  CALL METHOD OF workbook 'Open'
+    EXPORTING
+      #1 = lv_dest_file.
+
+  " 4. 첫 번째 시트 선택
+  CALL METHOD OF excel 'Sheets' = sheet
+    EXPORTING #1 = 1.
+
+  " 🔥 여기부터 셀에 값 넣기 🔥
+
+  " 스케줄 읽기
+  READ TABLE gt_schedule_list INTO DATA(ls_schedule)
+       WITH KEY scheduleid = gv_selected_scheduleid.
+
+  IF sy-subrc = 0.
+
+    " 항공편 출발일 -> A8
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = 8 #2 = 1.
+    SET PROPERTY OF cell 'Value' = ls_schedule-departdate.
+
+    " 구매 요청일 (출발일 -1일) -> C8
+    lv_req_date = ls_schedule-departdate - 1.
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = 8 #2 = 3.
+    SET PROPERTY OF cell 'Value' = lv_req_date.
+
+    " 요청서 출력 날짜 (오늘 날짜) -> E8
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = 8 #2 = 5.
+    SET PROPERTY OF cell 'Value' = sy-datum.
+
+  ENDIF.
+
+  " 우하단 자재 데이터 입력 (A10 부터 시작)
+  lv_row = 10.
+
+  LOOP AT gt_meal_summary INTO gs_meal_summary
+   WHERE scheduleid = gv_selected_scheduleid.
+
+    " 수량 계산
+    lv_quantity = gs_meal_summary-totalcnt.
+
+    " 단가 계산
+    IF lv_quantity <> 0.
+      lv_unit_price = gs_meal_summary-totalamt / lv_quantity.
+    ELSE.
+      lv_unit_price = 0.
+    ENDIF.
+
+    " 수량 문자열 (EA 붙임)
+    lv_quantity_text = |{ lv_quantity } EA|.
+
+    " 스케줄 ID -> A열
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = lv_row #2 = 1.
+    SET PROPERTY OF cell 'Value' = gv_selected_scheduleid.
+
+    " 자재 ID -> B열
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = lv_row #2 = 2.
+    SET PROPERTY OF cell 'Value' = gs_meal_summary-matid.
+
+    " 자재명 -> C열
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = lv_row #2 = 3.
+    SET PROPERTY OF cell 'Value' = gs_meal_summary-matname.
+
+    " 수량 (EA 붙임) -> E열
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = lv_row #2 = 5.
+    SET PROPERTY OF cell 'Value' = lv_quantity_text.
+
+    " 단가 -> F열
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = lv_row #2 = 6.
+    SET PROPERTY OF cell 'Value' = lv_unit_price.
+
+    " 총금액 -> G열
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = lv_row #2 = 7.
+    SET PROPERTY OF cell 'Value' = gs_meal_summary-totalamt.
+
+    " 통화 -> H열
+    CALL METHOD OF sheet 'Cells' = cell
+      EXPORTING #1 = lv_row #2 = 8.
+    SET PROPERTY OF cell 'Value' = 'KRW'.
+
+    " 다음 줄
+    lv_row = lv_row + 1.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_top_of_page
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_DYNDOC_ID
+*&---------------------------------------------------------------------*
+FORM handle_top_of_page.
+  CALL METHOD go_dyndoc_id->initialize_document
+    EXPORTING
+      background_color = cl_dd_area=>col_textarea.
+
+  DATA : lr_dd_table TYPE REF TO cl_dd_table_element,
+         col_field   TYPE REF TO cl_dd_area,
+         col_value   TYPE REF TO cl_dd_area,
+         lv_text     TYPE sdydo_text_element.
+
+  CALL METHOD go_dyndoc_id->add_table
+    EXPORTING
+      no_of_columns = 2
+      border        = '0'
+    IMPORTING
+      table         = lr_dd_table.
+
+  CALL METHOD lr_dd_table->add_column
+    IMPORTING
+      column = col_field.
+
+  CALL METHOD lr_dd_table->add_column
+    IMPORTING
+      column = col_value.
+
+  " 기본 정보 출력
+  PERFORM add_row USING lr_dd_table col_field col_value '항공 스케줄[기내식 상품]' space.
+  lv_text = |{ pa_date+0(4) }년 { pa_date+4(2) }월 { pa_date+6(2) }일|.
+
+  PERFORM add_row USING lr_dd_table col_field col_value '조회 날짜' lv_text.
+
+  " 조건부 출력
+  IF gv_top_message IS NOT INITIAL.
+    PERFORM add_row USING lr_dd_table col_field col_value '알림' gv_top_message.
+  ENDIF.
+*PERFORM add_status_row USING lr_dd_table col_field col_value.
+  PERFORM set_top_of_page.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form add_row
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LR_DD_TABLE
+*&      --> COL_FIELD
+*&      --> COL_VALUE
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM add_row USING pr_dd_table TYPE REF TO cl_dd_table_element
+                   pv_col_field TYPE REF TO cl_dd_area
+                   pv_col_value TYPE REF TO cl_dd_area
+                   pv_field
+                   pv_text.
+
+  DATA : lv_text TYPE sdydo_text_element.
+
+  lv_text = pv_field.
+  CALL METHOD pv_col_field->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_document=>strong
+      sap_color    = cl_dd_document=>list_heading_inv.
+
+  CALL METHOD pv_col_field->add_gap EXPORTING width = 3.
+
+  lv_text = pv_text.
+  CALL METHOD pv_col_value->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_document=>heading
+      sap_color    = cl_dd_document=>list_negative_inv.
+
+  CALL METHOD pv_col_value->add_gap EXPORTING width = 3.
+
+  CALL METHOD pr_dd_table->new_row.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_top_of_page
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_top_of_page .
+
+  IF go_html_cntrl IS INITIAL.
+    CREATE OBJECT go_html_cntrl
+      EXPORTING
+        parent = go_top_cont.
+  ENDIF.
+
+  CALL METHOD go_dyndoc_id->merge_document.
+  go_dyndoc_id->html_control = go_html_cntrl.
+
+  CALL METHOD go_dyndoc_id->display_document
+    EXPORTING
+      reuse_control = 'X'
+      parent        = go_top_cont.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_meal_field
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_meal_field USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_mfcat-key        = pv_key.
+  gs_mfcat-fieldname  = pv_field.
+  gs_mfcat-ref_table  = pv_table.
+  gs_mfcat-just       = pv_just.
+  gs_mfcat-emphasize  = pv_emph.
+
+  CASE pv_field.
+    WHEN 'ICON_SEND_STATE'.
+      gs_mfcat-icon = abap_true.
+      gs_mfcat-coltext = '전송 상태'.
+
+    WHEN 'SCHEDULEID'.  gs_mfcat-coltext = '스케쥴 ID'.
+    WHEN 'MATID'.       gs_mfcat-coltext = '자재 ID'.
+    WHEN 'MATNAME'.     gs_mfcat-coltext = '자재 이름'.
+    WHEN 'TOTALCNT'.    gs_mfcat-coltext = '총 개수'.
+    WHEN 'MEINS'.       gs_mfcat-coltext = '단위'.
+    WHEN 'TOTALAMT_DISP'.
+      gs_mfcat-coltext    = '총 금액'.
+      gs_mfcat-cfieldname = 'WAERS'.
+      gs_mfcat-decimals_o = 0.   " ← 이걸 추가해야 소수점 표시 안 함!
+      gs_mfcat-do_sum     = 'X'.
+    WHEN 'WAERS'.
+      gs_mfcat-coltext = '통화'.
+    WHEN 'STATUS'.
+      gs_mfcat-coltext = '상태'.
+  ENDCASE.
+
+  APPEND gs_mfcat TO gt_mfcat.
+  CLEAR gs_mfcat.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

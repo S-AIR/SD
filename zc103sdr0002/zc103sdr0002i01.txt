@@ -1,0 +1,76 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0002I01
+*&---------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  gv_okcode = sy-ucomm.
+
+  CASE gv_okcode.
+
+    WHEN 'SAVE'.
+      " ▶ 저장 확인 팝업
+      DATA lv_answer TYPE c.
+
+      CALL FUNCTION 'POPUP_TO_CONFIRM'
+        EXPORTING
+          titlebar              = '저장 확인'
+          text_question         = '저장하시겠습니까?'
+          text_button_1         = '예'(001)
+          text_button_2         = '아니오'(002)
+          default_button        = '1'
+          display_cancel_button = 'X'
+        IMPORTING
+          answer                = lv_answer.
+
+      IF lv_answer = '1'.
+        PERFORM update_mealcount_data.
+      ELSE.
+        MESSAGE '저장이 취소되었습니다.' TYPE 'I'.
+      ENDIF.
+
+    WHEN 'UPDMEAL'.
+      PERFORM update_mealcount.
+
+    WHEN 'SEND_MM'.
+      PERFORM send_to_mm.
+
+    WHEN 'EXCEL_TEMPLATE'.
+      PERFORM export_excel_template.
+
+    WHEN 'EXIT' OR 'BACK' OR 'CANCEL'.
+      PERFORM exit_program.
+
+  ENDCASE.
+
+  CLEAR gv_okcode.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  CALL METHOD:
+    go_top_grid->free,
+    go_bottom_grid->free,
+    go_right_bot_grid->free,
+
+    go_left_cont->free,
+    go_right_cont->free,
+    go_split_main->free,
+    go_split_right->free,
+    go_container->free.
+
+  FREE:
+    go_top_grid, go_bottom_grid, go_right_bot_grid,
+    go_left_cont, go_right_cont,
+    go_split_main, go_split_right, go_container.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
