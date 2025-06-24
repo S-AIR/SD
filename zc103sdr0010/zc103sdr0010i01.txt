@@ -1,0 +1,36 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0010I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  LEAVE TO SCREEN 0.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'RFSH'. " 새로고침
+      PERFORM refresh_data.
+    WHEN 'CHAR'.
+      PERFORM call_chart.
+    WHEN 'SRCH'. " 검색
+      PERFORM get_perform_data.
+      PERFORM set_body_data.
+      PERFORM get_analyze_data.
+      PERFORM refresh_alv.
+    WHEN OTHERS.
+      gc_tab-activetab = gv_okcode.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
