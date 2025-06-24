@@ -1,0 +1,183 @@
+*&---------------------------------------------------------------------*
+*& Include ZC103SDR0010TOP                          - Report zc103sdr0010
+*&---------------------------------------------------------------------*
+REPORT zc103sdr0010 MESSAGE-ID zmsgc103.
+
+**********************************************************************
+* TABLE
+**********************************************************************
+TABLES : zc103sdt0009.
+
+**********************************************************************
+* Tabstrip Control
+**********************************************************************
+CONTROLS gc_tab TYPE TABSTRIP.
+
+DATA : gv_subscreen TYPE sy-dynnr.
+
+**********************************************************************
+* Internal table and work area
+**********************************************************************
+" 예약
+DATA : BEGIN OF gs_body,
+         tdate          TYPE zc103sdt0017-tdate,
+         departdate     TYPE zc103sdt0008-departdate,
+         scheduleid     TYPE zc103sdt0017-scheduleid,
+         flightid       TYPE zc103sdt0017-flightid,
+         flighttime     TYPE zc103sdt0008-flighttime,
+         countryfrom    TYPE zc103sdt0008-countryfrom,
+         countryto      TYPE zc103sdt0008-countryto,
+         countryfr_text TYPE string,
+         countryto_text TYPE string,
+
+         weight_unit    TYPE zc103sdt0017-weight_unit,
+         booked_weight  TYPE zc103sdt0017-weight,
+         actual_weight  TYPE zc103sdt0017-weight,
+         pallet_cnt     TYPE i,
+         achieve_rate   TYPE p LENGTH 5 DECIMALS 2,
+       END OF gs_body,
+       gt_body LIKE TABLE OF gs_body.
+
+" 실적
+DATA : BEGIN OF gs_sum,
+         scheduleid    TYPE zc103sdt0017-scheduleid,
+         load_date     TYPE zc103sdt0024-load_date,
+         actual_weight TYPE i,
+         pallet_cnt    TYPE i,
+       END OF gs_sum,
+       gt_sum LIKE TABLE OF gs_sum.
+
+DATA : BEGIN OF gs_sum_bp,
+         bpid             TYPE zc103e_sd_bpid,
+         countryfrom      TYPE zc103sdt0008-countryfrom,
+         countryto        TYPE zc103sdt0008-countryto,
+         actual_weight    TYPE i,
+         total_pallet_cnt TYPE i,
+       END OF gs_sum_bp,
+       gt_sum_bp LIKE TABLE OF gs_sum_bp.
+
+TYPES: BEGIN OF gs_range,
+         sign   TYPE c LENGTH 1,
+         option TYPE c LENGTH 2,
+         low    TYPE zc103e_sd_scheduleid,
+         high   TYPE zc103e_sd_scheduleid,
+       END OF gs_range.
+
+*-- Display용 테이블
+DATA : gt_display LIKE gt_body,
+       gs_display LIKE gs_body,
+       BEGIN OF gs_display4,
+         route            TYPE string,
+         scheduleid       TYPE zc103sdt0017-scheduleid,
+         flightid         TYPE zc103sdt0017-flightid,
+         bpid             TYPE zc103e_sd_bpid,
+         bptype           TYPE zc103sdt0001-bptype,
+         countryfrom      TYPE zc103sdt0008-countryfrom,
+         countryto        TYPE zc103sdt0008-countryto,
+         trip_cnt         TYPE i,
+         booked_weight    TYPE i,
+         total_weight     TYPE i, " gs_body의 actual_weight 총 실제 적재 중량
+         avg_weight_b     TYPE i, " 예약 평균
+         avg_weight       TYPE i, " 실제 평균
+         weight_unit      TYPE zc103sdt0017-weight_unit,
+         total_pallet_cnt TYPE i,
+         avg_rate         TYPE p LENGTH 5 DECIMALS 2,
+       END OF gs_display4,
+       gt_display4 LIKE TABLE OF gs_display4,
+       gs_display3 LIKE gs_display4,
+       gt_display3 LIKE TABLE OF gs_display4,
+       gs_display2 LIKE gs_display4,
+       gt_display2 LIKE TABLE OF gs_display4,
+       gs_display1 LIKE gs_display4,
+       gt_display1 LIKE TABLE OF gs_display4.
+
+*-- 도메인 value 테이블
+DATA : BEGIN OF gs_dd07v,
+         domvalue_l TYPE domvalue_l,
+         ddtext     TYPE val_text,
+       END OF gs_dd07v,
+       gt_dd07v LIKE TABLE OF gs_dd07v WITH NON-UNIQUE SORTED KEY key COMPONENTS domvalue_l.
+
+*-- For tree
+DATA : BEGIN OF gs_tree,
+         bpid   TYPE zc103sdt0001-bpid,
+         bpname TYPE zc103sdt0001-bpname,
+         bptype TYPE zc103sdt0001-bptype,
+       END OF gs_tree,
+       gt_tree LIKE TABLE OF gs_tree,
+       BEGIN OF gs_bptype,
+         bptype     TYPE zc103sdt0001-bptype,
+         bptypename TYPE string,
+       END OF gs_bptype,
+       gt_bptype LIKE TABLE OF gs_bptype.
+
+**********************************************************************
+* Class Instance
+**********************************************************************
+DATA : go_tab_cont1 TYPE REF TO cl_gui_custom_container,
+       go_alv_grid1 TYPE REF TO cl_gui_alv_grid.
+
+DATA : go_tab_cont2         TYPE REF TO cl_gui_custom_container,
+       go_split_main        TYPE REF TO cl_gui_splitter_container,
+       go_split_cont_top    TYPE REF TO cl_gui_container,          " main split 상
+       go_split_top         TYPE REF TO cl_gui_splitter_container, " main split 상 -> 좌우 split
+       go_split_cont_bottom TYPE REF TO cl_gui_container,          " main split 하
+       go_split_bottom      TYPE REF TO cl_gui_splitter_container, " main split 하 -> 좌우 split
+       go_split_cont1       TYPE REF TO cl_gui_container,          " 하 > 좌 (tree)
+       go_split_cont2       TYPE REF TO cl_gui_container,          " 하 > 우
+       go_split_cont3       TYPE REF TO cl_gui_container,          " 상 > 좌
+       go_split_cont4       TYPE REF TO cl_gui_container,          " 상 > 우
+       go_split_grid1       TYPE REF TO cl_gui_alv_grid,           " 하 > 좌 (tree)
+       go_split_grid2       TYPE REF TO cl_gui_alv_grid,           " 하 > 우
+       go_split_grid3       TYPE REF TO cl_gui_alv_grid,           " 상 > 좌
+       go_split_grid4       TYPE REF TO cl_gui_alv_grid,           " 상 > 우
+       go_tree              TYPE REF TO cl_gui_simple_tree.
+
+*-- For ALV
+DATA : gt_fcat1   TYPE lvc_t_fcat,
+       gs_fcat1   TYPE lvc_s_fcat,
+       gt_fcat2   TYPE lvc_t_fcat,
+       gs_fcat2   TYPE lvc_s_fcat,
+       gt_fcat3   TYPE lvc_t_fcat,
+       gs_fcat3   TYPE lvc_s_fcat,
+       gt_fcat4   TYPE lvc_t_fcat,
+       gs_fcat4   TYPE lvc_s_fcat,
+       gs_layout  TYPE lvc_s_layo,
+       gs_layout1 TYPE lvc_s_layo,
+       gs_layout2 TYPE lvc_s_layo,
+       gs_layout3 TYPE lvc_s_layo,
+       gs_layout4 TYPE lvc_s_layo,
+       gs_variant TYPE disvariant. " ALV 구조 variant 저장해놓고 쓰기 위함
+
+**********************************************************************
+* Declaration area for NODE
+**********************************************************************
+TYPES: node_table_type LIKE STANDARD TABLE OF mtreesnode
+                       WITH DEFAULT KEY.
+DATA: node_table TYPE node_table_type.
+
+**********************************************************************
+* Declaration area for Tree event
+**********************************************************************
+DATA: events TYPE cntl_simple_events,
+      event  TYPE cntl_simple_event.
+
+**********************************************************************
+* User command variable
+**********************************************************************
+DATA : gv_okcode       TYPE sy-ucomm,
+       gv_year         TYPE numc4,
+       gv_quar(1),
+       gv_date_from    TYPE sy-datum,
+       gv_date_to      TYPE sy-datum,
+       gv_route        TYPE char4, " 출발 - 도시
+       gv_countryfrom  TYPE zc103sdt0008-countryfrom,
+       gv_countryto    TYPE zc103sdt0008-countryto,
+       gv_total_cnt    TYPE i,      " 총 운항 횟수
+       gv_total_trip   TYPE i,      " 총 운항 거리
+       gv_total_weight TYPE i,      " 총 운송 무게
+       gv_avg_trip     TYPE i,      " 평균 운항 거리
+       gv_avg_weight   TYPE i.      " 평균 운송 무게
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

@@ -1,0 +1,99 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103PMR0001O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S0100'.
+  SET TITLEBAR 'T0100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module DISPLAY_SCREEN_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE display_screen_0100 OUTPUT.
+
+  IF go_item_alv IS NOT BOUND. .
+
+    PERFORM set_layout.
+
+    PERFORM exclude_toolbar.
+
+    PERFORM create_object.
+
+    PERFORM set_data_0100.
+
+    PERFORM set_field_catalog_0100.
+
+    PERFORM display_alv_0100.
+
+  ELSE.
+
+    PERFORM refresh_table USING go_item_alv.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module DISPLAY_SCREEN_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE display_screen_0200 OUTPUT.
+
+  IF go_item_alv IS NOT BOUND. .
+
+    PERFORM set_layout.
+
+    PERFORM exclude_toolbar.
+
+    PERFORM create_object.
+
+    PERFORM set_data_0200.
+
+    PERFORM set_field_catalog_0200.
+
+    PERFORM display_alv_0200.
+
+  ELSE.
+
+    PERFORM refresh_table USING go_item_alv.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module DISPLAY_SCREEN_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE display_screen_0300 OUTPUT.
+
+  IF go_item_alv IS NOT BOUND. .
+
+    PERFORM set_layout.
+
+    PERFORM exclude_toolbar.
+
+    PERFORM create_object.
+
+    PERFORM set_data_0300.
+
+    PERFORM set_field_catalog_0300.
+
+    PERFORM display_alv_0300.
+
+  ELSE.
+
+    PERFORM refresh_table USING go_item_alv.
+
+  ENDIF.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

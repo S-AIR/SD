@@ -1,0 +1,42 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0007I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  100_EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE 100_exit INPUT.
+
+  CALL METHOD : go_brbottom_alv_grid->free,
+                go_brtop_alv_grid->free,
+                go_brbottom_container->free,
+                go_brtop_container->free,
+                go_brsplit_container->free,
+                go_bright_container->free.
+
+  FREE : go_brbottom_alv_grid, go_brtop_alv_grid,
+         go_brbottom_container, go_brtop_container,
+         go_brsplit_container, go_bright_container.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'TAB1' OR 'TAB2' OR 'TAB3' OR 'TAB4'.
+      gc_tab-activetab = gv_okcode.
+    WHEN 'SOMN'.
+      PERFORM move_sales_order_page.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

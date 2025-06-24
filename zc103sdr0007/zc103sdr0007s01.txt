@@ -1,0 +1,12 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0007S01
+*&---------------------------------------------------------------------*
+**********************************************************************
+* SELECTION-SCREEN
+**********************************************************************
+SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME TITLE TEXT-T01.
+  PARAMETERS : pa_date TYPE zc103sdt0015-input_date.
+SELECTION-SCREEN END OF BLOCK b01.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
