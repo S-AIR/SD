@@ -1,9 +1,0 @@
-* regenerated at 2025.04.15 15:52:45
-FUNCTION-POOL ZC1FG03SD0001              MESSAGE-ID SV.
-
-* INCLUDE LZC1FG03SD0001D...                 " Local class definition
-  INCLUDE LSVIMDAT                                . "general data decl.
-  INCLUDE LZC1FG03SD0001T00                       . "view rel. data dcl.
-
-----------------------------------------------------------------------------------
-Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
