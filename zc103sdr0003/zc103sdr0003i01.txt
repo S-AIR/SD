@@ -1,0 +1,49 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0003I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  100_EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE 100_exit INPUT.
+
+  CALL METHOD : go_topp_container->free,
+                go_stop_alv_grid->free,
+                go_sbottom_alv_grid->free,
+                go_tree->free,
+                go_stop_container->free,
+                go_sbottom_container->free,
+                go_ssplit_container->free,
+                go_right_container->free,
+                go_left_container->free,
+                go_msplit_container->free,
+                go_main_container->free.
+
+  FREE : go_topp_container,
+         go_stop_alv_grid, go_sbottom_alv_grid, go_tree,
+         go_stop_container, go_sbottom_container, go_ssplit_container,
+         go_right_container, go_left_container, go_msplit_container,
+         go_main_container.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'EXCL'.
+      PERFORM excel_download.
+    WHEN 'MAIL'.
+      PERFORM mail_process.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

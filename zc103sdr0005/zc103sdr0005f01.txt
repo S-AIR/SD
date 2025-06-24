@@ -1,0 +1,1516 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0001F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_init_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_init_value .
+  pa_date = '20230101'.  " 기본 조회일을 오늘로 설정
+  gv_top_message = '항공편 스케줄을 선택하세요.'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_schedule_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_schedule_data .
+
+  " 항공편 정보 조회
+  SELECT scheduleid, departdate, departtime, arrivetime, arrivedate,
+         countryfrom, countryto
+    INTO CORRESPONDING FIELDS OF TABLE @gt_schedule
+    FROM zc103sdt0008
+    WHERE departdate = @pa_date
+    ORDER BY departtime.
+
+  IF gt_schedule IS INITIAL.
+    MESSAGE '해당 날짜에 대한 스케줄이 없습니다.' TYPE 'S' DISPLAY LIKE 'E'.
+    STOP.
+  ELSE.
+    MESSAGE |{ lines( gt_schedule ) }건이 조회되었습니다.| TYPE 'S'.
+  ENDIF.
+
+  " 도메인 값 매핑 (출발국, 도착국)
+  SELECT domvalue_l, ddtext
+    INTO CORRESPONDING FIELDS OF TABLE @gt_dd07v
+    FROM dd07v
+    WHERE domname = 'ZC103D_FI_LAND'.
+
+  PERFORM set_data.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form display_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_screen .
+
+  IF go_container IS NOT BOUND.
+
+    CLEAR : gt_fcat, gs_fcat, gt_tfcat, gs_tfcat, gt_bfcat, gs_bfcat.
+
+    " Set Field Catalog 1             Key Fieldname  Ref_tab  Just Emphasize
+    PERFORM set_field_catalog USING : 'X' 'SCHEDULEID' 'ZC103SDT0008' 'C' ' ',
+                                  ' ' 'COUNTRYFROM' 'ZC103SDT0008' 'L' 'X',
+                                  ' ' 'COUNTRYTO' 'ZC103SDT0008' 'L' 'X',
+                                  ' ' 'DEPARTDATE' 'ZC103SDT0008' 'C' ' ',
+                                  ' ' 'DEPARTTIME' 'ZC103SDT0008' 'C' ' ',
+                                  ' ' 'ARRIVEDATE' 'ZC103SDT0008' 'C' ' ',
+                                  ' ' 'ARRIVETIME' 'ZC103SDT0008' 'C' ' '.
+
+    " Set Field Catalog 2             Key Fieldname  Ref_tab  Just Emphasize
+    PERFORM set_field_catalog2 USING :' ' 'STATUS' 'ZC103SDT0012' ' ' ' ',
+                                      'X' 'TICKETID' 'ZC103SDT0012' ' ' ' ',
+*                                      ' ' 'SOUVENIRID' 'ZC103SDT0012' ' ' ' ',
+                                      ' ' 'PASSENGERID' 'ZC103SDT0012' ' ' ' ',
+                                      ' ' 'PASSENGERNAME' 'ZC103SDT0014' ' ' 'X',
+                                      ' ' 'SOUVENIR_TYPE' 'ZC103SDT0012' ' ' 'X',
+                                      ' ' 'QTY' 'ZC103SDT0012' ' ' ' ',
+                                      ' ' 'UNIT' 'ZC103SDT0012' 'C' ' ',
+                                      ' ' 'UNIT_PRICE' 'ZC103SDT0012' ' ' ' ',
+                                      ' ' 'TOTAL_PRICE' 'ZC103SDT0012' ' ' ' ',
+                                      ' ' 'CURRENCY' 'ZC103SDT0012' ' ' ' '.
+    " Set Field Catalog 3             Key Fieldname
+    PERFORM set_field_catalog3 USING:
+                                      'X' 'SCHEDULEID' 'ZC103SDT0008' 'C' ' ',
+                                      'X' 'MATID'         'ZC103MMT0001' 'C' ' ',
+                                      ' ' 'SOUVENIR_TYPE' 'ZC103SDT0012' ' ' 'X',
+                                      ' ' 'TOTAL_QTY'     'ZC103SDT0012' ' ' ' ',
+                                      ' ' 'UNIT'          'ZC103MMT0001' 'C' ' ',
+                                      ' ' 'TOTAL_PRICE'   'ZC103SDT0012' ' ' ' ',
+                                      ' ' 'CURRENCY'      'ZC103SDT0012' ' ' ' '.
+
+    " ALV Layout 및 Variant 설정
+    PERFORM set_layout.
+
+    " UI 객체 생성 및 이벤트 등록
+    PERFORM create_object.
+    PERFORM register_event.
+
+    " 이벤트 핸들러 연결
+    CREATE OBJECT gr_event_handler.
+    SET HANDLER:
+      lcl_event_handler=>hotspot_click    FOR go_grid_sched,
+      lcl_event_handler=>top_of_page      FOR go_grid_sched,
+      lcl_event_handler=>handle_toolbar   FOR go_grid_booking,
+      lcl_event_handler=>handle_user_command FOR go_grid_booking,
+      lcl_event_handler=>handle_toolbar   FOR go_grid_detail,
+      lcl_event_handler=>handle_user_command FOR go_grid_detail.
+
+    " ALV 데이터 출력
+    CALL METHOD go_grid_sched->set_table_for_first_display
+      EXPORTING
+        is_variant      = VALUE disvariant( handle = 'ALV101' report = sy-repid )
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout1
+      CHANGING
+        it_outtab       = gt_disp_sch
+        it_fieldcatalog = gt_fcat.
+
+    CALL METHOD go_grid_booking->set_table_for_first_display
+      EXPORTING
+        is_variant      = VALUE disvariant( handle = 'ALV2' report = sy-repid )
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout2
+      CHANGING
+        it_outtab       = gt_disp_ser
+        it_fieldcatalog = gt_tfcat.
+    CALL METHOD go_grid_booking->refresh_table_display.
+
+    CALL METHOD go_grid_detail->set_table_for_first_display
+      EXPORTING
+        is_variant      = VALUE disvariant( handle = 'ALV3' report = sy-repid )
+        i_save          = 'A'
+        i_default       = 'X'
+        is_layout       = gs_layout3
+      CHANGING
+        it_outtab       = gt_detail
+        it_fieldcatalog = gt_bfcat.
+
+    CALL METHOD go_grid_detail->set_toolbar_interactive. " ✅ 이 줄 추가!
+    PERFORM handle_top_of_page.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  " Top-of-page용 HTML 문서 객체
+  CREATE OBJECT go_dyndoc_id
+    EXPORTING
+      style = 'ALV_GRID'.
+
+  " 화면 상단: HTML 로고 영역
+  CREATE OBJECT go_top_cont
+    EXPORTING
+      side      = cl_gui_docking_container=>dock_at_top
+      extension = 50.
+
+  " 전체 화면 컨테이너 (왼쪽 고정)
+  CREATE OBJECT go_container
+    EXPORTING
+      side      = cl_gui_docking_container=>dock_at_left
+      extension = 5000.
+
+  " 좌우 분할: 스케줄 / 예약
+  CREATE OBJECT go_split_main
+    EXPORTING
+      parent  = go_container
+      rows    = 1
+      columns = 2.
+
+  CALL METHOD go_split_main->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_left_cont.
+
+  CALL METHOD go_split_main->get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = go_right_cont.
+
+  " 우측 상하 분할
+  CREATE OBJECT go_split_right
+    EXPORTING
+      parent  = go_right_cont
+      rows    = 2
+      columns = 1.
+
+  CALL METHOD go_split_right->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = go_right_top_cont.
+
+  CALL METHOD go_split_right->get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = go_right_bot_cont.
+
+  " ALV Grid 컨트롤 바인딩
+  CREATE OBJECT go_grid_sched EXPORTING i_parent = go_left_cont.
+  CREATE OBJECT go_grid_booking EXPORTING i_parent = go_right_top_cont.
+  CREATE OBJECT go_grid_detail EXPORTING i_parent = go_right_bot_cont.
+  PERFORM handle_top_of_page.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_layout .
+
+
+  gs_layout1-zebra      = abap_true.
+  gs_layout1-cwidth_opt = 'A'.
+  gs_layout1-sel_mode   = 'D'.
+  gs_layout1-grid_title = '항공편 스케줄'.
+
+  gs_variant-report    = sy-repid.
+
+  gs_layout2 = CORRESPONDING #( gs_layout1 ).
+  gs_layout2-grid_title = '항공편별 구매 상품'.
+  gs_layout2-stylefname = 'STYLE'.   " ✅ 이 줄 추가
+
+  gs_layout3 = CORRESPONDING #( gs_layout1 ).
+  gs_layout3-totals_bef = abap_true.
+  gs_layout3-grid_title = '구매 요청 확정 상품 / 금액'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-ref_field = pv_field.
+  gs_fcat-ref_table = pv_table.
+  gs_fcat-just      = pv_just.
+  gs_fcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'SCHEDULEID'.
+      gs_fcat-hotspot = abap_true.
+    WHEN 'COUNTRYFROM'.
+      gs_fcat-coltext = '출발국가(FROM)'.
+    WHEN 'COUNTRYTO'.
+      gs_fcat-coltext = '도착국가(TO)'.
+    WHEN 'DEPARTDATE'.
+      gs_fcat-coltext = '출발날짜'.
+    WHEN 'DEPARTTIME'.
+      gs_fcat-coltext = '출발시간'.
+    WHEN 'ARRIVEDATE'.
+      gs_fcat-coltext = '도착날짜'.
+    WHEN 'ARRIVETIME'.
+      gs_fcat-coltext = '도착시간'.
+  ENDCASE.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_data .
+
+  CLEAR : gt_disp_sch.
+*-- Set Display Data
+  LOOP AT gt_schedule ASSIGNING FIELD-SYMBOL(<fs>).
+
+    CLEAR : gs_disp_sch.
+
+*-- Insert Domain Value
+    gs_disp_sch = VALUE #(
+                            scheduleid  =   <fs>-scheduleid
+                            countryfrom =   gt_dd07v[ KEY key domvalue_l = <fs>-countryfrom ]-ddtext
+                            countryto   =   gt_dd07v[ KEY key domvalue_l = <fs>-countryto ]-ddtext
+                            departdate  =   <fs>-departdate
+                            departtime  =   <fs>-departtime
+                            arrivedate  =   <fs>-arrivedate
+                            arrivetime  =   <fs>-arrivetime
+
+                         ).
+
+    gt_disp_sch = VALUE #( BASE gt_disp_sch ( gs_disp_sch ) ).
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+*FORM handle_hotspot_click  USING pv_row_id pv_column_id.
+*
+*
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW
+*&      --> E_COLUMN
+*&---------------------------------------------------------------------*
+FORM handle_double_click  USING pv_row pv_column.
+
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog2  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_tfcat-key       = pv_key.
+  gs_tfcat-fieldname = pv_field.
+  gs_tfcat-ref_field = pv_field.
+  gs_tfcat-ref_table = pv_table.
+  gs_tfcat-just      = pv_just.
+  gs_tfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'STATUS'.
+      gs_tfcat-coltext     = '상태'.
+      gs_tfcat-icon = abap_true.  " ✅ 아이콘으로 출력
+    WHEN 'QTY'.
+      gs_tfcat-coltext = '개수'.
+      gs_tfcat-qfieldname  = 'UNIT'.
+    WHEN 'UNIT'.
+      gs_tfcat-coltext = '단위'.
+    WHEN 'UNIT_PRICE'.
+      gs_tfcat-coltext     = '상품가격'.
+      gs_tfcat-cfieldname  = 'CURRENCY'.
+    WHEN 'TOTAL_PRICE'.
+      gs_tfcat-coltext     = '총가격'.
+      gs_tfcat-cfieldname  = 'CURRENCY'.
+    WHEN 'CURRENCY'.
+      gs_tfcat-coltext = '통화'.
+  ENDCASE.
+
+  APPEND gs_tfcat TO gt_tfcat.
+  CLEAR gs_tfcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_Second_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_second_data .
+
+  CLEAR gt_disp_ser.
+
+  LOOP AT gt_service ASSIGNING FIELD-SYMBOL(<fs_srv>).
+
+    " 도메인 텍스트 매핑
+    DATA(lv_tt_text) = COND string(
+      WHEN line_exists( gt_tt07v[ domvalue_l = <fs_srv>-souvenir_type ] )
+      THEN gt_tt07v[ domvalue_l = <fs_srv>-souvenir_type ]-ddtext
+      ELSE <fs_srv>-souvenir_type
+    ).
+
+    " ✅ 선언 추가!
+    DATA lv_icon_status TYPE icon_d.
+
+    lv_icon_status = SWITCH icon_d(
+      <fs_srv>-status
+      WHEN 'N' THEN '@5D@'
+      WHEN 'Y' THEN '@5B@'
+      ELSE '@5C@'
+    ).
+
+    " 스타일 설정
+    DATA(lt_style) = VALUE lvc_t_styl( ).
+    IF <fs_srv>-status = 'Y'.
+      APPEND VALUE lvc_s_styl( fieldname = 'TICKETID' style = 10 ) TO lt_style.
+    ELSE.
+      APPEND VALUE lvc_s_styl( fieldname = 'TICKETID' style = 7 ) TO lt_style.
+    ENDIF.
+
+    APPEND VALUE #(
+      status         = lv_icon_status
+      ticketid       = <fs_srv>-ticketid
+      souvenirid     = <fs_srv>-souvenirid
+      passengerid    = <fs_srv>-passengerid
+      passengername  = <fs_srv>-passengername
+      souvenir_type  = lv_tt_text
+      qty            = <fs_srv>-qty
+      unit           = <fs_srv>-unit
+      unit_price     = <fs_srv>-unit_price
+      total_price    = <fs_srv>-total_price
+      currency       = <fs_srv>-currency
+      style          = lt_style
+    ) TO gt_disp_ser.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Form set_detail_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_detail_data .
+
+  CLEAR gt_detail.
+
+  DATA: lt_summary TYPE SORTED TABLE OF ty_detail WITH UNIQUE KEY matid,
+        ls_summary TYPE ty_detail,
+        lt_price   TYPE TABLE OF ty_price,
+        ls_price   TYPE ty_price.
+
+  " 가격 정보 로드
+  SELECT matname, matid, base_unit, price
+    INTO TABLE @lt_price
+    FROM zc103mmt0001.
+
+  SELECT SINGLE currdec INTO @DATA(lv_decimals)
+    FROM tcurx
+    WHERE currkey = 'KRW'.
+
+  LOOP AT gt_disp_ser INTO DATA(ls_disp)
+    WHERE status = '@5B@'.   " 초록불만 대상
+
+    READ TABLE lt_price INTO ls_price WITH KEY matname = ls_disp-souvenir_type.
+    IF sy-subrc <> 0.
+      CONTINUE.
+    ENDIF.
+
+    DATA(lv_matid) = ls_price-matid.
+    DATA(lv_qty)   = ls_disp-qty.
+    DATA(lv_price) = ls_disp-total_price.
+
+    " 누적 여부 확인 (matid 기준)
+    READ TABLE lt_summary INTO ls_summary WITH KEY matid = lv_matid.
+
+    IF sy-subrc = 0.
+      ls_summary-total_qty   += lv_qty.
+      ls_summary-total_price += lv_price.
+      DELETE lt_summary WHERE matid = lv_matid.
+    ELSE.
+      CLEAR ls_summary.
+      ls_summary = VALUE #(
+        matid         = lv_matid
+        souvenir_type = ls_disp-souvenir_type
+        unit_price    = ls_price-price
+        unit          = ls_price-base_unit
+        total_qty     = lv_qty
+        total_price   = lv_price
+        currency      = ls_disp-currency
+        scheduleid    = gv_selected_scheduleid
+      ).
+    ENDIF.
+
+    INSERT ls_summary INTO TABLE lt_summary.
+
+  ENDLOOP.
+
+  gt_detail = lt_summary.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_field_catalog3
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_field_catalog3  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  gs_bfcat-key       = pv_key.
+  gs_bfcat-fieldname = pv_field.
+  gs_bfcat-ref_field = pv_field.
+  gs_bfcat-ref_table = pv_table.
+  gs_bfcat-just      = pv_just.
+  gs_bfcat-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'STATUS'.
+      gs_bfcat-coltext = '상태'.
+    WHEN 'MATID'.
+      gs_bfcat-coltext = '자재ID'.
+
+    WHEN 'SOUVENIR_TYPE'.
+      gs_bfcat-coltext = ' 유료상품 유형'.
+
+    WHEN 'TOTAL_QTY'.
+      gs_bfcat-coltext   = '총 수량'.
+      gs_bfcat-outputlen = 8.
+      gs_bfcat-datatype  = 'INT4'.
+
+    WHEN 'UNIT'.
+      gs_bfcat-coltext   = '단위'.
+
+    WHEN 'TOTAL_PRICE'.
+      gs_bfcat-coltext    = '총 금액'.
+      gs_bfcat-datatype   = 'CURR'.
+      gs_bfcat-cfieldname = 'CURRENCY'.
+      gs_bfcat-decimals_o = 0.
+      gs_bfcat-do_sum     = 'X'.
+
+    WHEN 'CURRENCY'.
+      gs_bfcat-coltext = '통화'.
+
+    WHEN 'SCHEDULEID'.
+      gs_bfcat-coltext = '스케줄 ID'.
+  ENDCASE.
+
+  APPEND gs_bfcat TO gt_bfcat.
+  CLEAR gs_bfcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM handle_hotspot_click  USING pv_row_id pv_column_id.
+
+  DATA: lv_country_from TYPE dd07v-ddtext,
+        lv_country_to   TYPE dd07v-ddtext,
+        lv_summary_msg  TYPE string,
+        lv_qty_raw      TYPE i,
+        lv_decimals     TYPE tcurx-currdec,
+        lt_price        TYPE TABLE OF zc103mmt0001,
+        ls_price        TYPE zc103mmt0001.
+
+  " 1. 선택한 스케줄 읽기
+  READ TABLE gt_schedule INTO gs_schedule INDEX pv_row_id.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  CLEAR gv_top_message.
+  gv_selected_scheduleid = gs_schedule-scheduleid.
+
+  " 2. 데이터 초기화
+  CLEAR: gt_service, gt_disp_ser.
+
+  " 3. 예약 상품 조회 (with 승객정보)
+  SELECT a~status,
+         a~ticketid, a~souvenirid, a~passengerid, b~passengername,
+         a~souvenir_type, a~qty, a~unit, a~unit_price,
+         a~total_price, a~currency
+    INTO CORRESPONDING FIELDS OF TABLE @gt_service
+    FROM zc103sdt0012 AS a
+    INNER JOIN zc103sdt0014 AS b ON a~ticketid = b~ticketid
+    WHERE b~scheduleid = @gv_selected_scheduleid.
+
+  IF gt_service IS INITIAL.
+    gv_top_message = '해당 스케쥴에 예약한 상품이 없습니다.'.
+    MESSAGE s003(zmsgc103) DISPLAY LIKE 'E'.
+    CALL METHOD go_grid_booking->refresh_table_display.
+    PERFORM handle_top_of_page.
+    RETURN.
+  ENDIF.
+
+  " 4. 도메인 텍스트 로딩
+  SELECT domvalue_l, ddtext
+    INTO CORRESPONDING FIELDS OF TABLE @gt_tt07v
+    FROM dd07v
+    WHERE domname = 'ZC103ED_SD_SOUVENIRTP'.
+
+  " 5. 예약 → 디스플레이 매핑
+  PERFORM set_second_data.
+
+  " 6. 가격 정보 보정
+  SELECT matid, matname, price
+    INTO CORRESPONDING FIELDS OF TABLE @lt_price
+    FROM zc103mmt0001.
+
+  SELECT SINGLE currdec INTO @lv_decimals
+    FROM tcurx
+    WHERE currkey = 'KRW'.
+
+  LOOP AT gt_disp_ser ASSIGNING FIELD-SYMBOL(<fs_disp>).
+
+    lv_qty_raw = <fs_disp>-qty.
+    IF  <fs_disp>-qty EQ 0.
+      zc103sdt0012 = CORRESPONDING #( <fs_disp> ).
+      DELETE gt_disp_ser INDEX sy-tabix.
+      DELETE zc103sdt0012 FROM zc103sdt0012.
+      CONTINUE.
+    ENDIF.
+
+    READ TABLE lt_price INTO ls_price WITH KEY matname = <fs_disp>-souvenir_type.
+    IF sy-subrc = 0.
+      <fs_disp>-unit_price = ls_price-price.
+    ELSE.
+      CLEAR <fs_disp>-unit_price.
+    ENDIF.
+
+    IF <fs_disp>-currency = 'KRW' AND lv_decimals > 0.
+      <fs_disp>-unit_price = <fs_disp>-unit_price / ( 10 ** lv_decimals ).
+    ENDIF.
+
+    <fs_disp>-total_price = lv_qty_raw * <fs_disp>-unit_price.
+
+    " DB 반영
+    UPDATE zc103sdt0012 SET
+      unit_price  = <fs_disp>-unit_price
+      total_price = <fs_disp>-total_price
+      WHERE ticketid    = <fs_disp>-ticketid
+        AND souvenirid  = <fs_disp>-souvenirid
+        AND passengerid = <fs_disp>-passengerid.
+
+    " 🔥 메모리에도 반영
+    LOOP AT gt_service ASSIGNING FIELD-SYMBOL(<fs_srv>)
+      WHERE ticketid    = <fs_disp>-ticketid
+        AND souvenirid  = <fs_disp>-souvenirid
+        AND passengerid = <fs_disp>-passengerid.
+
+      <fs_srv>-unit_price  = <fs_disp>-unit_price.
+      <fs_srv>-total_price = <fs_disp>-total_price.
+      EXIT.
+    ENDLOOP.
+
+  ENDLOOP.
+
+  " 7. ALV 리프레시
+  CALL METHOD go_grid_booking->refresh_table_display.
+
+  " 8. 상단 메시지 구성
+  lv_country_from = gt_dd07v[ KEY key domvalue_l = gs_schedule-countryfrom ]-ddtext.
+  lv_country_to   = gt_dd07v[ KEY key domvalue_l = gs_schedule-countryto ]-ddtext.
+  lv_summary_msg  = |해당 스케쥴은 { lv_country_from }에서 { lv_country_to }로 가는 항공편입니다.|.
+
+  CONCATENATE gv_top_message lv_summary_msg
+    INTO gv_top_message
+    SEPARATED BY cl_abap_char_utilities=>newline.
+
+  PERFORM handle_top_of_page.
+
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*& Form handle_top_of_page
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form handle_top_of_page
+*&---------------------------------------------------------------------*
+FORM handle_top_of_page .
+  CALL METHOD go_dyndoc_id->initialize_document
+    EXPORTING
+      background_color = cl_dd_area=>col_textarea.
+
+  DATA : lr_dd_table TYPE REF TO cl_dd_table_element,
+         col_field   TYPE REF TO cl_dd_area,
+         col_value   TYPE REF TO cl_dd_area,
+         lv_text     TYPE sdydo_text_element.
+
+  CALL METHOD go_dyndoc_id->add_table
+    EXPORTING
+      no_of_columns = 2
+      border        = '0'
+    IMPORTING
+      table         = lr_dd_table.
+
+  CALL METHOD lr_dd_table->add_column
+    IMPORTING
+      column = col_field.
+
+  CALL METHOD lr_dd_table->add_column
+    IMPORTING
+      column = col_value.
+
+  PERFORM add_row USING lr_dd_table col_field col_value '항공 스케줄[유료서비스 상품]' space.
+  lv_text = |{ pa_date+0(4) }년 { pa_date+4(2) }월 { pa_date+6(2) }일|.
+
+  PERFORM add_row USING lr_dd_table col_field col_value '조회 날짜' lv_text.
+
+  IF gv_top_message IS NOT INITIAL.
+    PERFORM add_row USING lr_dd_table col_field col_value '알림' gv_top_message.
+  ENDIF.
+
+  PERFORM set_top_of_page.
+
+ENDFORM.
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Form add_row
+*&---------------------------------------------------------------------*
+FORM add_row USING pr_dd_table TYPE REF TO cl_dd_table_element
+                   pv_col_field TYPE REF TO cl_dd_area
+                   pv_col_value TYPE REF TO cl_dd_area
+                   pv_field
+                   pv_text.
+
+  DATA : lv_text TYPE sdydo_text_element.
+
+  lv_text = pv_field.
+  CALL METHOD pv_col_field->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_document=>strong
+      sap_color    = cl_dd_document=>list_heading_inv.
+
+  CALL METHOD pv_col_field->add_gap EXPORTING width = 3.
+
+  lv_text = pv_text.
+  CALL METHOD pv_col_value->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_document=>heading
+      sap_color    = cl_dd_document=>list_negative_inv.
+
+  CALL METHOD pv_col_value->add_gap EXPORTING width = 3.
+
+  CALL METHOD pr_dd_table->new_row.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_top_of_page
+*&---------------------------------------------------------------------*
+FORM set_top_of_page .
+
+  IF go_html_cntrl IS INITIAL.
+    CREATE OBJECT go_html_cntrl
+      EXPORTING
+        parent = go_top_cont.
+  ENDIF.
+
+  CALL METHOD go_dyndoc_id->merge_document.
+  go_dyndoc_id->html_control = go_html_cntrl.
+
+  CALL METHOD go_dyndoc_id->display_document
+    EXPORTING
+      reuse_control = 'X'
+      parent        = go_top_cont.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form register_event
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM register_event .
+
+  " 문서 초기화 (HTML 상단 영역용)
+  IF go_dyndoc_id IS BOUND.
+    CALL METHOD go_dyndoc_id->initialize_document
+      EXPORTING
+        background_color = cl_dd_area=>col_textarea.
+  ENDIF.
+
+  " TOP-OF-PAGE 이벤트 등록
+  IF go_grid_sched IS BOUND.
+    CALL METHOD go_grid_sched->list_processing_events
+      EXPORTING
+        i_event_name = 'TOP_OF_PAGE'
+        i_dyndoc_id  = go_dyndoc_id.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form save_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_data .
+
+  DATA: lt_schid TYPE RANGE OF zc103e_sd_scheduleid,
+        ls_schid LIKE LINE OF lt_schid.
+
+  IF gt_disp_ser IS INITIAL.
+    MESSAGE '주문한 상품이 없습니다.' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  DATA(lv_updated) = abap_false.
+
+  LOOP AT gt_disp_ser ASSIGNING FIELD-SYMBOL(<fs_ser>).
+    IF <fs_ser>-status = '@5D@'.  " 노란불만 처리
+
+      " DB 업데이트
+      UPDATE zc103sdt0012 SET
+        total_price = <fs_ser>-total_price
+        status      = 'Y'
+        WHERE ticketid    = <fs_ser>-ticketid
+          AND souvenirid  = <fs_ser>-souvenirid
+          AND passengerid = <fs_ser>-passengerid.
+
+      " ALV 메모리 갱신
+      <fs_ser>-status = '@5B@'.  " 초록불
+      CLEAR <fs_ser>-style.
+      APPEND VALUE lvc_s_styl( fieldname = '' style = 1 ) TO <fs_ser>-style.
+
+      lv_updated = abap_true.
+    ENDIF.
+  ENDLOOP.
+
+  " 동기화: gt_service → status = 'Y'
+  LOOP AT gt_service ASSIGNING FIELD-SYMBOL(<fs_srv>).
+    IF <fs_srv>-status = 'N'.
+      <fs_srv>-status = 'Y'.
+    ENDIF.
+  ENDLOOP.
+
+  " ALV 재정리
+  PERFORM set_second_data.
+  PERFORM set_detail_data.
+
+  CALL METHOD go_grid_booking->refresh_table_display.
+  CALL METHOD go_grid_detail->refresh_table_display.
+
+  IF lv_updated = abap_true.
+    MESSAGE '상품 요청 처리가 완료되었습니다.' TYPE 'S'.
+  ELSE.
+    " 상태가 'N'인 항목이 하나도 없던 경우 → 화면도 초기화 및 SUBMIT
+    CLEAR: gt_disp_ser, gt_detail.
+    CALL METHOD go_grid_booking->refresh_table_display.
+    CALL METHOD go_grid_detail->refresh_table_display.
+    MESSAGE '처리할 항목이 없습니다.' TYPE 'I'.
+
+    " SUBMIT 전환을 위한 range 채우기
+    CLEAR ls_schid.
+    ls_schid-sign = 'I'.
+    ls_schid-option = 'EQ'.
+    ls_schid-low = gv_selected_scheduleid.
+    APPEND ls_schid TO lt_schid.
+
+    SUBMIT zc103mmr0001
+      WITH so_schid IN lt_schid
+      AND RETURN.
+  ENDIF.
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form send_to_mm
+*&---------------------------------------------------------------------*
+FORM send_to_mm .
+
+  DATA: ls_mm_header TYPE zc103mms0002,
+        lt_mm_items  TYPE zc103mmtt0002,
+        ls_mm_item   TYPE LINE OF zc103mmtt0002,
+        lv_result    TYPE i,
+        lt_items_pr1 TYPE zc103mmtt0002,
+        lt_items_pr2 TYPE zc103mmtt0002,
+        lv_sched_id  TYPE zc103e_sd_scheduleid,
+        lv_answer    TYPE c.
+
+  DATA: lt_schid TYPE RANGE OF zc103e_sd_scheduleid,
+        ls_schid LIKE LINE OF lt_schid.
+
+  LOOP AT gt_detail INTO DATA(ls).
+    CLEAR ls_schid.
+    ls_schid-sign = 'I'.
+    ls_schid-option = 'EQ'.
+    ls_schid-low = ls-scheduleid.
+    COLLECT ls_schid INTO lt_schid.
+  ENDLOOP.
+
+  IF gt_detail IS INITIAL.
+    MESSAGE '이미 전송 완료했습니다.' TYPE 'I'.
+    SUBMIT zc103mmr0001
+      WITH so_schid IN lt_schid
+      AND RETURN.
+    RETURN.
+  ENDIF.
+
+  LOOP AT gt_detail ASSIGNING FIELD-SYMBOL(<fs_detail>).
+    IF lv_sched_id IS INITIAL.
+      lv_sched_id = <fs_detail>-scheduleid.
+    ENDIF.
+
+    DELETE FROM zc103mmt0008 WHERE matid = <fs_detail>-matid.
+
+    CLEAR ls_mm_item.
+    ls_mm_item = VALUE #(
+      matid      = <fs_detail>-matid
+      quantity   = <fs_detail>-total_qty
+      unit       = <fs_detail>-unit
+      price      = <fs_detail>-total_price
+      currency   = <fs_detail>-currency ).
+
+    IF <fs_detail>-matid BETWEEN 'MAT00033' AND 'MAT00036'.
+      APPEND ls_mm_item TO lt_items_pr1.
+    ELSEIF <fs_detail>-matid BETWEEN 'MAT00037' AND 'MAT00040'.
+      APPEND ls_mm_item TO lt_items_pr2.
+    ENDIF.
+  ENDLOOP.
+
+  IF lt_items_pr1 IS NOT INITIAL.
+    ls_mm_header = VALUE #(
+      request_date = sy-datum
+      receive_date = sy-datum
+      creator      = 'ADMIN018'
+      approval     = 'ADMIN018'
+      plnid        = 'PLNT0002'
+      strid        = 'STLO0002'
+      pr_status    = 'B'
+      prid         = 'PR001'
+      estkz        = 'B'
+      scheduleid   = lv_sched_id ).
+
+    CALL FUNCTION 'ZC103MMFG0001'
+      EXPORTING
+        is_header = ls_mm_header
+        it_item   = lt_items_pr1
+      IMPORTING
+        ev_result = lv_result.
+  ENDIF.
+
+  IF lt_items_pr2 IS NOT INITIAL.
+    ls_mm_header = VALUE #(
+      request_date = sy-datum
+      receive_date = sy-datum
+      creator      = 'ADMIN018'
+      approval     = 'ADMIN018'
+      plnid        = 'PLNT0002'
+      strid        = 'STLO0002'
+      pr_status    = 'B'
+      prid         = 'PR002'
+      estkz        = 'B'
+      scheduleid   = lv_sched_id ).
+
+    CALL FUNCTION 'ZC103MMFG0001'
+      EXPORTING
+        is_header = ls_mm_header
+        it_item   = lt_items_pr2
+      IMPORTING
+        ev_result = lv_result.
+  ENDIF.
+
+  CALL METHOD go_grid_detail->refresh_table_display.
+  MESSAGE '구매 요청을 모두 전송하였습니다!!' TYPE 'S'.
+  " ✅ 1. 상태값 'Y'로 변경 (gt_disp_ser 기준)
+  " ✅ 상태값 Y로 변경 (DB + 메모리)
+  LOOP AT gt_disp_ser ASSIGNING FIELD-SYMBOL(<fs_ser>).
+    IF <fs_ser>-status = 'N'.
+      <fs_ser>-status = 'Y'.
+
+      UPDATE zc103sdt0012 SET status = 'Y'
+        WHERE ticketid    = <fs_ser>-ticketid
+          AND souvenirid  = <fs_ser>-souvenirid
+          AND passengerid = <fs_ser>-passengerid.
+    ENDIF.
+  ENDLOOP.
+
+  " ✅ 데이터 재계산
+  PERFORM set_detail_data.
+
+  " ✅ ALV 리프레시
+  CALL METHOD go_grid_detail->refresh_table_display.
+  CALL METHOD go_grid_booking->refresh_table_display.
+
+  " ✅ 완료 메시지
+  MESSAGE '구매 요청을 모두 전송하였습니다!!' TYPE 'S'.
+
+  " ✅ ALV 초기화
+  CLEAR: gt_disp_ser, gt_detail.
+  CALL METHOD go_grid_booking->refresh_table_display.
+  CALL METHOD go_grid_detail->refresh_table_display.
+
+  " ✅ SUBMIT 전환
+  CLEAR lt_schid.
+  ls_schid-sign = 'I'.
+  ls_schid-option = 'EQ'.
+  ls_schid-low = gv_selected_scheduleid.
+  APPEND ls_schid TO lt_schid.
+
+  SUBMIT zc103mmr0001
+    WITH so_schid IN lt_schid
+    AND RETURN.
+
+ENDFORM.
+
+
+**********************************************************************
+FORM export_excel_template .
+
+  DATA: lv_template_file TYPE rlgrap-filename VALUE 'C:\temp\ZSAIRLINE_TEMPLATE.xls',
+        lv_filename      TYPE string,
+        lv_path          TYPE string,
+        lv_fullpath      TYPE string,
+        lv_action        TYPE i,
+        lv_sched_id      TYPE zc103sdt0008-scheduleid,
+        lv_default_name  TYPE string,
+        excel            TYPE ole2_object,
+        workbook         TYPE ole2_object,
+        sheet            TYPE ole2_object,
+        cell             TYPE ole2_object,
+        ls_wwwdata_item  TYPE wwwdatatab,
+        lv_row           TYPE i,
+        lv_depart_date   TYPE sy-datum,
+        lv_request_date  TYPE sy-datum,
+        lv_today         TYPE sy-datum,
+        lv_depart_text   TYPE string,
+        lv_req_text      TYPE string,
+        lv_today_text    TYPE string,
+        lv_quantity_text TYPE string.
+
+  " 1. 템플릿 다운로드 (SMW0)
+  SELECT SINGLE * INTO CORRESPONDING FIELDS OF ls_wwwdata_item
+    FROM wwwdata
+    WHERE srtf2 = 0 AND relid = 'MI' AND objid = 'ZSAIRLINE'.
+
+  IF sy-subrc <> 0.
+    MESSAGE '엑셀 템플릿이 없습니다.' TYPE 'E'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      key         = ls_wwwdata_item
+      destination = lv_template_file.
+
+  " 2. 사용자 저장 경로 및 파일명 설정
+  lv_sched_id = gv_selected_scheduleid.
+  lv_default_name = |구매요청서_{ lv_sched_id }|.
+
+  CALL METHOD cl_gui_frontend_services=>file_save_dialog
+    EXPORTING
+      default_file_name   = lv_default_name
+      default_extension   = 'xlsx'
+      file_filter         = 'Excel Files (*.xlsx)|*.xlsx|'
+      prompt_on_overwrite = 'X'
+    CHANGING
+      filename            = lv_filename
+      path                = lv_path
+      fullpath            = lv_fullpath
+      user_action         = lv_action.
+
+  IF lv_action NE cl_gui_frontend_services=>action_ok.
+    MESSAGE '파일 저장을 취소했습니다.' TYPE 'I'.
+    RETURN.
+  ENDIF.
+
+  " 확장자 보정 (혹시라도 누락되었을 경우)
+  IF lv_fullpath CP '*.xlsx'.
+    " OK
+  ELSE.
+    CONCATENATE lv_fullpath '.xlsx' INTO lv_fullpath.
+  ENDIF.
+
+  " 3. 날짜 계산
+  SELECT SINGLE departdate INTO lv_depart_date
+    FROM zc103sdt0008
+    WHERE scheduleid = gv_selected_scheduleid.
+
+  lv_request_date = lv_depart_date - 1.
+  lv_today        = sy-datum.
+
+  lv_depart_text = |{ lv_depart_date+0(4) }.{ lv_depart_date+4(2) }.{ lv_depart_date+6(2) }|.
+  lv_req_text    = |{ lv_request_date+0(4) }.{ lv_request_date+4(2) }.{ lv_request_date+6(2) }|.
+  lv_today_text  = |{ lv_today+0(4) }.{ lv_today+4(2) }.{ lv_today+6(2) }|.
+
+  " 4. 엑셀 열기 및 작성
+  CREATE OBJECT excel 'EXCEL.APPLICATION'.
+  SET PROPERTY OF excel 'Visible' = 1.
+
+  CALL METHOD OF excel 'Workbooks' = workbook.
+  CALL METHOD OF workbook 'Open' EXPORTING #1 = lv_template_file.
+  CALL METHOD OF excel 'Sheets' = sheet EXPORTING #1 = 1.
+
+  " 날짜 입력
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 8 #2 = 1.
+  SET PROPERTY OF cell 'Value' = lv_depart_text.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 8 #2 = 3.
+  SET PROPERTY OF cell 'Value' = lv_req_text.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 8 #2 = 5.
+  SET PROPERTY OF cell 'Value' = lv_today_text.
+
+  " 자재 데이터 입력
+  lv_row = 10.
+  LOOP AT gt_detail INTO DATA(ls_detail).
+    CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = lv_row #2 = 1.
+    SET PROPERTY OF cell 'Value' = gv_selected_scheduleid.
+
+    CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = lv_row #2 = 2.
+    SET PROPERTY OF cell 'Value' = ls_detail-matid.
+
+    CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = lv_row #2 = 3.
+    SET PROPERTY OF cell 'Value' = ls_detail-souvenir_type.
+
+    lv_quantity_text = |{ ls_detail-total_qty } EA|.
+    CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = lv_row #2 = 5.
+    SET PROPERTY OF cell 'Value' = lv_quantity_text.
+
+    DATA(lv_unit_price) = ls_detail-unit_price * 100.
+    DATA(lv_total_price) = ls_detail-total_price * 100.
+
+    CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = lv_row #2 = 6.
+    SET PROPERTY OF cell 'Value' = lv_unit_price.
+
+    CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = lv_row #2 = 7.
+    SET PROPERTY OF cell 'Value' = lv_total_price.
+
+    CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = lv_row #2 = 8.
+    SET PROPERTY OF cell 'Value' = ls_detail-currency.
+
+    ADD 1 TO lv_row.
+  ENDLOOP.
+
+  " 5. 저장 (SaveAs!)
+  CALL METHOD OF workbook 'SaveAs' EXPORTING #1 = lv_fullpath.
+
+  " 6. 종료
+  CALL METHOD OF workbook 'Close' EXPORTING #1 = 0.
+  CALL METHOD OF excel 'Quit'.
+
+  FREE: workbook, sheet, excel.
+
+  MESSAGE |엑셀 저장 완료: { lv_fullpath }| TYPE 'S'.
+
+ENDFORM.
+
+
+**********************************************************************
+
+
+*&---------------------------------------------------------------------*
+*& Form safe_excel_shutdown
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM safe_excel_shutdown.
+
+  DATA: excel_app TYPE ole2_object,
+        workbook  TYPE ole2_object,
+        sheet     TYPE ole2_object.
+
+  TRY.
+      IF NOT sheet IS INITIAL.
+        CALL METHOD OF sheet 'Close'.
+      ENDIF.
+      IF NOT workbook IS INITIAL.
+        CALL METHOD OF workbook 'Close'.
+      ENDIF.
+      IF NOT excel_app IS INITIAL.
+        CALL METHOD OF excel_app 'Quit'.
+      ENDIF.
+
+      FREE: sheet, workbook, excel_app.
+
+    CATCH cx_root INTO DATA(lx_root).
+      MESSAGE |OLE 종료 중 오류 발생: { lx_root->get_text( ) }| TYPE 'W'.
+  ENDTRY.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form handle_excel_crash
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM handle_excel_crash.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_excel_and_export_pdf
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+
+
+FORM export_excel_to_file USING p_dest_file TYPE string.
+
+  DATA: excel    TYPE ole2_object,
+        workbook TYPE ole2_object,
+        sheet    TYPE ole2_object,
+        cell     TYPE ole2_object,
+        lv_row   TYPE i VALUE 2.
+
+  CREATE OBJECT excel 'EXCEL.APPLICATION'.
+  SET PROPERTY OF excel 'Visible' = 0.
+
+  CALL METHOD OF excel 'Workbooks' = workbook.
+  CALL METHOD OF workbook 'Add'.
+
+  CALL METHOD OF excel 'Sheets' = sheet EXPORTING #1 = 1.
+
+  " (헤더 및 데이터 입력은 동일)
+
+  CALL METHOD OF workbook 'SaveAs'
+    EXPORTING
+      #1 = p_dest_file. " xlsx 파일로 저장
+
+  CALL METHOD OF workbook 'Close' EXPORTING #1 = 0.
+  CALL METHOD OF excel 'Quit'.
+
+  FREE: sheet, workbook, excel.
+
+ENDFORM.
+**********************************************************************
+**********************************************************************
+**********************************************************************
+*&---------------------------------------------------------------------*
+*& Form add_status_row
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LR_DD_TABLE
+*&      --> COL_FIELD
+*&      --> COL_VALUE
+*&---------------------------------------------------------------------*
+FORM add_status_row USING pr_dd_table TYPE REF TO cl_dd_table_element
+                          pv_col_field TYPE REF TO cl_dd_area
+                          pv_col_value TYPE REF TO cl_dd_area.
+
+*  DATA: lv_green   TYPE i VALUE 0,
+*        lv_yellow  TYPE i VALUE 0,
+*        lv_status  TYPE icon_d.
+*
+*  LOOP AT gt_disp_ser INTO DATA(ls_ser).
+*    CASE ls_ser-status.
+*      WHEN icon_green_light.
+*        lv_green += 1.
+*      WHEN icon_yellow_light.
+*        lv_yellow += 1.
+*    ENDCASE.
+*  ENDLOOP.
+*
+*  " 상태 아이콘 + 건수 출력
+*CALL METHOD pv_col_field->add_icon
+*  EXPORTING
+*    sap_icon = '@5B@'.  " 초록색 네모 아이콘
+*
+*CALL METHOD pv_col_field->add_text
+*  EXPORTING
+*    text = '  '.
+*
+*CALL METHOD pv_col_field->add_text
+*  EXPORTING
+*    text = |{ lv_green }건|.
+*
+*CALL METHOD pv_col_field->add_gap EXPORTING width = 5.
+*
+*CALL METHOD pv_col_field->add_icon
+*  EXPORTING
+*    sap_icon = '@5D@'.  " 노란색 세모 아이콘
+*
+*CALL METHOD pv_col_field->add_text
+*  EXPORTING
+*    text = '  '.
+*
+*CALL METHOD pv_col_field->add_text
+*  EXPORTING
+*    text = |{ lv_yellow }건|.
+*
+*  CALL METHOD pv_col_value->add_text
+*    EXPORTING
+*      text = ''.
+*
+*  CALL METHOD pr_dd_table->new_row.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form send_mail_with_attachment
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&---------------------------------------------------------------------*
+*FORM send_mail_with_attachment USING pv_path TYPE string.
+*DATA: lv_file_path  TYPE string VALUE 'C:\Users\사용자\Desktop\김영훈_ZSAIRLINE_TEMPLATE.xlsx',
+*      lv_subject    TYPE so_obj_des VALUE 'ZSAIRLINE Template 송부',
+*      lv_body_text  TYPE bcsy_text,
+*      lv_sender     TYPE REF TO cl_sapuser_bcs,
+*      lo_send_request TYPE REF TO cl_bcs,
+*      lo_document     TYPE REF TO cl_document_bcs,
+*      lo_recipient    TYPE REF TO if_recipient_bcs,
+*      lt_attachment   TYPE solix_tab.
+*DATA: lv_size TYPE i.
+*
+** 1. 파일을 바이너리로 불러오기
+*CALL METHOD cl_gui_frontend_services=>gui_upload
+*  EXPORTING
+*    filename   = lv_file_path
+*    filetype   = 'BIN'
+*  IMPORTING
+*    filelength = lv_size
+*  CHANGING
+*    data_tab   = lt_attachment
+*  EXCEPTIONS
+*    others     = 1.
+*
+*IF sy-subrc <> 0.
+*  MESSAGE '파일 업로드 실패' TYPE 'E'.
+*  EXIT.
+*ENDIF.
+*
+** 2. 메일 객체 생성
+*lo_send_request = cl_bcs=>create_persistent( ).
+*
+** 3. 본문 작성 (짧은 텍스트 예시)
+*APPEND '안녕하세요, 첨부파일 확인 바랍니다.' TO lv_body_text.
+*lo_document = cl_document_bcs=>create_document(
+*  i_type    = 'RAW'
+*  i_text    = lv_body_text
+*  i_subject = lv_subject ).
+*
+** 4. 첨부 추가
+*CALL METHOD lo_document->add_attachment
+*  EXPORTING
+*    i_attachment_type    = 'BIN'
+*    i_attachment_subject = 'ZSAIRLINE_TEMPLATE.xlsx'
+*    i_att_content_hex    = lt_attachment.
+*
+** 5. 문서 첨부
+*CALL METHOD lo_send_request->set_document( lo_document ).
+*
+** 6. 수신자 지정
+*lo_recipient = cl_cam_address_bcs=>create_internet_address( 'hunvin1135@gmail.com' ).
+*CALL METHOD lo_send_request->add_recipient
+*  EXPORTING
+*    i_recipient = lo_recipient
+*    i_express   = 'X'.
+*
+** 7. 보내기
+*CALL METHOD lo_send_request->send(
+*  EXPORTING
+*    i_with_error_screen = 'X'
+*  RECEIVING
+*    result              = DATA(lv_result) ).
+*
+*COMMIT WORK.
+*
+*IF lv_result = 'X'.
+*  MESSAGE '메일 전송 성공' TYPE 'S'.
+*ELSE.
+*  MESSAGE '메일 전송 실패' TYPE 'E'.
+*ENDIF.
+*
+*ENDFORM.
+FORM send_mail_with_attachment USING pv_path TYPE string.
+
+  DATA: lv_file_path    TYPE string,
+        lv_subject      TYPE so_obj_des VALUE 'ZSAIRLINE Template 송부',
+        lv_body_text    TYPE bcsy_text,
+        lv_sender       TYPE REF TO cl_sapuser_bcs,
+        lo_send_request TYPE REF TO cl_bcs,
+        lo_document     TYPE REF TO cl_document_bcs,
+        lo_recipient    TYPE REF TO if_recipient_bcs,
+        lt_attachment   TYPE solix_tab,
+        lv_size         TYPE i.
+
+  " 전달된 경로 사용
+  lv_file_path = pv_path.
+
+  " 1. 파일을 바이너리로 불러오기
+  CALL METHOD cl_gui_frontend_services=>gui_upload
+    EXPORTING
+      filename                = lv_file_path
+      filetype                = 'BIN'
+    IMPORTING
+      filelength              = lv_size
+    CHANGING
+      data_tab                = lt_attachment
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      no_batch                = 3
+      gui_refuse_filetransfer = 4
+      invalid_type            = 5
+      no_authority            = 6
+      unknown_error           = 7
+      OTHERS                  = 8.
+
+  CASE sy-subrc.
+    WHEN 0.
+      " 정상 처리
+    WHEN OTHERS.
+      MESSAGE |📛 파일 업로드 실패! 경로 확인: { lv_file_path }| TYPE 'E'.
+      EXIT.
+  ENDCASE.
+
+* 2. 메일 객체 생성
+  lo_send_request = cl_bcs=>create_persistent( ).
+
+* 3. 본문 작성 (짧은 텍스트 예시)
+  APPEND '안녕하세요, 첨부파일 확인 바랍니다.' TO lv_body_text.
+  lo_document = cl_document_bcs=>create_document(
+    i_type    = 'RAW'
+    i_text    = lv_body_text
+    i_subject = lv_subject ).
+
+* 4. 첨부 추가
+  CALL METHOD lo_document->add_attachment
+    EXPORTING
+      i_attachment_type    = 'BIN'
+      i_attachment_subject = 'ZSAIRLINE_TEMPLATE.xlsx'
+      i_att_content_hex    = lt_attachment.
+
+* 5. 문서 첨부
+  CALL METHOD lo_send_request->set_document( lo_document ).
+
+* 6. 수신자 지정
+  lo_recipient = cl_cam_address_bcs=>create_internet_address( 'hunvin1135@gmail.com' ).
+  CALL METHOD lo_send_request->add_recipient
+    EXPORTING
+      i_recipient = lo_recipient
+      i_express   = 'X'.
+
+* 7. 보내기
+  CALL METHOD lo_send_request->send(
+    EXPORTING
+      i_with_error_screen = 'X'
+    RECEIVING
+      result              = DATA(lv_result) ).
+
+  COMMIT WORK.
+
+  IF lv_result = 'X'.
+    MESSAGE '메일 전송 성공' TYPE 'S'.
+  ELSE.
+    MESSAGE '메일 전송 실패' TYPE 'E'.
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

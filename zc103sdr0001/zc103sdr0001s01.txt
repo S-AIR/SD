@@ -1,0 +1,150 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0001S01
+*&---------------------------------------------------------------------*
+**********************************************************************
+* Selection Screen
+**********************************************************************
+SELECTION-SCREEN BEGIN OF BLOCK bl1 WITH FRAME TITLE TEXT-t01.
+*  SELECT-OPTIONS : so_date FOR zc103sdt0008-departdate.
+  SELECT-OPTIONS : so_date FOR gv_dummy_date.
+  PARAMETERS : pa_schid TYPE zc103sdt0008-scheduleid MATCHCODE OBJECT zc103sdh0007.
+SELECTION-SCREEN END OF BLOCK bl1.
+
+**********************************************************************
+* Search Help (F4 캘린더)
+**********************************************************************
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR so_date-low.
+
+  DATA: lv_sel_date   TYPE sy-datum,
+        lt_dynpfields TYPE TABLE OF dynpread,
+        ls_dynpfield  TYPE dynpread.
+
+  CALL FUNCTION 'F4_DATE'
+    IMPORTING
+      select_date = lv_sel_date.
+
+  IF lv_sel_date IS NOT INITIAL.
+
+    CLEAR ls_dynpfield.
+    ls_dynpfield-fieldname  = 'SO_DATE-LOW'.  " 꼭 대문자로!
+    ls_dynpfield-fieldvalue = lv_sel_date. " YYYYMMDD 형식으로 들어감
+    APPEND ls_dynpfield TO lt_dynpfields.
+
+    CALL FUNCTION 'DYNP_VALUES_UPDATE'
+      EXPORTING
+        dyname     = sy-cprog
+        dynumb     = sy-dynnr
+      TABLES
+        dynpfields = lt_dynpfields.
+  ENDIF.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR so_date-high.
+
+  DATA: lv_sel_date   TYPE sy-datum,
+        lt_dynpfields TYPE TABLE OF dynpread,
+        ls_dynpfield  TYPE dynpread.
+
+  CALL FUNCTION 'F4_DATE'
+    IMPORTING
+      select_date = lv_sel_date.
+
+  IF lv_sel_date IS NOT INITIAL.
+
+    CLEAR ls_dynpfield.
+    ls_dynpfield-fieldname  = 'SO_DATE-HIGH'.  " 꼭 대문자로!
+    ls_dynpfield-fieldvalue = lv_sel_date. " YYYYMMDD 형식으로 들어감
+    APPEND ls_dynpfield TO lt_dynpfields.
+
+    CALL FUNCTION 'DYNP_VALUES_UPDATE'
+      EXPORTING
+        dyname     = sy-cprog
+        dynumb     = sy-dynnr
+      TABLES
+        dynpfields = lt_dynpfields.
+  ENDIF.
+
+**********************************************************************
+* 유효성 검사
+**********************************************************************
+AT SELECTION-SCREEN ON so_date.
+
+  DATA: lv_input TYPE string,
+        lv_date  TYPE sy-datum.
+
+  LOOP AT so_date INTO DATA(ls_date).
+
+* ========== LOW ==========
+    CLEAR: lv_input, lv_date.
+    lv_input = ls_date-low.
+
+    " 최소 길이 체크
+    IF strlen( ls_date-low ) < 8 OR strlen( ls_date-high ) < 8.
+      MESSAGE '허용된 날짜 형식이 아닙니다: YYYYMMDD, YYYY/MM/DD, YYYY-MM-DD, YYYY.MM.DD, 00000000' TYPE 'E'.
+    ENDIF.
+
+    " 허용되는 형식만 명확히 체크
+    IF lv_input IS NOT INITIAL.
+      IF lv_input = '00000000'
+         OR ( lv_input CO '0123456789' AND strlen( lv_input ) = 8 )
+         OR ( lv_input+4(1) = '/' AND lv_input+7(1) = '/' AND strlen( lv_input ) = 10 AND
+              lv_input+0(4) CO '0123456789' AND
+              lv_input+5(2) CO '0123456789' AND
+              lv_input+8(2) CO '0123456789' )
+         OR ( lv_input+4(1) = '-' AND lv_input+7(1) = '-' AND strlen( lv_input ) = 10 AND
+              lv_input+0(4) CO '0123456789' AND
+              lv_input+5(2) CO '0123456789' AND
+              lv_input+8(2) CO '0123456789' )
+         OR ( lv_input+4(1) = '.' AND lv_input+7(1) = '.' AND strlen( lv_input ) = 10 AND
+              lv_input+0(4) CO '0123456789' AND
+              lv_input+5(2) CO '0123456789' AND
+              lv_input+8(2) CO '0123456789' ).
+
+        " 구분자 제거
+        REPLACE ALL OCCURRENCES OF '/' IN lv_input WITH ''.
+        REPLACE ALL OCCURRENCES OF '-' IN lv_input WITH ''.
+        REPLACE ALL OCCURRENCES OF '.' IN lv_input WITH ''.
+
+        lv_date = lv_input.      " TYPE D
+        so_date-low = lv_date.  " <-- 변환 후 다시 입력값 세팅 (CHAR 10 ← D OK)
+
+      ELSE.
+        MESSAGE '허용된 날짜 형식이 아닙니다: YYYYMMDD, YYYY/MM/DD, YYYY-MM-DD, YYYY.MM.DD, 00000000' TYPE 'E'.
+      ENDIF.
+    ENDIF.
+
+* ========== HIGH ==========
+    CLEAR: lv_input, lv_date.
+    lv_input = ls_date-high.
+
+    IF lv_input IS NOT INITIAL.
+      IF lv_input = '00000000'
+        OR ( lv_input CO '0123456789' AND strlen( lv_input ) = 8 )
+        OR ( lv_input+4(1) = '/' AND lv_input+7(1) = '/' AND strlen( lv_input ) = 10 AND
+             lv_input+0(4) CO '0123456789' AND
+             lv_input+5(2) CO '0123456789' AND
+             lv_input+8(2) CO '0123456789' )
+        OR ( lv_input+4(1) = '-' AND lv_input+7(1) = '-' AND strlen( lv_input ) = 10 AND
+              lv_input+0(4) CO '0123456789' AND
+              lv_input+5(2) CO '0123456789' AND
+              lv_input+8(2) CO '0123456789' )
+        OR ( lv_input+4(1) = '.' AND lv_input+7(1) = '.' AND strlen( lv_input ) = 10 AND
+             lv_input+0(4) CO '0123456789' AND
+             lv_input+5(2) CO '0123456789' AND
+             lv_input+8(2) CO '0123456789' ).
+
+        REPLACE ALL OCCURRENCES OF '/' IN lv_input WITH ''.
+        REPLACE ALL OCCURRENCES OF '-' IN lv_input WITH ''.
+        REPLACE ALL OCCURRENCES OF '.' IN lv_input WITH ''.
+
+        lv_date = lv_input.
+        so_date-high = lv_date.  " <-- 변환 후 다시 입력값 세팅
+
+      ELSE.
+        MESSAGE '허용된 날짜 형식이 아닙니다: YYYYMMDD, YYYY/MM/DD, YYYY-MM-DD, YYYY.MM.DD, 00000000' TYPE 'E'.
+      ENDIF.
+    ENDIF.
+
+  ENDLOOP.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

@@ -1,0 +1,29 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0001I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  CALL METHOD : go_grid_sched->free,
+                go_grid_booking->free,
+
+                go_left_cont->free,
+                go_right_cont->free,
+
+                go_split_main->free,
+                go_container->free.
+
+  FREE : go_grid_sched, go_grid_booking,
+         go_left_cont, go_right_cont,
+         go_split_main, go_container.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
