@@ -1,0 +1,1543 @@
+*&---------------------------------------------------------------------*
+*& Include          ZC103SDR0001F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_everydata
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_everydata .
+  CLEAR: gt_0022, gt_0030, gt_0031, gt_0032.
+
+  SELECT cargo_id scheduleid departure_date handling_co mawb_no cargo_item_id
+         flightid depart_date strid package_count weight ship_count load_result
+          country_of_exit bpname bpid company_addr submit_date position_s_air empname
+    INTO CORRESPONDING FIELDS OF TABLE gt_0022
+    FROM zc103sdt0022
+    WHERE cargo_id = pa_trid.
+
+  SELECT docid bpid declarant_name customs_dept declaration_date declaration_type
+         cs_type agent_name exporter_type trade_type export_type payment_method
+         shipper_name dest_country port_of_loading carrier_name exporter_id exporter_addr
+         flight_no departure_date bond_zone ceo_name exporter_loc transport_type inspection_date
+         item_loc exporter_biznum manufacturer lc_no item_status manu_id notify_flag
+         return_reason manu_place ind_area_code refund_applier buyer_name buyer_id model_spec
+         component qty_unit unit_price amount hs_code weight_net item_qty invoice_no
+         import_decl_no decl_price req_doc gross_weight total_decl_price payment_total
+         import_ctrl_no pallet_no decl_note customs_note carrier_decl period load_due_date
+         declarant_staff clear_date currency weight_unit
+    INTO CORRESPONDING FIELDS OF TABLE gt_0030
+    FROM zc103sdt0030
+    WHERE docid = pa_trid.
+
+  SELECT transportid sender receiver account_no_1 account_no_2 sender_info receiver_info
+         agency_name city iata_code account_no_3 departure_airport carrier_address route_request
+         routing_to_1 routing_by_1 routing_to_2 routing_by_2 routing_to_3 routing_by_3
+         arrival_airport goods_count package_type item_no description rate_class gross_weight
+         chargeable_weight rate amount gross_wt_charge total_amount scheduleid departure_date
+         special_instruction account_info handling_info prepaid_1 collect_1 prepaid_2
+         collect_2 prepaid_3 collect_3 prepaid_4 collect_4 prepaid_5 collect_5 airline_total
+         prepaid_6 collect_6 grand_total total_prepaid total_collect exchange_rate dest_currency_charge
+         dest_charge total_collect_charge issue_place issue_date weight_unit
+    INTO CORRESPONDING FIELDS OF TABLE gt_0031
+    FROM zc103sdt0031
+    WHERE transportid = pa_trid.
+
+  SELECT docid bpid declarant_name customs_dept declaration_date declaration_type cs_type agent_name
+         exporter_type trade_type export_type payment_method shipper_name dest_country port_of_loading
+         carrier_name exporter_id exporter_addr flight_no departure_date bond_zone ceo_name exporter_loc
+         transport_type inspection_date item_loc exporter_biznum manufacturer lc_no item_status
+         manu_id notify_flag return_reason manu_place ind_area_code refund_applier buyer_name buyer_id
+         model_spec component qty_unit unit_price amount hs_code weight_net item_qty invoice_no
+         import_decl_no decl_price req_doc gross_weight total_decl_price payment_total import_ctrl_no
+         pallet_no decl_note customs_note carrier_decl period load_due_date declarant_staff clear_date
+         currency weight_unit
+    INTO CORRESPONDING FIELDS OF TABLE gt_0032
+    FROM zc103sdt0032
+    WHERE docid = pa_trid.
+  " ✅ 조건에 따라 메시지 출력
+  IF gt_0022 IS INITIAL AND
+     gt_0030 IS INITIAL AND
+     gt_0031 IS INITIAL AND
+     gt_0032 IS INITIAL.
+
+    MESSAGE s003 DISPLAY LIKE 'E'.
+    STOP.
+
+  ELSE.
+    MESSAGE s008 WITH sy-dbcnt.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW
+*&      --> E_COLUMN
+*&---------------------------------------------------------------------*
+FORM double_click  USING    p_e_row
+                            p_e_column.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM hotspot_click  USING    p_e_row_id
+                             p_e_column_id.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM user_command  USING    p_e_ucomm.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form edit_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&      --> E_INTERACTIVE
+*&---------------------------------------------------------------------*
+FORM edit_toolbar  USING    p_e_object
+                            p_e_interactive.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_MODIFIED
+*&      --> ET_GOOD_CELLS
+*&---------------------------------------------------------------------*
+FORM modify_value  USING    p_e_modified
+                            p_et_good_cells.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form first_entry_process
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM first_entry_process .
+  IF go_first_grid IS INITIAL.
+    CLEAR: gt_fcat1, gs_fcat1,
+           gt_fcat2, gs_fcat2,
+           gt_fcat3, gs_fcat3,
+           gt_fcat4, gs_fcat4.
+    "한번에 확인
+**********************************************************************
+    PERFORM set_0022_fcat USING :
+      'X' 'CARGO_ID' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'SCHEDULEID' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'DEPARTURE_DATE' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'HANDLING_CO' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'MAWB_NO' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'CARGO_ITEM_ID' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'FLIGHTID' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'DEPART_DATE' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'STRID' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'PACKAGE_COUNT' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'WEIGHT' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'SHIP_COUNT' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'LOAD_RESULT' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'COUNTRY_OF_EXIT' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'BPNAME' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'BPID' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'COMPANY_ADDR' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'SUBMIT_DATE' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'POSITION_S_AIR' 'ZC103SDT0022' 'C' ' ',
+      ' ' 'EMPNAME' 'ZC103SDT0022' 'C' ' '.
+**********************************************************************
+    PERFORM set_0030_fcat USING :
+      'X' 'DOCID' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'BPID' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DECLARANT_NAME' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CUSTOMS_DEPT' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DECLARATION_DATE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DECLARATION_TYPE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CS_TYPE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'AGENT_NAME' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'EXPORTER_TYPE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'TRADE_TYPE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'EXPORT_TYPE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'PAYMENT_METHOD' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'SHIPPER_NAME' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DEST_COUNTRY' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'PORT_OF_LOADING' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CARRIER_NAME' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'EXPORTER_ID' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'EXPORTER_ADDR' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'FLIGHT_NO' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DEPARTURE_DATE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'BOND_ZONE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CEO_NAME' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'EXPORTER_LOC' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'TRANSPORT_TYPE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'INSPECTION_DATE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'ITEM_LOC' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'EXPORTER_BIZNUM' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'MANUFACTURER' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'LC_NO' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'ITEM_STATUS' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'MANU_ID' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'NOTIFY_FLAG' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'RETURN_REASON' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'MANU_PLACE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'IND_AREA_CODE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'REFUND_APPLIER' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'BUYER_NAME' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'BUYER_ID' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'MODEL_SPEC' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'COMPONENT' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'QTY_UNIT' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'UNIT_PRICE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'AMOUNT' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'HS_CODE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'WEIGHT_NET' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'ITEM_QTY' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'INVOICE_NO' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'IMPORT_DECL_NO' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DECL_PRICE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'REQ_DOC' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'GROSS_WEIGHT' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'TOTAL_DECL_PRICE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'PAYMENT_TOTAL' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'IMPORT_CTRL_NO' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'PALLET_NO' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DECL_NOTE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CUSTOMS_NOTE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CARRIER_DECL' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'PERIOD' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'LOAD_DUE_DATE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'DECLARANT_STAFF' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CLEAR_DATE' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'CURRENCY' 'ZC103SDT0030' 'C' ' ',
+      ' ' 'WEIGHT_UNIT' 'ZC103SDT0030' 'C' ' '.
+**********************************************************************
+    PERFORM set_0031_fcat USING :
+  'X' 'TRANSPORTID'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'SENDER'              'ZC103SDT0031' 'C' ' ',
+  ' ' 'RECEIVER'            'ZC103SDT0031' 'C' ' ',
+  ' ' 'ACCOUNT_NO_1'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ACCOUNT_NO_2'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'SENDER_INFO'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'RECEIVER_INFO'       'ZC103SDT0031' 'C' ' ',
+  ' ' 'AGENCY_NAME'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'CITY'                'ZC103SDT0031' 'C' ' ',
+  ' ' 'IATA_CODE'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'ACCOUNT_NO_3'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'DEPARTURE_AIRPORT'   'ZC103SDT0031' 'C' ' ',
+  ' ' 'CARRIER_ADDRESS'     'ZC103SDT0031' 'C' ' ',
+  ' ' 'ROUTE_REQUEST'       'ZC103SDT0031' 'C' ' ',
+  ' ' 'ROUTING_TO_1'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ROUTING_BY_1'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ROUTING_TO_2'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ROUTING_BY_2'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ROUTING_TO_3'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ROUTING_BY_3'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ARRIVAL_AIRPORT'     'ZC103SDT0031' 'C' ' ',
+  ' ' 'GOODS_COUNT'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'PACKAGE_TYPE'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'ITEM_NO'             'ZC103SDT0031' 'C' ' ',
+  ' ' 'DESCRIPTION'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'RATE_CLASS'          'ZC103SDT0031' 'C' ' ',
+  ' ' 'GROSS_WEIGHT'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'CHARGEABLE_WEIGHT'   'ZC103SDT0031' 'C' ' ',
+  ' ' 'RATE'                'ZC103SDT0031' 'C' ' ',
+  ' ' 'AMOUNT'              'ZC103SDT0031' 'C' ' ',
+  ' ' 'GROSS_WT_CHARGE'     'ZC103SDT0031' 'C' ' ',
+  ' ' 'TOTAL_AMOUNT'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'SCHEDULEID'          'ZC103SDT0031' 'C' ' ',
+  ' ' 'DEPARTURE_DATE'      'ZC103SDT0031' 'C' ' ',
+  ' ' 'SPECIAL_INSTRUCTION' 'ZC103SDT0031' 'C' ' ',
+  ' ' 'ACCOUNT_INFO'        'ZC103SDT0031' 'C' ' ',
+  ' ' 'HANDLING_INFO'       'ZC103SDT0031' 'C' ' ',
+  ' ' 'PREPAID_1'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'COLLECT_1'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'PREPAID_2'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'COLLECT_2'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'PREPAID_3'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'COLLECT_3'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'PREPAID_4'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'COLLECT_4'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'PREPAID_5'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'COLLECT_5'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'AIRLINE_TOTAL'       'ZC103SDT0031' 'C' ' ',
+  ' ' 'PREPAID_6'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'COLLECT_6'           'ZC103SDT0031' 'C' ' ',
+  ' ' 'GRAND_TOTAL'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'TOTAL_PREPAID'       'ZC103SDT0031' 'C' ' ',
+  ' ' 'TOTAL_COLLECT'       'ZC103SDT0031' 'C' ' ',
+  ' ' 'DEST_CURRENCY_CHARGE' 'ZC103SDT0031' 'C' ' ',
+  ' ' 'DEST_CHARGE'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'TOTAL_COLLECT_CHARGE' 'ZC103SDT0031' 'C' ' ',
+  ' ' 'ISSUE_PLACE'         'ZC103SDT0031' 'C' ' ',
+  ' ' 'ISSUE_DATE'          'ZC103SDT0031' 'C' ' ',
+  ' ' 'WEIGHT_UNIT'         'ZC103SDT0031' 'C' ' '.
+**********************************************************************
+    PERFORM set_0032_fcat USING :
+  'X' 'DOCID'            'ZC103SDT0032' 'C' ' ',
+  ' ' 'BPID'             'ZC103SDT0032' 'C' ' ',
+  ' ' 'DECLARANT_NAME'   'ZC103SDT0032' 'C' ' ',
+  ' ' 'CUSTOMS_DEPT'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'DECLARATION_DATE' 'ZC103SDT0032' 'C' ' ',
+  ' ' 'DECLARATION_TYPE' 'ZC103SDT0032' 'C' ' ',
+  ' ' 'CS_TYPE'          'ZC103SDT0032' 'C' ' ',
+  ' ' 'AGENT_NAME'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'EXPORTER_TYPE'    'ZC103SDT0032' 'C' ' ',
+  ' ' 'TRADE_TYPE'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'EXPORT_TYPE'      'ZC103SDT0032' 'C' ' ',
+  ' ' 'PAYMENT_METHOD'   'ZC103SDT0032' 'C' ' ',
+  ' ' 'SHIPPER_NAME'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'DEST_COUNTRY'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'PORT_OF_LOADING'  'ZC103SDT0032' 'C' ' ',
+  ' ' 'CARRIER_NAME'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'EXPORTER_ID'      'ZC103SDT0032' 'C' ' ',
+  ' ' 'EXPORTER_ADDR'    'ZC103SDT0032' 'C' ' ',
+  ' ' 'FLIGHT_NO'        'ZC103SDT0032' 'C' ' ',
+  ' ' 'DEPARTURE_DATE'   'ZC103SDT0032' 'C' ' ',
+  ' ' 'BOND_ZONE'        'ZC103SDT0032' 'C' ' ',
+  ' ' 'CEO_NAME'         'ZC103SDT0032' 'C' ' ',
+  ' ' 'EXPORTER_LOC'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'TRANSPORT_TYPE'   'ZC103SDT0032' 'C' ' ',
+  ' ' 'INSPECTION_DATE'  'ZC103SDT0032' 'C' ' ',
+  ' ' 'ITEM_LOC'         'ZC103SDT0032' 'C' ' ',
+  ' ' 'EXPORTER_BIZNUM'  'ZC103SDT0032' 'C' ' ',
+  ' ' 'MANUFACTURER'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'LC_NO'            'ZC103SDT0032' 'C' ' ',
+  ' ' 'ITEM_STATUS'      'ZC103SDT0032' 'C' ' ',
+  ' ' 'MANU_ID'          'ZC103SDT0032' 'C' ' ',
+  ' ' 'NOTIFY_FLAG'      'ZC103SDT0032' 'C' ' ',
+  ' ' 'RETURN_REASON'    'ZC103SDT0032' 'C' ' ',
+  ' ' 'MANU_PLACE'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'IND_AREA_CODE'    'ZC103SDT0032' 'C' ' ',
+  ' ' 'REFUND_APPLIER'   'ZC103SDT0032' 'C' ' ',
+  ' ' 'BUYER_NAME'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'BUYER_ID'         'ZC103SDT0032' 'C' ' ',
+  ' ' 'MODEL_SPEC'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'COMPONENT'        'ZC103SDT0032' 'C' ' ',
+  ' ' 'QTY_UNIT'         'ZC103SDT0032' 'C' ' ',
+  ' ' 'UNIT_PRICE'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'AMOUNT'           'ZC103SDT0032' 'C' ' ',
+  ' ' 'HS_CODE'          'ZC103SDT0032' 'C' ' ',
+  ' ' 'WEIGHT_NET'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'ITEM_QTY'         'ZC103SDT0032' 'C' ' ',
+  ' ' 'INVOICE_NO'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'IMPORT_DECL_NO'   'ZC103SDT0032' 'C' ' ',
+  ' ' 'DECL_PRICE'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'REQ_DOC'          'ZC103SDT0032' 'C' ' ',
+  ' ' 'GROSS_WEIGHT'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'TOTAL_DECL_PRICE' 'ZC103SDT0032' 'C' ' ',
+  ' ' 'PAYMENT_TOTAL'    'ZC103SDT0032' 'C' ' ',
+  ' ' 'IMPORT_CTRL_NO'   'ZC103SDT0032' 'C' ' ',
+  ' ' 'PALLET_NO'        'ZC103SDT0032' 'C' ' ',
+  ' ' 'DECL_NOTE'        'ZC103SDT0032' 'C' ' ',
+  ' ' 'CUSTOMS_NOTE'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'CARRIER_DECL'     'ZC103SDT0032' 'C' ' ',
+  ' ' 'PERIOD'           'ZC103SDT0032' 'C' ' ',
+  ' ' 'LOAD_DUE_DATE'    'ZC103SDT0032' 'C' ' ',
+  ' ' 'DECLARANT_STAFF'  'ZC103SDT0032' 'C' ' ',
+  ' ' 'CLEAR_DATE'       'ZC103SDT0032' 'C' ' ',
+  ' ' 'CURRENCY'         'ZC103SDT0032' 'C' ' ',
+  ' ' 'WEIGHT_UNIT'      'ZC103SDT0032' 'C' ' '.
+
+    PERFORM set_layout.
+    " ▶ 1. 메인 컨테이너 생성
+
+    " 1. 전체 화면 도킹 컨테이너 (왼쪽 영역 고정)
+    CREATE OBJECT go_container
+      EXPORTING
+        side      = cl_gui_docking_container=>dock_at_left
+        extension = 5000.
+
+    " 2. 수직 스플리터: 4행 1열
+    CREATE OBJECT go_split_main
+      EXPORTING
+        parent  = go_container
+        rows    = 4
+        columns = 1.
+
+    " 3. 각 Row 컨테이너 취득
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 1
+        column    = 1
+      RECEIVING
+        container = go_row1_cont.
+
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 2
+        column    = 1
+      RECEIVING
+        container = go_row2_cont.
+
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 3
+        column    = 1
+      RECEIVING
+        container = go_row3_cont.
+
+    CALL METHOD go_split_main->get_container
+      EXPORTING
+        row       = 4
+        column    = 1
+      RECEIVING
+        container = go_row4_cont.
+
+    " 4. 각 ALV Grid 바인딩
+    CREATE OBJECT go_first_grid EXPORTING i_parent = go_row1_cont.
+    CREATE OBJECT go_second_grid EXPORTING i_parent = go_row2_cont.
+    CREATE OBJECT go_third_grid EXPORTING i_parent = go_row3_cont.
+    CREATE OBJECT go_fourth_grid EXPORTING i_parent = go_row4_cont.
+
+    " 5. 각 ALV에 Table 바인딩
+    CALL METHOD go_first_grid->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layout1
+        is_variant      = gs_variant1
+        i_save          = 'A'
+        i_default       = 'X'
+      CHANGING
+        it_outtab       = gt_0022
+        it_fieldcatalog = gt_fcat1.
+
+    CALL METHOD go_second_grid->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layout2
+        is_variant      = gs_variant2
+        i_save          = 'A'
+        i_default       = 'X'
+      CHANGING
+        it_outtab       = gt_0030
+        it_fieldcatalog = gt_fcat2.
+
+    CALL METHOD go_third_grid->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layout3
+        is_variant      = gs_variant3
+        i_save          = 'A'
+        i_default       = 'X'
+      CHANGING
+        it_outtab       = gt_0031
+        it_fieldcatalog = gt_fcat3.
+
+    CALL METHOD go_fourth_grid->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layout4
+        is_variant      = gs_variant4
+        i_save          = 'A'
+        i_default       = 'X'
+      CHANGING
+        it_outtab       = gt_0032
+        it_fieldcatalog = gt_fcat4.
+
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_layout .
+  " 공통 Layout 설정
+  gs_layout1-zebra      = abap_true.
+  gs_layout1-cwidth_opt = 'A'.
+  gs_layout1-sel_mode   = 'D'.
+  gs_layout1-grid_title = '하기적재결과보고서'.
+
+  " Variant 필수 설정 (ALV에서 사용)
+  gs_variant1-report = sy-repid.
+  gs_variant2-report = sy-repid.
+  gs_variant3-report = sy-repid.
+  gs_variant4-report = sy-repid.
+
+  " 나머지 layout 구조 복사 및 grid title만 변경
+  gs_layout2 = CORRESPONDING #( gs_layout1 ).
+  gs_layout2-grid_title = '수출신고필증(보관용)'.
+
+  gs_layout3 = CORRESPONDING #( gs_layout1 ).
+  gs_layout3-grid_title = 'AWB 송장 정보'.
+
+  gs_layout4 = CORRESPONDING #( gs_layout1 ).
+  gs_layout4-grid_title = '수출통관신고서(제출용)'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_0022_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_0022_fcat  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  CLEAR gs_fcat1.
+
+  gs_fcat1-key       = pv_key.
+  gs_fcat1-fieldname = pv_field.
+  gs_fcat1-ref_table = pv_table.
+  gs_fcat1-just      = pv_just.
+  gs_fcat1-emphasize = pv_emph.
+
+  " ▶ 컬럼 텍스트 정의
+  CASE pv_field.
+    WHEN 'CARGO_ID'.         gs_fcat1-coltext = '적재화물목록관리번호'.
+    WHEN 'SCHEDULEID'.       gs_fcat1-coltext = '스케줄ID'.
+    WHEN 'DEPARTURE_DATE'.   gs_fcat1-coltext = '출발일자'.
+    WHEN 'HANDLING_CO'.      gs_fcat1-coltext = '화물하역회사명'.
+    WHEN 'MAWB_NO'.          gs_fcat1-coltext = 'M/AWB번호'.
+    WHEN 'CARGO_ITEM_ID'.    gs_fcat1-coltext = '적재화물 ID'.
+    WHEN 'FLIGHTID'.         gs_fcat1-coltext = '항공편번호'.
+    WHEN 'DEPART_DATE'.      gs_fcat1-coltext = '출발일'.
+    WHEN 'STRID'.            gs_fcat1-coltext = '배정창고'.
+    WHEN 'PACKAGE_COUNT'.    gs_fcat1-coltext = '포장개수'.
+    WHEN 'WEIGHT'.           gs_fcat1-coltext = '중량'.
+    WHEN 'SHIP_COUNT'.       gs_fcat1-coltext = '건수'.
+    WHEN 'LOAD_RESULT'.      gs_fcat1-coltext = '하기적재결과'.
+    WHEN 'COUNTRY_OF_EXIT'.  gs_fcat1-coltext = '출국국가'.
+    WHEN 'BPNAME'.           gs_fcat1-coltext = '상호'.
+    WHEN 'BPID'.             gs_fcat1-coltext = '거래처 ID'.
+    WHEN 'COMPANY_ADDR'.     gs_fcat1-coltext = '주소'.
+    WHEN 'SUBMIT_DATE'.      gs_fcat1-coltext = '제출일자'.
+    WHEN 'POSITION_S_AIR'.   gs_fcat1-coltext = '직급'.
+    WHEN 'EMPNAME'.          gs_fcat1-coltext = '성명'.
+  ENDCASE.
+
+  APPEND gs_fcat1 TO gt_fcat1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_0030_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_0030_fcat  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  CLEAR gs_fcat2.
+
+  gs_fcat2-key       = pv_key.
+  gs_fcat2-fieldname = pv_field.
+  gs_fcat2-ref_table = pv_table.
+  gs_fcat2-just      = pv_just.
+  gs_fcat2-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'DOCID'.               gs_fcat2-coltext = '문서번호'.
+    WHEN 'BPID'.                gs_fcat2-coltext = '거래처 ID'.
+    WHEN 'DECLARANT_NAME'.      gs_fcat2-coltext = '신고자'.
+    WHEN 'CUSTOMS_DEPT'.        gs_fcat2-coltext = '세관 부서'.
+    WHEN 'DECLARATION_DATE'.    gs_fcat2-coltext = '신고일자'.
+    WHEN 'DECLARATION_TYPE'.    gs_fcat2-coltext = '신고유형'.
+    WHEN 'CS_TYPE'.             gs_fcat2-coltext = 'C/S 유형'.
+    WHEN 'AGENT_NAME'.          gs_fcat2-coltext = '수출대행자명'.
+    WHEN 'EXPORTER_TYPE'.       gs_fcat2-coltext = '수출자 구분'.
+    WHEN 'TRADE_TYPE'.          gs_fcat2-coltext = '거래 유형'.
+    WHEN 'EXPORT_TYPE'.         gs_fcat2-coltext = '수출 유형'.
+    WHEN 'PAYMENT_METHOD'.      gs_fcat2-coltext = '결제 조건'.
+    WHEN 'SHIPPER_NAME'.        gs_fcat2-coltext = '수출화주'.
+    WHEN 'DEST_COUNTRY'.        gs_fcat2-coltext = '목적국'.
+    WHEN 'PORT_OF_LOADING'.     gs_fcat2-coltext = '적재항'.
+    WHEN 'CARRIER_NAME'.        gs_fcat2-coltext = '선박/항공사'.
+    WHEN 'EXPORTER_ID'.         gs_fcat2-coltext = '통관고유부호'.
+    WHEN 'EXPORTER_ADDR'.       gs_fcat2-coltext = '주소'.
+    WHEN 'FLIGHT_NO'.           gs_fcat2-coltext = '항공편명'.
+    WHEN 'DEPARTURE_DATE'.      gs_fcat2-coltext = '출발예정일자'.
+    WHEN 'BOND_ZONE'.           gs_fcat2-coltext = '보세구역'.
+    WHEN 'CEO_NAME'.            gs_fcat2-coltext = '대표자'.
+    WHEN 'EXPORTER_LOC'.        gs_fcat2-coltext = '소재지'.
+    WHEN 'TRANSPORT_TYPE'.      gs_fcat2-coltext = '운송형태'.
+    WHEN 'INSPECTION_DATE'.     gs_fcat2-coltext = '검사희망일'.
+    WHEN 'ITEM_LOC'.            gs_fcat2-coltext = '물품소재지'.
+    WHEN 'EXPORTER_BIZNUM'.     gs_fcat2-coltext = '사업자등록번호'.
+    WHEN 'MANUFACTURER'.        gs_fcat2-coltext = '제조자'.
+    WHEN 'LC_NO'.               gs_fcat2-coltext = 'L/C 번호'.
+    WHEN 'ITEM_STATUS'.         gs_fcat2-coltext = '물품상태'.
+    WHEN 'MANU_ID'.             gs_fcat2-coltext = '제조자 ID'.
+    WHEN 'NOTIFY_FLAG'.         gs_fcat2-coltext = '사전개청여부'.
+    WHEN 'RETURN_REASON'.       gs_fcat2-coltext = '반송 사유'.
+    WHEN 'MANU_PLACE'.          gs_fcat2-coltext = '제작장소'.
+    WHEN 'IND_AREA_CODE'.       gs_fcat2-coltext = '산업단지부호'.
+    WHEN 'REFUND_APPLIER'.      gs_fcat2-coltext = '환급신청인'.
+    WHEN 'BUYER_NAME'.          gs_fcat2-coltext = '구매자명'.
+    WHEN 'BUYER_ID'.            gs_fcat2-coltext = '구매자 ID'.
+    WHEN 'MODEL_SPEC'.          gs_fcat2-coltext = '모델/규격'.
+    WHEN 'COMPONENT'.           gs_fcat2-coltext = '성분'.
+    WHEN 'QTY_UNIT'.            gs_fcat2-coltext = '수량(단위)'.
+    WHEN 'UNIT_PRICE'.
+      gs_fcat2-coltext = '단가'.
+      gs_fcat2-cfieldname = 'CURRENCY'.
+    WHEN 'AMOUNT'.              gs_fcat2-coltext = '금액'.
+    WHEN 'HS_CODE'.             gs_fcat2-coltext = 'HS 코드'.
+    WHEN 'WEIGHT_NET'.
+      gs_fcat2-coltext = '순중량'.
+      gs_fcat2-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'ITEM_QTY'.            gs_fcat2-coltext = '품목수량'.
+    WHEN 'INVOICE_NO'.          gs_fcat2-coltext = '송품장 번호'.
+    WHEN 'IMPORT_DECL_NO'.      gs_fcat2-coltext = '수입신고번호'.
+    WHEN 'DECL_PRICE'.
+      gs_fcat2-coltext = '신고가격'.
+      gs_fcat2-cfieldname = 'CURRENCY'.
+    WHEN 'REQ_DOC'.             gs_fcat2-coltext = '요건서류'.
+    WHEN 'GROSS_WEIGHT'.
+      gs_fcat2-coltext    = '총중량'.
+      gs_fcat2-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'TOTAL_DECL_PRICE'.
+      gs_fcat2-coltext    = '총신고금액'.
+      gs_fcat2-cfieldname = 'CURRENCY'.
+    WHEN 'PAYMENT_TOTAL'.
+      gs_fcat2-coltext    = '결제총액'.
+      gs_fcat2-cfieldname = 'CURRENCY'.
+    WHEN 'IMPORT_CTRL_NO'.      gs_fcat2-coltext = '수입화물관리번호'.
+    WHEN 'PALLET_NO'.           gs_fcat2-coltext = '팔레트번호'.
+    WHEN 'DECL_NOTE'.           gs_fcat2-coltext = '신고인기재란'.
+    WHEN 'CUSTOMS_NOTE'.        gs_fcat2-coltext = '세관기재란'.
+    WHEN 'CARRIER_DECL'.        gs_fcat2-coltext = '운송신고인'.
+    WHEN 'PERIOD'.              gs_fcat2-coltext = '기간'.
+    WHEN 'LOAD_DUE_DATE'.       gs_fcat2-coltext = '적재의무기한'.
+    WHEN 'DECLARANT_STAFF'.     gs_fcat2-coltext = '담당자'.
+    WHEN 'CLEAR_DATE'.          gs_fcat2-coltext = '신고수리일자'.
+    WHEN 'CURRENCY'.            gs_fcat2-coltext = '통화'.
+    WHEN 'WEIGHT_UNIT'.         gs_fcat2-coltext = '중량단위'.
+  ENDCASE.
+
+
+  APPEND gs_fcat2 TO gt_fcat2.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_0031_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_0031_fcat  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  CLEAR gs_fcat3.
+
+  gs_fcat3-key       = pv_key.
+  gs_fcat3-fieldname = pv_field.
+  gs_fcat3-ref_table = pv_table.
+  gs_fcat3-just      = pv_just.
+  gs_fcat3-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'TRANSPORTID'.           gs_fcat3-coltext = '운송 ID'.
+    WHEN 'SENDER'.                gs_fcat3-coltext = '송화인'.
+    WHEN 'RECEIVER'.              gs_fcat3-coltext = '수화인'.
+    WHEN 'ACCOUNT_NO_1'.          gs_fcat3-coltext = '계좌번호 1'.
+    WHEN 'ACCOUNT_NO_2'.          gs_fcat3-coltext = '계좌번호 2'.
+    WHEN 'SENDER_INFO'.           gs_fcat3-coltext = '송화인 정보'.
+    WHEN 'RECEIVER_INFO'.         gs_fcat3-coltext = '수화인 정보'.
+    WHEN 'AGENCY_NAME'.           gs_fcat3-coltext = '대리점명'.
+    WHEN 'CITY'.                  gs_fcat3-coltext = '도시'.
+    WHEN 'IATA_CODE'.             gs_fcat3-coltext = 'IATA 코드'.
+    WHEN 'ACCOUNT_NO_3'.          gs_fcat3-coltext = '계좌번호 3'.
+    WHEN 'DEPARTURE_AIRPORT'.     gs_fcat3-coltext = '출발 공항'.
+    WHEN 'CARRIER_ADDRESS'.       gs_fcat3-coltext = '운송인 주소'.
+    WHEN 'ROUTE_REQUEST'.         gs_fcat3-coltext = '요청 경로'.
+    WHEN 'ROUTING_TO_1'.          gs_fcat3-coltext = '1차 목적지'.
+    WHEN 'ROUTING_BY_1'.          gs_fcat3-coltext = '1차 경유지'.
+    WHEN 'ROUTING_TO_2'.          gs_fcat3-coltext = '2차 목적지'.
+    WHEN 'ROUTING_BY_2'.          gs_fcat3-coltext = '2차 경유지'.
+    WHEN 'ROUTING_TO_3'.          gs_fcat3-coltext = '3차 목적지'.
+    WHEN 'ROUTING_BY_3'.          gs_fcat3-coltext = '3차 경유지'.
+    WHEN 'ARRIVAL_AIRPORT'.       gs_fcat3-coltext = '도착 공항'.
+    WHEN 'GOODS_COUNT'.           gs_fcat3-coltext = '화물 개수'.
+    WHEN 'PACKAGE_TYPE'.          gs_fcat3-coltext = '포장 유형'.
+    WHEN 'ITEM_NO'.               gs_fcat3-coltext = '품목 번호'.
+    WHEN 'DESCRIPTION'.           gs_fcat3-coltext = '품목 설명'.
+    WHEN 'RATE_CLASS'.            gs_fcat3-coltext = '요금 등급'.
+    WHEN 'GROSS_WEIGHT'.
+      gs_fcat3-coltext    = '총 중량'.
+      gs_fcat3-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'CHARGEABLE_WEIGHT'.
+      gs_fcat3-coltext    = '과금 중량'.
+      gs_fcat3-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'RATE'.                  gs_fcat3-coltext = '단가'.
+    WHEN 'AMOUNT'.                gs_fcat3-coltext = '금액'.
+    WHEN 'GROSS_WT_CHARGE'.       gs_fcat3-coltext = '총 중량 요금'.
+    WHEN 'TOTAL_AMOUNT'.          gs_fcat3-coltext = '총 요금'.
+    WHEN 'SCHEDULEID'.            gs_fcat3-coltext = '항공편'.
+    WHEN 'DEPARTURE_DATE'.        gs_fcat3-coltext = '출발일'.
+    WHEN 'SPECIAL_INSTRUCTION'.   gs_fcat3-coltext = '특별 지시사항'.
+    WHEN 'ACCOUNT_INFO'.          gs_fcat3-coltext = '회계 정보'.
+    WHEN 'HANDLING_INFO'.         gs_fcat3-coltext = '취급 정보'.
+    WHEN 'PREPAID_1'.             gs_fcat3-coltext = '선불 1'.
+    WHEN 'COLLECT_1'.             gs_fcat3-coltext = '착불 1'.
+    WHEN 'PREPAID_2'.             gs_fcat3-coltext = '선불 2'.
+    WHEN 'COLLECT_2'.             gs_fcat3-coltext = '착불 2'.
+    WHEN 'PREPAID_3'.             gs_fcat3-coltext = '선불 3'.
+    WHEN 'COLLECT_3'.             gs_fcat3-coltext = '착불 3'.
+    WHEN 'PREPAID_4'.             gs_fcat3-coltext = '선불 4'.
+    WHEN 'COLLECT_4'.             gs_fcat3-coltext = '착불 4'.
+    WHEN 'PREPAID_5'.             gs_fcat3-coltext = '선불 5'.
+    WHEN 'COLLECT_5'.             gs_fcat3-coltext = '착불 5'.
+    WHEN 'AIRLINE_TOTAL'.         gs_fcat3-coltext = '항공사 수납 총액'.
+    WHEN 'PREPAID_6'.             gs_fcat3-coltext = '선불 6'.
+    WHEN 'COLLECT_6'.             gs_fcat3-coltext = '착불 6'.
+    WHEN 'GRAND_TOTAL'.           gs_fcat3-coltext = '총 합계'.
+    WHEN 'TOTAL_PREPAID'.         gs_fcat3-coltext = '총 선불'.
+    WHEN 'TOTAL_COLLECT'.         gs_fcat3-coltext = '총 착불'.
+    WHEN 'DEST_CURRENCY_CHARGE'.  gs_fcat3-coltext = '목적지 통화 기준 착불 요금'.
+    WHEN 'DEST_CHARGE'.           gs_fcat3-coltext = '목적지 발생 요금'.
+    WHEN 'TOTAL_COLLECT_CHARGE'.  gs_fcat3-coltext = '총 착불 요금'.
+    WHEN 'ISSUE_PLACE'.           gs_fcat3-coltext = '발행 장소'.
+    WHEN 'ISSUE_DATE'.            gs_fcat3-coltext = '발행일자'.
+    WHEN 'WEIGHT_UNIT'.           gs_fcat3-coltext = '중량 단위'.
+  ENDCASE.
+
+
+  APPEND gs_fcat3 TO gt_fcat3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_0032_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_0032_fcat  USING pv_key pv_field pv_table pv_just pv_emph.
+
+  CLEAR gs_fcat4.
+
+  gs_fcat4-key       = pv_key.
+  gs_fcat4-fieldname = pv_field.
+  gs_fcat4-ref_table = pv_table.
+  gs_fcat4-just      = pv_just.
+  gs_fcat4-emphasize = pv_emph.
+
+  CASE pv_field.
+    WHEN 'DOCID'.                gs_fcat4-coltext = '문서번호'.
+    WHEN 'BPID'.                 gs_fcat4-coltext = '거래처 ID'.
+    WHEN 'DECLARANT_NAME'.      gs_fcat4-coltext = '신고자명'.
+    WHEN 'CUSTOMS_DEPT'.        gs_fcat4-coltext = '세관부서'.
+    WHEN 'DECLARATION_DATE'.    gs_fcat4-coltext = '신고일자'.
+    WHEN 'DECLARATION_TYPE'.    gs_fcat4-coltext = '신고구분'.
+    WHEN 'CS_TYPE'.             gs_fcat4-coltext = 'C/S 구분'.
+    WHEN 'AGENT_NAME'.          gs_fcat4-coltext = '대행자명'.
+    WHEN 'EXPORTER_TYPE'.       gs_fcat4-coltext = '수출자 구분'.
+    WHEN 'TRADE_TYPE'.          gs_fcat4-coltext = '거래유형'.
+    WHEN 'EXPORT_TYPE'.         gs_fcat4-coltext = '수출유형'.
+    WHEN 'PAYMENT_METHOD'.      gs_fcat4-coltext = '결제방법'.
+    WHEN 'SHIPPER_NAME'.        gs_fcat4-coltext = '수출화주'.
+    WHEN 'DEST_COUNTRY'.        gs_fcat4-coltext = '목적국'.
+    WHEN 'PORT_OF_LOADING'.     gs_fcat4-coltext = '적재항'.
+    WHEN 'CARRIER_NAME'.        gs_fcat4-coltext = '선박/항공사'.
+    WHEN 'EXPORTER_ID'.         gs_fcat4-coltext = '통관고유부호'.
+    WHEN 'EXPORTER_ADDR'.       gs_fcat4-coltext = '주소'.
+    WHEN 'FLIGHT_NO'.           gs_fcat4-coltext = '항공편명'.
+    WHEN 'DEPARTURE_DATE'.      gs_fcat4-coltext = '출발일'.
+    WHEN 'BOND_ZONE'.           gs_fcat4-coltext = '보세구역'.
+    WHEN 'CEO_NAME'.            gs_fcat4-coltext = '대표자'.
+    WHEN 'EXPORTER_LOC'.        gs_fcat4-coltext = '소재지'.
+    WHEN 'TRANSPORT_TYPE'.      gs_fcat4-coltext = '운송형태'.
+    WHEN 'INSPECTION_DATE'.     gs_fcat4-coltext = '검사희망일'.
+    WHEN 'ITEM_LOC'.            gs_fcat4-coltext = '물품소재지'.
+    WHEN 'EXPORTER_BIZNUM'.     gs_fcat4-coltext = '사업자등록번호'.
+    WHEN 'MANUFACTURER'.        gs_fcat4-coltext = '제조자'.
+    WHEN 'LC_NO'.               gs_fcat4-coltext = 'L/C번호'.
+    WHEN 'ITEM_STATUS'.         gs_fcat4-coltext = '물품상태'.
+    WHEN 'MANU_ID'.             gs_fcat4-coltext = '통관고유부호'.
+    WHEN 'NOTIFY_FLAG'.         gs_fcat4-coltext = '임시개청여부'.
+    WHEN 'RETURN_REASON'.       gs_fcat4-coltext = '반송 사유'.
+    WHEN 'MANU_PLACE'.          gs_fcat4-coltext = '제작장소'.
+    WHEN 'IND_AREA_CODE'.       gs_fcat4-coltext = '산업단지코드'.
+    WHEN 'REFUND_APPLIER'.      gs_fcat4-coltext = '환급신청인'.
+    WHEN 'BUYER_NAME'.          gs_fcat4-coltext = '구매자'.
+    WHEN 'BUYER_ID'.            gs_fcat4-coltext = '구매자 ID'.
+    WHEN 'MODEL_SPEC'.          gs_fcat4-coltext = '모델 및 규격'.
+    WHEN 'COMPONENT'.           gs_fcat4-coltext = '성분'.
+    WHEN 'QTY_UNIT'.            gs_fcat4-coltext = '수량(단위)'.
+    WHEN 'UNIT_PRICE'.          gs_fcat4-coltext = '단가'.
+    WHEN 'AMOUNT'.              gs_fcat4-coltext = '금액'.
+    WHEN 'HS_CODE'.             gs_fcat4-coltext = '세번부호'.
+    WHEN 'WEIGHT_NET'.          gs_fcat4-coltext = '순중량'.
+    WHEN 'ITEM_QTY'.            gs_fcat4-coltext = '수량'.
+    WHEN 'INVOICE_NO'.          gs_fcat4-coltext = '송품장번호'.
+    WHEN 'IMPORT_DECL_NO'.      gs_fcat4-coltext = '수입신고번호'.
+    WHEN 'DECL_PRICE'.
+      gs_fcat4-coltext    = '신고가격'.
+      gs_fcat4-cfieldname = 'CURRENCY'.
+    WHEN 'REQ_DOC'.             gs_fcat4-coltext = '요건확인서류'.
+    WHEN 'GROSS_WEIGHT'.
+      gs_fcat4-coltext    = '총중량'.
+      gs_fcat4-qfieldname = 'WEIGHT_UNIT'.
+    WHEN 'TOTAL_DECL_PRICE'.    gs_fcat4-coltext = '총신고금액'.
+    WHEN 'PAYMENT_TOTAL'.       gs_fcat4-coltext = '총 결제금액'.
+    WHEN 'IMPORT_CTRL_NO'.      gs_fcat4-coltext = '수입화물 관리번호'.
+    WHEN 'PALLET_NO'.           gs_fcat4-coltext = '팔레트 번호'.
+    WHEN 'DECL_NOTE'.           gs_fcat4-coltext = '신고인 기재란'.
+    WHEN 'CUSTOMS_NOTE'.        gs_fcat4-coltext = '세관 기재란'.
+    WHEN 'CARRIER_DECL'.        gs_fcat4-coltext = '운송신고인'.
+    WHEN 'PERIOD'.              gs_fcat4-coltext = '기간'.
+    WHEN 'LOAD_DUE_DATE'.       gs_fcat4-coltext = '적재기한'.
+    WHEN 'DECLARANT_STAFF'.     gs_fcat4-coltext = '담당자'.
+    WHEN 'CLEAR_DATE'.          gs_fcat4-coltext = '신고수리일자'.
+    WHEN 'CURRENCY'.            gs_fcat4-coltext = '통화'.
+    WHEN 'WEIGHT_UNIT'.         gs_fcat4-coltext = '중량 단위'.
+  ENDCASE.
+
+
+  APPEND gs_fcat4 TO gt_fcat4.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form print_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM print_data .
+
+  DATA: ls_0022 TYPE zc103sdt0022,
+        ls_0030 TYPE zc103sdt0030,
+        ls_0031 TYPE zc103sdt0031,
+        ls_0032 TYPE zc103sdt0032.
+
+  READ TABLE gt_0022 INTO ls_0022 INDEX 1.
+  READ TABLE gt_0030 INTO ls_0030 INDEX 1.
+  READ TABLE gt_0031 INTO ls_0031 INDEX 1.
+  READ TABLE gt_0032 INTO ls_0032 INDEX 1.
+
+  DATA: wwwdata_item    TYPE wwwdatatab,
+        ls_wwwdata_item TYPE wwwdatatab,
+        lv_key          TYPE wwwdatatab,
+        lv_rc           TYPE i,
+        lv_result       TYPE i,
+        lv_text         TYPE string.
+
+  DATA: workbooks TYPE ole2_object,
+        workbook  TYPE ole2_object,
+        sheet     TYPE ole2_object,
+        cell      TYPE ole2_object,
+        excel     TYPE ole2_object.
+
+  DATA: lv_template_file TYPE rlgrap-filename,
+        lv_pdf_path      TYPE string,
+        lv_fullpath      TYPE string.
+
+  " 오늘 날짜 및 시간 기반 파일명 생성
+  CONCATENATE 'C:\Users\USER\Desktop\화물운송장_'
+              sy-datum+0(4) '_' sy-datum+4(2) '_' sy-datum+6(2) '_'  " YYYY_MM_DD
+              sy-uzeit+0(2) sy-uzeit+2(2) sy-uzeit+4(2)              " HHMMSS
+              INTO lv_fullpath.
+
+  CONCATENATE lv_fullpath '.xls' INTO lv_template_file.
+
+  " SMW0 다운로드
+  SELECT SINGLE * INTO CORRESPONDING FIELDS OF wwwdata_item
+    FROM wwwdata
+    WHERE relid = 'MI' AND objid = 'ZSAIRCARGO'.
+
+  IF sy-subrc <> 0.
+    MESSAGE e001(zz) WITH 'SMW0 파일 정보를 찾을 수 없습니다.'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      key         = wwwdata_item
+      destination = lv_template_file.
+
+  " EXCEL 객체 생성
+  CREATE OBJECT excel 'EXCEL.APPLICATION'.
+  IF excel IS INITIAL.
+    MESSAGE e001(zz) WITH '엑셀 객체 생성 실패'.
+    RETURN.
+  ENDIF.
+
+  SET PROPERTY OF excel 'Visible' = 1.
+
+  " Workbooks 접근
+  CALL METHOD OF excel 'Workbooks' = workbooks.
+  CALL METHOD OF workbooks 'Open' EXPORTING #1 = lv_template_file.
+
+  GET PROPERTY OF excel 'ActiveWorkbook' = workbook.
+  GET PROPERTY OF workbook 'ActiveSheet'    = sheet.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 5 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0030-docid.
+**********************************************************************
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 20.
+  SET PROPERTY OF cell 'Value' = ls_0022-cargo_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 22.
+  SET PROPERTY OF cell 'Value' = ls_0022-flightid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 24.
+  SET PROPERTY OF cell 'Value' = ls_0022-departure_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 20.
+  SET PROPERTY OF cell 'Value' = ls_0022-handling_co.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 22.
+  SET PROPERTY OF cell 'Value' = ls_0022-mawb_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 20.
+  SET PROPERTY OF cell 'Value' = ls_0022-cargo_item_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 22.
+  SET PROPERTY OF cell 'Value' = ls_0022-flightid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 20.
+  SET PROPERTY OF cell 'Value' = ls_0022-depart_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 21.
+  SET PROPERTY OF cell 'Value' = ls_0022-strid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 10 #2 = 24.
+  SET PROPERTY OF cell 'Value' = ls_0022-package_count.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 10 #2 = 25.
+  SET PROPERTY OF cell 'Value' = ls_0022-weight.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 10 #2 = 26.
+  SET PROPERTY OF cell 'Value' = ls_0022-ship_count.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 12 #2 = 24.
+  SET PROPERTY OF cell 'Value' = ls_0022-load_result.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 26.
+  SET PROPERTY OF cell 'Value' = ls_0022-country_of_exit.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 35 #2 = 22.
+  SET PROPERTY OF cell 'Value' = ls_0022-bpname.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 37 #2 = 22.
+  SET PROPERTY OF cell 'Value' = ls_0022-empname.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 20.
+  SET PROPERTY OF cell 'Value' = ls_0022-company_addr.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 33 #2 = 25.
+  SET PROPERTY OF cell 'Value' = ls_0022-submit_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 35 #2 = 26.
+  SET PROPERTY OF cell 'Value' = ls_0022-position_s_air.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 26.
+  SET PROPERTY OF cell 'Value' = ls_0022-empname.
+
+
+* 수출신고필증 - ZC103SDT0030
+*------------------------------------------------------------------*
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 2.
+  SET PROPERTY OF cell 'Value' = ls_0030-declarant_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-docid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 4.
+  SET PROPERTY OF cell 'Value' = ls_0030-customs_dept.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-declaration_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-declaration_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 8.
+  SET PROPERTY OF cell 'Value' = ls_0030-cs_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 8 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-bpid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 4.
+  SET PROPERTY OF cell 'Value' = ls_0030-exporter_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-trade_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-export_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-payment_method.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-shipper_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-dest_country.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-port_of_loading.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-carrier_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 12 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-exporter_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-exporter_addr.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-flight_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-departure_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-bond_zone.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 14 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-ceo_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 15 #2 = 4.
+  SET PROPERTY OF cell 'Value' = ls_0030-exporter_loc.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 14 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-transport_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 14 #2 = 8.
+  SET PROPERTY OF cell 'Value' = ls_0030-inspection_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 15 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-item_loc.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 15 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-exporter_biznum.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 16 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-manufacturer.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 16 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-lc_no.
+
+**********************************************************************
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 16 #2 = 8.
+  SET PROPERTY OF cell 'Value' = ls_0030-item_status.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 17 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-manu_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 18 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-notify_flag.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 17 #2 = 8.
+  SET PROPERTY OF cell 'Value' = ls_0030-return_reason.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 19 #2 = 2.
+  SET PROPERTY OF cell 'Value' = ls_0030-manu_place.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 19 #2 = 4.
+  SET PROPERTY OF cell 'Value' = ls_0030-ind_area_code.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 19 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-refund_applier.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 20 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-buyer_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 21 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-buyer_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 2.
+  SET PROPERTY OF cell 'Value' = ls_0030-model_spec.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-component.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-qty_unit.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-unit_price.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 8.
+  SET PROPERTY OF cell 'Value' = ls_0030-amount.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 25 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-hs_code.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 25 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-weight_net.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 25 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-item_qty.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 26 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-invoice_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 26 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-import_decl_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 26 #2 = 8.
+  SET PROPERTY OF cell 'Value' = ls_0030-decl_price.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 27 #2 = 4.
+  SET PROPERTY OF cell 'Value' = ls_0030-req_doc.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 28 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-gross_weight.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 28 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-total_decl_price.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 28 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-payment_total.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 29 #2 = 4.
+  SET PROPERTY OF cell 'Value' = ls_0030-import_ctrl_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 29 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-pallet_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 31 #2 = 2.
+  SET PROPERTY OF cell 'Value' = ls_0030-decl_note.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 31 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-customs_note.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 35 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-carrier_decl.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 3.
+  SET PROPERTY OF cell 'Value' = ls_0030-period.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 5.
+  SET PROPERTY OF cell 'Value' = ls_0030-load_due_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 6.
+  SET PROPERTY OF cell 'Value' = ls_0030-declarant_staff.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 7.
+  SET PROPERTY OF cell 'Value' = ls_0030-clear_date.
+
+*------------------------------------------------------------------*
+* AWB 송장 정보 - ZC103SDT0031
+*------------------------------------------------------------------*
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 6 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-sender.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 6 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-receiver.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-account_no_1.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-account_no_2.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 8 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-sender_info.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 8 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-receiver_info.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 10 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-agency_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-city.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 12 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-iata_code.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-account_no_3.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 13.
+  SET PROPERTY OF cell 'Value' = ls_0031-goods_count.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-package_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 15.
+  SET PROPERTY OF cell 'Value' = ls_0031-item_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-description.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 14 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-departure_airport.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 15 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-carrier_address.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 16 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-route_request.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 17 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-routing_to_1.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 18 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-routing_by_1.
+
+**********************************************************************
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 19 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-routing_to_2.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 20 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-routing_by_2.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 21 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-routing_to_3.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 22 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-routing_by_3.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 23 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-arrival_airport.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 22 #2 = 13.
+  SET PROPERTY OF cell 'Value' = ls_0031-rate_class.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 22 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-gross_weight.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 22 #2 = 15.
+  SET PROPERTY OF cell 'Value' = ls_0031-chargeable_weight.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 22 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-rate.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 22 #2 = 17.
+  SET PROPERTY OF cell 'Value' = ls_0031-amount.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 27 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-gross_wt_charge.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 27 #2 = 17.
+  SET PROPERTY OF cell 'Value' = ls_0031-total_amount.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 25 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-scheduleid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 26 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-departure_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 30 #2 = 11.
+  SET PROPERTY OF cell 'Value' = ls_0031-account_info.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 30 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-handling_info.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 32 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-prepaid_1.
+
+**********************************************************************
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 33 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-collect_1.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 32 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-prepaid_2.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 33 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-collect_2.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 32 #2 = 17.
+  SET PROPERTY OF cell 'Value' = ls_0031-prepaid_3.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 33 #2 = 17.
+  SET PROPERTY OF cell 'Value' = ls_0031-collect_3.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 35 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-prepaid_4.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 12.
+  SET PROPERTY OF cell 'Value' = ls_0031-collect_4.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 35 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-prepaid_5.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 35 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-collect_5.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-airline_total.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 37 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-total_prepaid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 37 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-total_collect.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 38 #2 = 15.
+  SET PROPERTY OF cell 'Value' = ls_0031-grand_total.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 39 #2 = 14.
+  SET PROPERTY OF cell 'Value' = ls_0031-total_prepaid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 39 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-total_collect.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 40 #2 = 13.
+  SET PROPERTY OF cell 'Value' = ls_0031-exchange_rate.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 40 #2 = 17.
+  SET PROPERTY OF cell 'Value' = ls_0031-dest_currency_charge.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 41 #2 = 13.
+  SET PROPERTY OF cell 'Value' = ls_0031-dest_charge.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 41 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-total_collect_charge.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 42 #2 = 13.
+  SET PROPERTY OF cell 'Value' = ls_0031-issue_place.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 42 #2 = 16.
+  SET PROPERTY OF cell 'Value' = ls_0031-issue_date.
+
+
+*------------------------------------------------------------------*
+* 수출통관신고서(제출용) - ZC103SDT0032 (일부 중복 가능)
+*------------------------------------------------------------------*
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 29.
+  SET PROPERTY OF cell 'Value' = ls_0032-declarant_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-docid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 31.
+  SET PROPERTY OF cell 'Value' = ls_0032-customs_dept.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-declaration_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-declaration_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 7 #2 = 35.
+  SET PROPERTY OF cell 'Value' = ls_0032-cs_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 8 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-bpid.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 31.
+  SET PROPERTY OF cell 'Value' = ls_0032-exporter_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-trade_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-export_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 9 #2 = 34.
+  SET PROPERTY OF cell 'Value' = ls_0032-payment_method.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-shipper_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-dest_country.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-port_of_loading.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 11 #2 = 34.
+  SET PROPERTY OF cell 'Value' = ls_0032-carrier_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 12 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-exporter_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-exporter_addr.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-flight_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-departure_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 13 #2 = 34.
+  SET PROPERTY OF cell 'Value' = ls_0032-bond_zone.
+
+**********************************************************************
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 14 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-ceo_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 15 #2 = 31.
+  SET PROPERTY OF cell 'Value' = ls_0032-exporter_loc.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 14 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-transport_type.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 14 #2 = 35.
+  SET PROPERTY OF cell 'Value' = ls_0032-inspection_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 15 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-item_loc.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 16 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-manufacturer.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 16 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-lc_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 16 #2 = 35.
+  SET PROPERTY OF cell 'Value' = ls_0032-item_status.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 17 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-manu_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 18 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-notify_flag.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 17 #2 = 35.
+  SET PROPERTY OF cell 'Value' = ls_0032-return_reason.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 19 #2 = 29.
+  SET PROPERTY OF cell 'Value' = ls_0032-manu_place.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 19 #2 = 31.
+  SET PROPERTY OF cell 'Value' = ls_0032-ind_area_code.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 19 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-refund_applier.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 20 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-buyer_name.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 21 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-buyer_id.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 29.
+  SET PROPERTY OF cell 'Value' = ls_0032-model_spec.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-component.
+
+**********************************************************************
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-qty_unit.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 34.
+  SET PROPERTY OF cell 'Value' = ls_0032-unit_price.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 24 #2 = 35.
+  SET PROPERTY OF cell 'Value' = ls_0032-amount.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 25 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-hs_code.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 25 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-weight_net.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 25 #2 = 34.
+  SET PROPERTY OF cell 'Value' = ls_0032-item_qty.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 26 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-invoice_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 26 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-import_decl_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 26 #2 = 35.
+  SET PROPERTY OF cell 'Value' = ls_0032-decl_price.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 27 #2 = 31.
+  SET PROPERTY OF cell 'Value' = ls_0032-req_doc.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 28 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-gross_weight.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 28 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-total_decl_price.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 28 #2 = 34.
+  SET PROPERTY OF cell 'Value' = ls_0032-payment_total.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 29 #2 = 31.
+  SET PROPERTY OF cell 'Value' = ls_0032-import_ctrl_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 29 #2 = 34.
+  SET PROPERTY OF cell 'Value' = ls_0032-pallet_no.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 31 #2 = 29.
+  SET PROPERTY OF cell 'Value' = ls_0032-decl_note.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 31 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-customs_note.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 35 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-carrier_decl.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 30.
+  SET PROPERTY OF cell 'Value' = ls_0032-period.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 32.
+  SET PROPERTY OF cell 'Value' = ls_0032-load_due_date.
+
+  CALL METHOD OF sheet 'Cells' = cell EXPORTING #1 = 36 #2 = 33.
+  SET PROPERTY OF cell 'Value' = ls_0032-declarant_staff.
+
+
+  " 엑셀 저장
+  CALL METHOD OF workbook 'SaveAs' EXPORTING #1 = lv_template_file.
+
+  " PDF 경로로 확장자 변경
+  lv_pdf_path = lv_template_file.
+  REPLACE '.xls' WITH '.pdf' INTO lv_pdf_path.
+
+  " PDF로 저장
+  CALL METHOD OF workbook 'ExportAsFixedFormat'
+    EXPORTING
+      #1 = 0             " 0 = PDF
+      #2 = lv_pdf_path.
+
+  " 엑셀 종료
+  CALL METHOD OF workbook 'Close' EXPORTING #1 = 0.
+  CALL METHOD OF excel 'Quit'.
+  FREE: workbook, sheet, excel.
+
+  " PDF 열기
+  DATA: shell TYPE ole2_object.
+  CREATE OBJECT shell 'Shell.Application'.
+  CALL METHOD OF shell 'ShellExecute' EXPORTING #1 = lv_pdf_path.
+  FREE: shell.
+
+  MESSAGE |PDF 저장 및 열기 완료: { lv_pdf_path }| TYPE 'S'.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758

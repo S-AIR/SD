@@ -1,0 +1,119 @@
+FUNCTION zc1fm03fi0003.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     REFERENCE(IV_BILLNUM) TYPE  ZC103E_SD_BILLNUM
+*"     REFERENCE(IV_GJAHR) TYPE  GJAHR
+*"     REFERENCE(IV_CUSTID) TYPE  ZC103E_SD_CUSTID OPTIONAL
+*"     REFERENCE(IV_BPID) TYPE  ZC103E_SD_BPID OPTIONAL
+*"     REFERENCE(IV_TOTAL) TYPE  PRICE
+*"     REFERENCE(IV_TYPE) TYPE  CHAR20
+*"     REFERENCE(IV_B2BTYPE) TYPE  CHAR20 OPTIONAL
+*"     REFERENCE(IV_B2CTYPE) TYPE  CHAR20 OPTIONAL
+*"     REFERENCE(IV_TAX) TYPE  ZC103E_SD_TXAMOUNT
+*"     REFERENCE(IV_WAERS) TYPE  WAERS
+*"     REFERENCE(IV_USCODE) TYPE  ZC103E_FI_EMPNO OPTIONAL
+*"     REFERENCE(IV_MILEAGE) TYPE  ZC103E_SD_USDEDMILEAGE OPTIONAL
+*"  EXPORTING
+*"     REFERENCE(EV_BELNR) TYPE  BELNR_D
+*"     REFERENCE(EV_MESSAGE) TYPE  CHAR100
+*"----------------------------------------------------------------------
+
+  DATA: lv_dmbtr     TYPE dmbtr,
+        lv_dmbtr_tax TYPE dmbtr.
+
+  PERFORM set_dmbtr USING iv_total iv_waers
+                    CHANGING lv_dmbtr lv_dmbtr_tax ev_message.
+
+  CASE iv_type.
+    WHEN 'B'.
+      CASE iv_b2btype.
+        WHEN 'B'. "B2B 여객고객
+          PERFORM b2b_bcustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+        WHEN 'T'. "B2B 화물고객
+          PERFORM b2b_tcustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+      ENDCASE.
+    WHEN 'C'.
+      CASE iv_b2ctype.
+        WHEN 'A'. "마일리지 + 카드 혼합결제
+          PERFORM b2c_acustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             iv_mileage
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+        WHEN 'B'. "마일리지 전액사용 결제
+          PERFORM b2C_bcustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             iv_mileage
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+        WHEN 'C'. "마일리지 사용하지 않는 결제 (마일리지 적립되는 경우)
+          PERFORM b2C_ccustomer USING iv_billnum
+                             iv_gjahr
+                             iv_custid
+                             iv_bpid
+                             iv_total
+                             iv_type
+                             iv_tax
+                             iv_waers
+                             iv_uscode
+                             iv_mileage
+                             lv_dmbtr
+                             lv_dmbtr_tax
+                       CHANGING ev_belnr ev_message.
+      ENDCASE.
+    WHEN OTHERS. "실패
+  ENDCASE.
+
+ENDFUNCTION.
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMSGC103
+*035   당월 감가상각이 완료된 자산입니다.
+*047   해당 자산이 존재하지 않습니다.
+*048   전표 아이템 생성 실패(차변)
+*049   전표 아이템 생성 실패(대변)
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 758
