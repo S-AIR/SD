@@ -1,3 +1,4 @@
+```abap
 *&---------------------------------------------------------------------*
 *& Include SAPMZC103SD0001TOP                       - Module Pool      SAPMZC103SD0001
 *&---------------------------------------------------------------------*
@@ -169,4 +170,5 @@ DATA : gv_name     TYPE zc103sdt0002-name,
        gv_cusid    TYPE zc103sdt0002-custid,
        gv_date_fr  TYPE zc103sdt0010-occur_date,
        gv_date_to  TYPE zc103sdt0010-occur_date,
+
        gv_exp_date TYPE zc103sdt0010-expire_date.
