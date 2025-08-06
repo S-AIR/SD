@@ -1,3 +1,4 @@
+```abap
 *&---------------------------------------------------------------------*
 *& Include SAPMZC103SD0003TOP                       - Module Pool      SAPMZC103SD0003
 *&---------------------------------------------------------------------*
@@ -126,4 +127,5 @@ DATA : gv_id   TYPE zc103sdt0001-bpid,
 DATA : gv_okcode   TYPE sy-ucomm,
        gv_editmode TYPE i,    " 0: read 1: edit
        gv_modified VALUE 'N', " 수정 여부 YN
+
        gv_searched VALUE 'N'. " 검색 여부 YN
