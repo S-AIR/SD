@@ -1,3 +1,4 @@
+```abap
 *&---------------------------------------------------------------------*
 *& Include SAPMZC103SD0006TOP                       - Module Pool      SAPMZC103SD0006
 *&---------------------------------------------------------------------*
@@ -219,4 +220,5 @@ DATA : BEGIN OF gs_sched,
        END OF gs_sched.
 
 * 제외할 UI 기능 목록
+
 DATA : gt_ui_functions TYPE ui_functions.  " 제외할 UI 기능들
