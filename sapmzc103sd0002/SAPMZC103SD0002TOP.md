@@ -1,3 +1,4 @@
+```abap
 *&---------------------------------------------------------------------*
 *& Include SAPMZC103SD0002TOP                       - Module Pool      SAPMZC103SD0002
 *&---------------------------------------------------------------------*
@@ -424,4 +425,5 @@ DATA : gv_tpaid   TYPE i,
 *-- For Billing
 DATA : gv_compname    TYPE zc103sdt0001-bpname,
        gv_brest(15),
+
        gv_bill_status VALUE 'Y'.
