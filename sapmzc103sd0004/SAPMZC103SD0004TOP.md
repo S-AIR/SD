@@ -1,3 +1,4 @@
+```abap
 *&---------------------------------------------------------------------*
 *& Include SAPMZC103SD0004TOP                       - Module Pool      SAPMZC103SD0004
 *&---------------------------------------------------------------------*
@@ -134,4 +135,5 @@ DATA: bcs_exception        TYPE REF TO cx_bcs,              " BCS 처리 중 발
       t_mailtext           TYPE soli_tab,           " 메일 본문 텍스트
       wa_mailtext          LIKE LINE OF t_mailtext, " 메일 본문 텍스트의 work area
       send_to              TYPE adr6-smtp_addr,     " 수신자 이메일 주소
+
       sent                 TYPE abap_bool.          " 메일 발송 성공 여부
